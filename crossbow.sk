@@ -27,9 +27,11 @@ on damage:
 		set damage to 2
 
 # 석궁 화살이 어딘가에 맞으면(땅/벽/엔티티) 화살 엔티티를 제거한다. 다른 화살(스켈레톤 등)은 건드리지 않는다.
-# 데미지 이벤트가 표시를 읽을 수 있도록 1틱 뒤에 지운다.
-# (delete {_a} 는 변수만 지우고 화살은 남으므로 skript-reflect 의 .remove() 로 제거한다)
+# 추가 - 화살이 벽에 5초간 유지되도록 한 후 지운다. 화살이 유지되는 동안은 플레이어가 주울 수 없게 한다.
 on projectile hit:
 	if projectile is an arrow:
-		wait 1 ticks
+		wait 100 ticks
 		delete event-projectile
+
+on arrow pickup:
+	cancel event
