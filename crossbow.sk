@@ -11,10 +11,10 @@ on rightclick:
 	cancel event
 	if {-bowcool::%player's uuid%} is set:
 		stop
-	shoot arrow from player at speed 4
-	set {_arrow} to last spawned entity
-	set {-crossbow_arrow::%uuid of {_arrow}%} to {_arrow}
-	broadcast "&7[DEBUG] 석궁 발사: %{_arrow}%"
+	# shoot 은 섹션이라 쏜 화살은 섹션 안에서 event-entity 로 받는다(last spawned entity 는 비어 있음, jar 확인).
+	shoot arrow from player at speed 4:
+		set {-crossbow_arrow::%uuid of event-entity%} to event-entity
+		broadcast "&7[DEBUG] 석궁 발사: %event-entity%"
 	play sound "item.crossbow.shoot" with volume 1 and pitch 1 at player
 	set item cooldown of crossbow for player to 16 ticks
 	set {-bowcool::%player's uuid%} to true
