@@ -34,13 +34,14 @@ on every 5 ticks:
 		delete {_seen::*}
 		loop {-status::%{_uid}%::*}:
 			set {_src} to loop-index
-			set {_end} to loop-value
+			set {_end} to {-status::%{_uid}%::%{_src}%}
 			if {_end} <= now:
 				delete {-status::%{_uid}%::%{_src}%}
 				delete {-statusname::%{_uid}%::%{_src}%}
 			else:
 				set {_n} to {-statusname::%{_uid}%::%{_src}%}
-				set {_left} to (seconds of ({_end} - now)) + 1
+				set {_diff} to difference between now and {_end}
+				set {_left} to (seconds of {_diff}) + 1
 				if {_seen::%{_n}%} is not set:
 					set {_seen::%{_n}%} to {_left}
 				else if {_left} > {_seen::%{_n}%}:
@@ -50,7 +51,7 @@ on every 5 ticks:
 			loop {_seen::*}:
 				if {_msg} is not "":
 					set {_msg} to "%{_msg}% &8| "
-				set {_msg} to "%{_msg}%&c%loop-index% &f%loop-value%초"
+				set {_msg} to "%{_msg}%&c%loop-index% &f%{_seen::%loop-index%}%초"
 			send action bar {_msg} to loop-player
 			set {-statusbar::%{_uid}%} to true
 		else if {-statusbar::%{_uid}%} is set:

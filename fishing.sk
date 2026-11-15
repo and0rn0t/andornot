@@ -75,6 +75,7 @@ on fishing line cast:
 	delete {-hookdmg::%{_id}%}
 	set {-hook::%{_id}%} to {_h}
 	set {_assisted} to false
+	set {_still} to 0
 	wait 1 tick
 	set velocity of {_h} to (velocity of {_h}) * 3
 	while {_h} is valid:
@@ -127,10 +128,16 @@ on fishing line cast:
 				hookCooldown({_p})
 				{_h}.remove()
 			else:
-				# 아직 아무것도 못 맞힌 상태에서 땅이나 물에 떨어졌으면 못 맞춘 것
-				set {_ground} to {_h}.isOnGround()
+				# 아직 아무것도 못 맞힌 상태에서 멈췄거나(땅/벽) 물에 들어갔으면 못 맞춘 것.
+				# 꽃/잔디 같은 충돌 없는 블록은 찌가 그냥 통과하므로(멈추지 않음) 판정은 속도 기준:
+				# 속도가 거의 0인 상태가 2틱 연속이면 멈춘 것(포물선 꼭대기에서 순간적으로 느려지는 것과 구분).
+				set {_speed} to standard length of (velocity of {_h})
+				if {_speed} < 0.01:
+					add 1 to {_still}
+				else:
+					set {_still} to 0
 				set {_water} to {_h}.isInWater()
-				if {_ground} is true:
+				if {_still} >= 2:
 					hookMiss({_p}, {_h})
 				else if {_water} is true:
 					hookMiss({_p}, {_h})
@@ -157,9 +164,3 @@ on fishing line cast:
 on entity hooked:
 	hookDamage(player, hooked entity)
 	set {-hookdmg::%player's uuid%} to true
-
-# 땅에 닿았는데 아무것도 안 걸렸으면 못 맞춘 것: 쿨타임 + 찌 회수 (위 loop 의 바닥 검사와 이중으로 대비)
-on bobber hit ground:
-	set {_id} to uuid of player
-	if {-hooked::%{_id}%} is not set:
-		hookMiss(player, fishing hook)
