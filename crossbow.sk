@@ -13,7 +13,12 @@ on rightclick:
 		stop
 	# shoot 은 섹션이라 쏜 화살은 섹션 안에서 event-entity 로 받는다(last spawned entity 는 비어 있음, jar 확인).
 	shoot arrow from player at speed 4:
-		set {-crossbow_arrow::%uuid of event-entity%} to event-entity
+		set {_a} to event-entity
+		set {-crossbow_arrow::%uuid of {_a}%} to {_a}
+		# 발사 직후 화살이 기울어 보이는 문제: 화살은 위로 향할 때 pitch 가 +, 플레이어는 아래로 볼 때 +라서 부호를 뒤집어 맞춘다(미검증).
+		set {_yaw} to yaw of player
+		set {_pitch} to -(pitch of player)
+		{_a}.setRotation({_yaw}, {_pitch})
 		broadcast "&7[DEBUG] 석궁 발사: %event-entity%"
 	play sound "item.crossbow.shoot" with volume 1 and pitch 1 at player
 	set item cooldown of crossbow for player to 16 ticks
@@ -33,12 +38,16 @@ on damage:
 # 석궁 화살이 어딘가에 맞으면(땅/벽/엔티티) 화살 엔티티를 제거한다. 다른 화살(스켈레톤 등)은 건드리지 않는다.
 # 데미지 이벤트가 표시를 읽을 수 있도록 1틱 뒤에 지운다.
 # (delete {_a} 는 변수만 지우고 화살은 남으므로 skript-reflect 의 .remove() 로 제거한다)
+# 블록에 맞은 경우는 여기서 지우지 않는다(통과 가능한 블록에서도 이 이벤트가 돌아 화살이 사라졌음).
+# 블록에 실제로 박힌 화살은 아래 2틱 확인이 지운다. 여기서는 엔티티를 맞춘 경우(victim 이 있음)만 처리한다.
 on projectile hit:
 	if projectile is an arrow:
 		set {_a} to projectile
 		set {_aid} to uuid of projectile
 		if {-crossbow_arrow::%{_aid}%} is set:
-			broadcast "&7[DEBUG] projectile hit 이벤트: 석궁 화살 제거 시도"
+			if victim is not set:
+				stop
+			broadcast "&7[DEBUG] projectile hit 이벤트: 엔티티 적중, 석궁 화살 제거 시도"
 			wait 1 tick
 			delete {-crossbow_arrow::%{_aid}%}
 			{_a}.remove()
