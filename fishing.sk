@@ -17,10 +17,10 @@ function hookCooldown(p: player):
 # 엔티티에 찌가 걸린 순간: 던진 사람에게 당겨지는 소리. 걸린 게 플레이어면 그 사람에게도.
 function hookCatchSound(p: player, v: entity):
 	if {_p} is online:
-		play sound "entity.fishing_bobber.retrieve" with volume 2 and pitch 0.8 to {_p}
+		play sound "entity.evoker_fangs.attack" with volume 2 and pitch 0.8 to {_p}
 	if {_v} is a player:
 		if {_v} is online:
-			play sound "entity.fishing_bobber.retrieve" with volume 2 and pitch 0.8 to {_v}
+			play sound "entity.evoker_fangs.attack" with volume 2 and pitch 0.8 to {_v}
 
 # 소리 두 개를 한 번에 재생(한쪽 이름이 틀려도 다른 쪽은 들리도록). 대상이 오프라인이면 무시.
 function hookPlay(t: player, a: text, b: text, pit: number):
