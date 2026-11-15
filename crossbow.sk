@@ -33,6 +33,7 @@ on damage:
 # (delete {_a} 는 변수만 지우고 화살은 남으므로 skript-reflect 의 .remove() 로 제거한다)
 on projectile hit:
 	if projectile is an arrow:
+		broadcast "!"
 		set {_a} to projectile
 		set {_aid} to uuid of projectile
 		if {-crossbow_arrow::%{_aid}%} is set:
