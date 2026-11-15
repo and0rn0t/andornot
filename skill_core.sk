@@ -53,6 +53,7 @@
 #   {-hooked::uuid}          찌에 걸려 있는 대상                     fishing
 #   {-hookcd::uuid}          낚싯대 쿨타임 종료 시각                 fishing
 #   {-hookcdset::uuid}       이번 투척의 쿨타임 시작 여부            fishing
+#   {-hookdmg::uuid}         이번 투척에서 당겨서 이미 피해를 줬는지    fishing
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing
 #   {-statusname::uuid::출처} 상태이상 표시 이름(예: 구속)                      skill_core 함수, main
@@ -113,6 +114,8 @@
 #     fishing_낚시꾼uuid + 상태이상 표시 "구속"). 3초가 지나면 자동으로 풀리고(당길 때와 같은 2하트 피해 + 풀림 소리)
 #     찌는 회수되며 그때부터 쿨타임 9초. 끝나기 전 2초/2.5초 지점에 경고음(hookWarnSound).
 #     3초 안에 찌를 당기면(on entity hooked) 걸린 엔티티에 2하트 피해(던진 사람 판정)를 주고 찌가 사라지면서 쿨타임 9초.
+#     낚싯대를 손에서 치워 찌가 사라질 때도(걸려 있었고 아직 피해를 안 줬으면, 던진 사람이 접속 중/생존일 때) 같은 피해.
+#     대상이 먼저 사라진 경우(사망, 접속 종료)는 피해 없음.
 #     못 맞춤 = 아무 엔티티에도 안 걸리고 땅이나 물에 떨어짐. 즉시 쿨타임 9초 + 찌 회수({_h}.remove()).
 #     땅/물 판정은 loop 에서 {_h}.isOnGround() / {_h}.isInWater() 를 매 틱 확인(skript-reflect, 미검증),
 #     on bobber hit ground 는 보조.

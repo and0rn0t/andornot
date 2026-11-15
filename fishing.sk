@@ -1,6 +1,6 @@
 # [fishing.sk] 낚싯대 스킬(찌 속도 증가, 후한 판정(플레이어만), 엔티티에 걸리면 3초 걸림, 당길 때 피해, 쿨타임, 효과음, 상태이상 표시)
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수: {-hook}, {-hooked}, {-hookcd}, {-hookcdset}, {-jumplock}(걸린 대상의 도약 잠금, 키 fishing_낚시꾼uuid), {-status}/{-statusname}(걸린 대상의 구속 표시, 출처 fishing_낚시꾼uuid), {-skillitems::fishing_rod}
+# 이 파일이 쓰는 변수: {-hook}, {-hooked}, {-hookcd}, {-hookcdset}, {-hookdmg}, {-jumplock}(걸린 대상의 도약 잠금, 키 fishing_낚시꾼uuid), {-status}/{-statusname}(걸린 대상의 구속 표시, 출처 fishing_낚시꾼uuid), {-skillitems::fishing_rod}
 # 효과음을 바꾸고 싶으면 아래 hookCatchSound / hookWarnSound / hookReleaseSound 함수의 소리 이름만 바꾸면 된다.
 
 using damage sources
@@ -72,6 +72,7 @@ on fishing line cast:
 	set {_p} to player
 	delete {-hooked::%{_id}%}
 	delete {-hookcdset::%{_id}%}
+	delete {-hookdmg::%{_id}%}
 	set {-hook::%{_id}%} to {_h}
 	set {_assisted} to false
 	wait 1 tick
@@ -139,15 +140,23 @@ on fishing line cast:
 		if {-hooked::%{_id}%} is set:
 			set {_victim} to {-hooked::%{_id}%}
 			delete {-hooked::%{_id}%}
+			# 걸려 있는데 아직 피해를 안 줬다면(낚싯대를 손에서 치움 등) 여기서 피해. 던진 사람이 접속 중이고 살아 있을 때만.
+			if {-hookdmg::%{_id}%} is not set:
+				if {_p} is online:
+					if {_p} is alive:
+						hookDamage({_p}, {_victim})
+			delete {-hookdmg::%{_id}%}
 			hookRelease({_p}, {_victim})
 			hookCooldown({_p})
 		else if {-hookcdset::%{_id}%} is not set:
 			hookCooldown({_p})
 		delete {-hook::%{_id}%}
 
-# 찌를 당겨서 걸린 대상을 끌어올 때만 피해 (낚싯대를 치우거나 대상이 사라지는 경우는 피해 없음). 모든 엔티티 대상.
+# 찌를 당겨서 걸린 대상을 끌어올 때 피해. 모든 엔티티 대상. 이미 줬다는 표시를 남겨 찌가 사라질 때 중복 피해를 막는다.
+# (낚싯대를 손에서 치워 찌가 사라지는 경우는 위 loop 끝에서 피해. 대상이 먼저 사라지는 경우는 피해 없음)
 on entity hooked:
 	hookDamage(player, hooked entity)
+	set {-hookdmg::%player's uuid%} to true
 
 # 땅에 닿았는데 아무것도 안 걸렸으면 못 맞춘 것: 쿨타임 + 찌 회수 (위 loop 의 바닥 검사와 이중으로 대비)
 on bobber hit ground:
