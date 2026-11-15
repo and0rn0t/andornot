@@ -1,7 +1,7 @@
 # [main.sk] 스태미너 회복/표시(경험치 바), 상태이상 액션바 표시, 전투 중 처리, 경험치 차단
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지).
-# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar} (접속 시 삭제)
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar}, {-sneaklock}, {-sneaklockend}, {-sneaklockorig} (접속 시 삭제)
 
 on join:
 	set {-st::%player's uuid%} to 100
@@ -14,9 +14,14 @@ on join:
 	delete {-status::%player's uuid%::*}
 	delete {-statusname::%player's uuid%::*}
 	delete {-statusbar::%player's uuid%}
+	delete {-sneaklock::%player's uuid%}
+	delete {-sneaklockend::%player's uuid%}
+	delete {-sneaklockorig::%player's uuid%}
 
 on every 1 ticks:
 	loop all players:
+		# 웅크림 중 메인핸드 스킬 아이템 잠금(오프핸드 스킬을 쓰게 함). 자세한 설명은 skill_core.sk 의 sneakLockUpdate
+		sneakLockUpdate(loop-player)
 		if {-stcap::%loop-player's uuid%} <= 0:
 			if {-st::%loop-player's uuid%} < 100:
 				add 1 to {-st::%loop-player's uuid%}

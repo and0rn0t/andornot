@@ -54,6 +54,9 @@
 #   {-hookcd::uuid}          낚싯대 쿨타임 종료 시각                 fishing
 #   {-hookcdset::uuid}       이번 투척의 쿨타임 시작 여부            fishing
 #   {-hookdmg::uuid}         이번 투척에서 당겨서 이미 피해를 줬는지    fishing
+#   {-sneaklock::uuid}       웅크림 잠금이 걸린 메인핸드 아이템 종류      skill_core 함수, main(접속 시 삭제)
+#   {-sneaklockend::uuid}    그 잠금이 자연히 끝날 시각(잠금 쿨타임 1시간)   skill_core 함수, main
+#   {-sneaklockorig::uuid}   잠금 전 그 아이템의 원래 쿨타임 종료 시각(없으면 unset)  skill_core 함수, main
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing
 #   {-statusname::uuid::출처} 상태이상 표시 이름(예: 구속)                      skill_core 함수, main
@@ -69,8 +72,16 @@
 #       (탭)if skillHand(player, 아이템타입) is false:
 #       (탭)(탭)stop
 #       (탭)cancel event
-#   - 규칙: 메인핸드에 스킬 아이템이 있으면 그 스킬이 우선. 오프핸드 스킬은 메인핸드가
-#     다른 스킬 아이템이 아닐 때만 발동. 이 판정은 아래 함수가 전부 처리한다.
+#   - 규칙: 메인핸드에 쓸 수 있는(스킬 아이템이고 아이템 쿨타임이 끝난) 스킬이 있으면 그 스킬이 우선.
+#     오프핸드 스킬은 메인핸드에 쓸 수 있는 스킬이 없을 때 발동한다. 메인핸드 스킬이 쿨타임 중이면
+#     오프핸드 스킬을 방해하지 않는다. 이 판정은 아래 skillHand / skillReady 함수가 처리한다.
+#     그래서 모든 스킬은 쿨타임을 set item cooldown 으로도 걸어 둬야 한다.
+#   - 웅크림(sneak) 규칙: 웅크리면 메인핸드의 스킬 아이템에 아이템 쿨타임을 걸어, 마인크래프트 기본 동작으로
+#     오프핸드 아이템이 쓰이게 한다(메인핸드 아이템이 쿨타임이면 바닐라가 오프핸드로 넘김). 일어서면 풀고,
+#     잠금 전의 원래 쿨타임은 복원한다. 오프핸드에 쓸 수 있는 스킬이 없거나 메인핸드와 같은 재질이면
+#     잠그지 않는다(웅크려도 메인핸드 스킬이 나감). 처리는 main.sk 매 틱 sneakLockUpdate.
+#     한계: 아이템 쿨타임은 재질 단위라 양손이 같은 재질이면 이 규칙을 못 쓴다. 잠긴 동안 메인핸드 아이템에
+#     쿨타임 표시(어두운 칸)가 보인다.
 #   - 새 스킬이 쓰는 변수는 위 목록에 추가하고, 공용으로 필요한 함수는 이 파일에 추가한다.
 #   - 아이템 쿨타임 표시는 set item cooldown of 아이템타입 for 플레이어 to 시간 (재질 단위).
 #   - 상태이상(구속 등)을 거는 스킬은 아래 함수로 액션바에 표시한다. 표시/만료 처리는 main.sk 가 한다.
@@ -185,13 +196,74 @@ function clearStatus(p: player, src: text):
 	delete {-status::%{_p}'s uuid%::%{_src}%}
 	delete {-statusname::%{_p}'s uuid%::%{_src}%}
 
-# 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
-# 오프핸드 아이템이 이 스킬이면, 메인핸드가 다른 스킬 아이템이 아닐 때만 true
+# 이 아이템이 스킬 아이템이고 아이템 쿨타임이 끝났는가(지금 쓸 수 있는가)
+function skillReady(p: player, i: itemtype) :: boolean:
+	if isSkillItem({_i}) is false:
+		return false
+	set {_cd} to item cooldown of {_i} for {_p}
+	if {_cd} > 0 seconds:
+		return false
+	return true
+
+# 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 쿨타임이 끝났을 때만 true
+# 오프핸드 아이템이 이 스킬이면, 메인핸드에 쓸 수 있는 스킬이 없고 이 스킬이 쿨타임이 아닐 때만 true
 function skillHand(p: player, t: itemtype) :: boolean:
 	if {_p}'s tool is {_t}:
-		return true
+		return skillReady({_p}, {_t})
 	if {_p}'s offhand tool is {_t}:
-		if isSkillItem({_p}'s tool) is true:
+		if skillReady({_p}, {_p}'s tool) is true:
 			return false
-		return true
+		return skillReady({_p}, {_t})
 	return false
+
+# --- 웅크림 잠금 (설명은 위 5번) ---
+
+# 메인핸드 아이템 종류에 1시간짜리 아이템 쿨타임을 걸고, 원래 쿨타임 종료 시각을 기록한다.
+function sneakLock(p: player, i: itemtype):
+	set {_cd} to item cooldown of {_i} for {_p}
+	if {_cd} > 0 seconds:
+		set {-sneaklockorig::%{_p}'s uuid%} to now + {_cd}
+	else:
+		delete {-sneaklockorig::%{_p}'s uuid%}
+	set item cooldown of {_i} for {_p} to 1 hour
+	set {-sneaklock::%{_p}'s uuid%} to {_i}
+	set {-sneaklockend::%{_p}'s uuid%} to now + 1 hour
+
+# 잠금 해제: 쿨타임이 아직 우리가 건 그대로면 원래 쿨타임으로 되돌린다.
+# 잠금 도중 다른 스킬이 같은 아이템에 새 쿨타임을 걸었으면(잠금 남은 시간보다 3초 넘게 짧음) 그대로 둔다.
+function sneakUnlock(p: player):
+	set {_i} to {-sneaklock::%{_p}'s uuid%}
+	if {_i} is not set:
+		stop
+	set {_cur} to item cooldown of {_i} for {_p}
+	set {_curticks} to ticks of {_cur}
+	set {_expticks} to 0
+	if {-sneaklockend::%{_p}'s uuid%} > now:
+		set {_exp} to difference between now and {-sneaklockend::%{_p}'s uuid%}
+		set {_expticks} to ticks of {_exp}
+	if {_curticks} >= {_expticks} - 60:
+		if {-sneaklockorig::%{_p}'s uuid%} > now:
+			set {_rem} to difference between now and {-sneaklockorig::%{_p}'s uuid%}
+			set item cooldown of {_i} for {_p} to {_rem}
+		else:
+			reset item cooldown of {_i} for {_p}
+	delete {-sneaklock::%{_p}'s uuid%}
+	delete {-sneaklockend::%{_p}'s uuid%}
+	delete {-sneaklockorig::%{_p}'s uuid%}
+
+# 매 틱 호출(main.sk). 잠글 조건: 웅크렸고, 메인핸드가 스킬 아이템이고,
+# 오프핸드에 지금 쓸 수 있는 스킬이 있고, 두 아이템이 서로 다른 재질일 때.
+function sneakLockUpdate(p: player):
+	set {_want} to false
+	if {_p} is sneaking:
+		if isSkillItem({_p}'s tool) is true:
+			if skillReady({_p}, {_p}'s offhand tool) is true:
+				if {_p}'s tool is not {_p}'s offhand tool:
+					set {_want} to true
+	if {-sneaklock::%{_p}'s uuid%} is set:
+		if {_want} is true:
+			if {_p}'s tool is {-sneaklock::%{_p}'s uuid%}:
+				stop
+		sneakUnlock({_p})
+	if {_want} is true:
+		sneakLock({_p}, {_p}'s tool)
