@@ -63,6 +63,15 @@ function hookDamage(p: player, v: entity):
 	damage {_v} by 2 hearts using {_src}
 
 on fishing line cast:
+	# 손 규칙: 서 있으면 메인핸드의 낚싯대만, 웅크리면 오프핸드의 낚싯대만 던질 수 있다.
+	# 바닐라는 메인핸드에 낚싯대가 있으면 메인으로 던지므로, 웅크렸는데 메인핸드에도 낚싯대가 있으면 막는다.
+	if skillHand(player, fishing rod) is false:
+		cancel event
+		stop
+	if player is sneaking:
+		if player's tool is fishing rod:
+			cancel event
+			stop
 	set {_id} to uuid of player
 	if {-hookcd::%{_id}%} is set:
 		if {-hookcd::%{_id}%} > now:
