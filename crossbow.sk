@@ -1,6 +1,6 @@
 # [crossbow.sk] 석궁 스킬(우클릭 발사, 석궁 화살 데미지 2, 맞은 화살 제거). 메인핸드 우선, 오프핸드도 작동
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수: {-bowcool}, {-crossbow_arrow}, {-skillitems::crossbow}
+# 이 파일이 쓰는 변수: {-bowcool}, {-skillitems::crossbow}
 
 on load:
 	set {-skillitems::crossbow} to crossbow
