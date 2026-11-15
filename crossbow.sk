@@ -12,7 +12,9 @@ on rightclick:
 	if {-bowcool::%player's uuid%} is set:
 		stop
 	shoot arrow from player at speed 4
-	set {-crossbow_arrow::%uuid of last spawned entity%} to true
+	set {_arrow} to last spawned entity
+	set {-crossbow_arrow::%uuid of {_arrow}%} to {_arrow}
+	broadcast "&7[DEBUG] 석궁 발사: %{_arrow}%"
 	play sound "item.crossbow.shoot" with volume 1 and pitch 1 at player
 	set item cooldown of crossbow for player to 16 ticks
 	set {-bowcool::%player's uuid%} to true
@@ -36,6 +38,22 @@ on projectile hit:
 		set {_a} to projectile
 		set {_aid} to uuid of projectile
 		if {-crossbow_arrow::%{_aid}%} is set:
+			broadcast "&7[DEBUG] projectile hit 이벤트: 석궁 화살 제거 시도"
 			wait 1 tick
 			delete {-crossbow_arrow::%{_aid}%}
 			{_a}.remove()
+
+# 위 이벤트와 별개로 2틱마다 석궁 화살을 확인해서, 사라졌으면 표시를 지우고 블록에 박혔으면 화살을 제거한다.
+# (이벤트가 안 도는 경우에도 화살이 남지 않게 하는 이중 장치)
+on every 2 ticks:
+	loop {-crossbow_arrow::*}:
+		set {_a} to loop-value
+		set {_k} to loop-index
+		if {_a} is not valid:
+			delete {-crossbow_arrow::%{_k}%}
+		else:
+			set {_stuck} to {_a}.isInBlock()
+			if {_stuck} is true:
+				broadcast "&7[DEBUG] 2틱 확인: 박힌 석궁 화살 제거"
+				delete {-crossbow_arrow::%{_k}%}
+				{_a}.remove()
