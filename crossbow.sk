@@ -34,4 +34,4 @@ on damage:
 on projectile hit:
 	if projectile is an arrow:
 		wait 1 ticks
-		delete event projectile
+		delete event-projectile
