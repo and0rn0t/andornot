@@ -69,10 +69,9 @@
 #       (탭)if skillHand(player, 아이템타입) is false:
 #       (탭)(탭)stop
 #       (탭)cancel event
-#   - 손 규칙: 서 있으면 메인핸드의 스킬만 발동. 웅크리고(sneak) 있으면 오프핸드의 스킬이 발동하되,
-#     오프핸드에 쓸 수 있는 스킬이 없으면(비어 있음, 스킬 아이템이 아님, 아이템 쿨타임 중) 메인핸드 스킬이 발동한다.
-#     이 판정은 아래 skillHand / offhandSkillReady 함수가 처리한다. 그래서 모든 스킬은 쿨타임을
-#     set item cooldown 으로도 걸어 둬야 한다(오프핸드 쿨타임 판정에 쓰임).
+#   - 손 규칙: 서 있으면 메인핸드의 스킬만, 웅크리고(sneak) 있으면 오프핸드의 스킬만 발동한다.
+#     (반대쪽 손에 스킬 아이템이 있어도 무시. 웅크렸는데 오프핸드에 그 스킬이 없으면 발동 안 함.)
+#     이 판정은 아래 skillHand 함수가 처리한다.
 #   - 낚싯대는 바닐라 이벤트(fishing line cast)로 던져지므로 skillHand 만으로는 막을 수 없다. fishing.sk 맨 앞에서
 #     같은 규칙을 직접 검사한다(바닐라는 메인핸드에 낚싯대가 있으면 메인으로, 없으면 오프핸드로 던진다).
 #   - 새 스킬이 쓰는 변수는 위 목록에 추가하고, 공용으로 필요한 함수는 이 파일에 추가한다.
@@ -189,24 +188,12 @@ function clearStatus(p: player, src: text):
 	delete {-status::%{_p}'s uuid%::%{_src}%}
 	delete {-statusname::%{_p}'s uuid%::%{_src}%}
 
-# 오프핸드에 지금 쓸 수 있는 스킬이 있는가: 스킬 아이템이고 아이템 쿨타임이 끝났을 때만 true
-function offhandSkillReady(p: player) :: boolean:
-	if isSkillItem({_p}'s offhand tool) is false:
-		return false
-	set {_cd} to item cooldown of ({_p}'s offhand tool) for {_p}
-	if {_cd} > 0 seconds:
-		return false
-	return true
-
-# 손 규칙: 서 있으면 메인핸드 아이템이 이 스킬일 때만 true.
-# 웅크리고 있으면 오프핸드 아이템이 이 스킬일 때 true(쿨타임은 각 스킬이 따로 막는다).
-# 단, 오프핸드에 쓸 수 있는 스킬이 없으면(offhandSkillReady 가 false) 메인핸드 아이템이 이 스킬일 때 true.
+# 손 규칙: 웅크리고 있으면 오프핸드 아이템이, 서 있으면 메인핸드 아이템이 이 스킬일 때만 true
 function skillHand(p: player, t: itemtype) :: boolean:
 	if {_p} is sneaking:
 		if {_p}'s offhand tool is {_t}:
 			return true
-		if offhandSkillReady({_p}) is true:
-			return false
+		return false
 	if {_p}'s tool is {_t}:
 		return true
 	return false
