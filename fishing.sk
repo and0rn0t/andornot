@@ -30,9 +30,9 @@ function hookPlay(t: player, a: text, b: text, pit: number):
 
 # 걸림이 곧 끝날 때(끝나기 전 경고): 사슬이 팽팽해지는 소리. pit 가 높을수록 임박한 느낌.
 function hookWarnSound(p: player, v: entity, pit: number):
-	hookPlay({_p}, "block.chain.hit", "entity.fishing_bobber.retrieve", {_pit})
+	hookPlay({_p}, "block.chain.hit", "item.crossbow.loading_middle", {_pit})
 	if {_v} is a player:
-		hookPlay({_v}, "block.chain.hit", "entity.fishing_bobber.retrieve", {_pit})
+		hookPlay({_v}, "block.chain.hit", "item.crossbow.loading_middle", {_pit})
 
 # 걸림이 풀릴 때(당겨지는 순간): 던진 사람에게 당겨지는 소리. 걸렸던 게 플레이어면 그 사람에게도.
 function hookReleaseSound(p: player, v: entity):
