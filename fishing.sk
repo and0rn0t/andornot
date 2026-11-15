@@ -17,16 +17,16 @@ function hookCooldown(p: player):
 # 엔티티에 찌가 걸린 순간: 던진 사람에게 당겨지는 소리. 걸린 게 플레이어면 그 사람에게도.
 function hookCatchSound(p: player, v: entity):
 	if {_p} is online:
-		play sound "entity.fishing_bobber.retrieve" with volume 2 and pitch 0.8 to {_p}
+		play sound "entity.fishing_bobber.retrieve" with volume 3 and pitch 0.8 to {_p}
 	if {_v} is a player:
 		if {_v} is online:
-			play sound "entity.fishing_bobber.retrieve" with volume 2 and pitch 0.8 to {_v}
+			play sound "entity.fishing_bobber.retrieve" with volume 3 and pitch 0.8 to {_v}
 
 # 소리 두 개를 한 번에 재생(한쪽 이름이 틀려도 다른 쪽은 들리도록). 대상이 오프라인이면 무시.
 function hookPlay(t: player, a: text, b: text, pit: number):
 	if {_t} is online:
-		play sound {_a} with volume 2 and pitch {_pit} to {_t}
-		play sound {_b} with volume 2 and pitch {_pit} to {_t}
+		play sound {_a} with volume 3 and pitch {_pit} to {_t}
+		play sound {_b} with volume 3 and pitch {_pit} to {_t}
 
 # 걸림이 곧 끝날 때(끝나기 전 경고): 사슬이 팽팽해지는 소리. pit 가 높을수록 임박한 느낌.
 function hookWarnSound(p: player, v: entity, pit: number):
