@@ -36,9 +36,9 @@ function hookWarnSound(p: player, v: entity, pit: number):
 
 # 걸림이 풀릴 때(당겨지는 순간): 던진 사람에게 당겨지는 소리. 걸렸던 게 플레이어면 그 사람에게도.
 function hookReleaseSound(p: player, v: entity):
-	hookPlay({_p}, "item.trident.return", "entity.fishing_bobber.retrieve", 1.6)
+	hookPlay({_p}, "item.crossbow.shoot", "entity.fishing_bobber.retrieve", 1.6)
 	if {_v} is a player:
-		hookPlay({_v}, "item.trident.return", "entity.fishing_bobber.retrieve", 1.6)
+		hookPlay({_v}, "item.crossbow.shoot", "entity.fishing_bobber.retrieve", 1.6)
 
 # 걸림 해제: (플레이어면) 도약 잠금과 구속 표시를 지우고, 풀리는 소리. 쿨타임/찌 제거는 호출하는 쪽에서 처리.
 function hookRelease(p: player, v: entity):
