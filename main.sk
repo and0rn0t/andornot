@@ -1,0 +1,89 @@
+# [main.sk] 스태미너 회복/표시(경험치 바), 상태이상 액션바 표시, 전투 중 처리, 경험치 차단
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지).
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar} (접속 시 삭제)
+
+on join:
+	set {-st::%player's uuid%} to 100
+	set level progress of player to 0.999
+	set {-oc::%player's uuid%} to 0
+	set {-stcap::%player's uuid%} to 0
+	delete {-jump::%player's uuid%}
+	delete {-jumplock::%player's uuid%::*}
+	delete {-bowcool::%player's uuid%}
+	delete {-status::%player's uuid%::*}
+	delete {-statusname::%player's uuid%::*}
+	delete {-statusbar::%player's uuid%}
+
+on every 1 ticks:
+	loop all players:
+		if {-stcap::%loop-player's uuid%} <= 0:
+			if {-st::%loop-player's uuid%} < 100:
+				add 1 to {-st::%loop-player's uuid%}
+				set level progress of loop-player to ({-st::%loop-player's uuid%}*0.01-0.001)
+			if {-st::%loop-player's uuid%} <= 0:
+				set level progress of loop-player to 0
+			if {-st::%loop-player's uuid%} > 100:
+				set {-st::%loop-player's uuid%} to 100
+				set level progress of loop-player to 0.999
+# 상태이상 액션바 표시. 상태이상은 skill_core.sk 의 setStatus/clearStatus 로 등록한다.
+# 같은 이름이 여러 출처에서 걸려 있으면 남은 시간이 가장 긴 것 하나만 보여준다.
+on every 5 ticks:
+	loop all players:
+		set {_uid} to "%loop-player's uuid%"
+		delete {_seen::*}
+		loop {-status::%{_uid}%::*}:
+			set {_src} to loop-index
+			set {_end} to loop-value
+			if {_end} <= now:
+				delete {-status::%{_uid}%::%{_src}%}
+				delete {-statusname::%{_uid}%::%{_src}%}
+			else:
+				set {_n} to {-statusname::%{_uid}%::%{_src}%}
+				set {_left} to (seconds of ({_end} - now)) + 1
+				if {_seen::%{_n}%} is not set:
+					set {_seen::%{_n}%} to {_left}
+				else if {_left} > {_seen::%{_n}%}:
+					set {_seen::%{_n}%} to {_left}
+		if {_seen::*} is set:
+			set {_msg} to ""
+			loop {_seen::*}:
+				if {_msg} is not "":
+					set {_msg} to "%{_msg}% &8| "
+				set {_msg} to "%{_msg}%&c%loop-index% &f%loop-value%초"
+			send action bar {_msg} to loop-player
+			set {-statusbar::%{_uid}%} to true
+		else if {-statusbar::%{_uid}%} is set:
+			send action bar "" to loop-player
+			delete {-statusbar::%{_uid}%}
+
+on damage:
+	if attacker's tool is mace:
+		set damage to damage*0.3
+	if attacker is player:
+		add 8 to {-oc::%attacker's uuid%}
+		loop 8 times:
+			wait 1 seconds
+			remove 1 from {-oc::%attacker's uuid%}
+
+
+on damage:
+	if victim is player:
+		add 8 to {-oc::%victim's uuid%}
+		loop 8 times:
+			wait 1 seconds
+			remove 1 from {-oc::%victim's uuid%}
+		loop 10 times:
+			if {-oc::%victim's uuid%} = 0:
+				#heal victim by 1
+				wait 0.75 seconds
+
+on heal:
+	if {-oc::%player's uuid%} > 0:
+		cancel event
+			
+on hunger meter change:
+	set player's hunger meter to 10
+
+on experience spawn:
+	cancel event

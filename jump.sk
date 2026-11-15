@@ -1,0 +1,31 @@
+# [jump.sk] F키(손 바꾸기)로 발동하는 대시 스킬. 스태미너 33 이상에서 사용, 스태미너 소모
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-jump}(도약 실행 중), {-jumplock}(읽기 전용: 하나라도 있으면 도약 불가)
+
+on swap hand items:
+	cancel event
+	if {-jumplock::%player's uuid%::*} is set:
+		stop
+	if {-st::%player's uuid%} >= 33:
+		if {-jump::%player's uuid%} is not set:
+			push player upwards at speed 0.25
+			push player forwards at speed 1.25
+			play sound "entity.player.attack.sweep" with volume 1 and pitch 1.2 at player
+			add 1 to {-stcap::%player's uuid%}
+			set {-jump::%player's uuid%} to true
+			loop 6 times:
+				remove 3 from {-st::%player's uuid%}
+				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
+				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
+				wait 1 ticks
+			delete {-jump::%player's uuid%}
+			loop 5 times:
+				remove 3 from {-st::%player's uuid%}
+				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
+				if {-st::%player's uuid%} <= 0:
+					set level progress of player to 0
+				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
+				wait 1 ticks
+			wait 39 ticks
+			if {-stcap::%player's uuid%} > 0:
+				remove 1 from {-stcap::%player's uuid%}

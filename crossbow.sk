@@ -1,0 +1,37 @@
+# [crossbow.sk] 석궁 스킬(우클릭 발사, 석궁 화살 데미지 2). 메인핸드 우선, 오프핸드도 작동
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-bowcool}, {-crossbow_arrow}, {-skillitems::crossbow}
+
+on load:
+	set {-skillitems::crossbow} to crossbow
+
+on rightclick:
+	if skillHand(player, crossbow) is false:
+		stop
+	cancel event
+	if {-bowcool::%player's uuid%} is set:
+		stop
+	shoot arrow from player at speed 4
+	set {-crossbow_arrow::%uuid of last spawned entity%} to true
+	play sound "item.crossbow.shoot" with volume 1 and pitch 1 at player
+	set item cooldown of crossbow for player to 16 ticks
+	set {-bowcool::%player's uuid%} to true
+	wait 16 ticks
+	delete {-bowcool::%player's uuid%}
+
+on damage:
+	if projectile is set:
+		set {_p} to projectile
+	else:
+		set {_p} to attacker
+	if {_p} is an arrow:
+		if {-crossbow_arrow::%uuid of {_p}%} is set:
+			set damage to 2
+
+on projectile hit:
+	if projectile is an arrow:
+		set {_a} to projectile
+		set {_aid} to uuid of projectile
+		wait 1 tick
+		delete {-crossbow_arrow::%{_aid}%}
+		delete {_a}
