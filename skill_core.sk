@@ -48,7 +48,6 @@
 #   {-jumplock::uuid::출처}  도약 잠금. 하나라도 있으면 도약 불가      jump(읽기), fishing, main(접속 시 삭제)
 #                            출처 키: fishing_낚시꾼uuid, (예정) totem
 #   {-bowcool::uuid}         석궁 발사 쿨타임                        crossbow, main(초기화)
-#   {-crossbow_arrow::화살uuid}  석궁으로 쏜 화살 표시(값은 화살 엔티티. 맞거나 박히면 제거)  crossbow
 #   {-hook::uuid}            현재 던져진 찌                          fishing
 #   {-hooked::uuid}          찌에 걸려 있는 대상                     fishing
 #   {-hookcd::uuid}          낚싯대 쿨타임 종료 시각                 fishing
