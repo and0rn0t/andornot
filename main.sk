@@ -1,5 +1,6 @@
 # [main.sk] 스태미너 회복/표시(경험치 바), 상태이상 액션바 표시, 전투 중 처리, 경험치 차단
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 전체 데미지 배율은 skill_core.sk 의 dmgMul() 한 곳에서 조절(현재 0.8).
 # 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지). 철퇴로 준 근접 데미지에만 적용(스킬/투사체 데미지는 제외).
 # 창 데미지는 최대 6(체력 기준, 스크립트 값 3). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
 # 도끼/곡괭이/괭이: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
@@ -82,10 +83,13 @@ on damage:
 				if {_crit} is true:
 					set {_cm} to {_cm} * 1.5
 				if {_w} is "mace":
-					set damage to damage*0.3
+					set damage to damage * 0.3 * dmgMul()
 				else if {_w} is "spear":
-					if damage > 3:
-						set damage to 3
+					# 전체 데미지 배율 적용 후, 상한은 기획 6 x 배율 (스크립트 값 3 x dmgMul)
+					set damage to damage * dmgMul()
+					set {_cap} to 3 * dmgMul()
+					if damage > {_cap}:
+						set damage to {_cap}
 				else if {_w} is "axe":
 					# 도끼: 기본 체력 6, 체력 80% 이상인 적에게 1.5배
 					set {_d} to hp(6)
@@ -116,6 +120,9 @@ on damage:
 					set damage to hp(2 + {_stack}) * {_cm}
 					set {-pickstack::%attacker's uuid%} to {_stack} + 1
 					set {-pickexp::%attacker's uuid%} to now + 3 seconds
+				else:
+					# 그 외 근접(검, 맨손, 삼지창, 몹 등): 전체 데미지 배율만 적용
+					set damage to damage * dmgMul()
 	if attacker is player:
 		add 8 to {-oc::%attacker's uuid%}
 		loop 8 times:
