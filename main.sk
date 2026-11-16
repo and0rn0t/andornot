@@ -48,9 +48,12 @@ on every 1 ticks:
 				set level progress of loop-player to 0.999
 # 상태이상(이로운/해로운 모두) 보스바 표시. 상태이상은 skill_core.sk 의 setStatus/clearStatus 로 등록한다.
 # 효과 하나당 보스바 하나(여러 효과가 걸리면 보스바가 여러 개 쌓임). 같은 이름이 여러 출처에서 걸려 있으면 남은 시간이 가장 긴 것 하나만 보여준다.
-# 해로운 효과는 빨강(막대 빨강), 이로운 효과는 초록(막대 초록). 막대 길이는 그 효과의 남은 시간 비율.
+# 해로운 효과는 빨강(막대 빨강), 이로운 효과는 초록(막대 초록). 남은 초는 표시하지 않고, 막대 길이(남은 시간 비율)로만 알린다.
+# 막대는 매 틱(1/20초) 갱신해 클라이언트가 부드럽게 줄어드는 것처럼 보이게 한다.
 # 보스바는 skript-reflect 로 Bukkit API(Bukkit.createBossBar) 를 호출한다(Skript 2.13 에는 보스바 문법이 없음, 미검증).
-on every 5 ticks:
+on every 1 ticks:
+	set {_nowd} to now
+	set {_nowts} to {_nowd}.getTimestamp()
 	loop all players:
 		set {_uid} to "%loop-player's uuid%"
 		delete {_seen::*}
@@ -64,8 +67,9 @@ on every 5 ticks:
 				clearStatus(loop-player, {_src})
 			else:
 				set {_n} to {-statusname::%{_uid}%::%{_src}%}
-				set {_diff} to difference between now and {_end}
-				set {_left} to (seconds of {_diff}) + 1
+				# 남은 시간(밀리초). 막대를 매 틱 부드럽게 줄이기 위해 초 단위가 아니라 밀리초로 계산한다.
+				set {_endts} to {_end}.getTimestamp()
+				set {_left} to {_endts} - {_nowts}
 				set {_replace} to false
 				if {_seen::%{_n}%} is not set:
 					set {_replace} to true
@@ -96,7 +100,7 @@ on every 5 ticks:
 				set {_prog} to 1
 			if {_prog} < 0:
 				set {_prog} to 0
-			set {_t} to colored "%{_c}%%{_k}%%{_slabel::%{_k}%}% &f%{_seen::%{_k}%}%초"
+			set {_t} to colored "%{_c}%%{_k}%%{_slabel::%{_k}%}%"
 			{_b}.setTitle({_t})
 			{_b}.setColor({_col})
 			{_b}.setProgress({_prog})
