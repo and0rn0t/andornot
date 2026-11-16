@@ -32,7 +32,7 @@ on rightclick:
 		if {_p} is dead:
 			stop
 		add 1 to {_i}
-		play 16 black dust with size 0.8 with offset of 0.25, 0.1, 0.25 and speed 0 at ({_p}'s location ~ vector(0, 0.15, 0)) in radius of 100
+		play 10 black dust with size 0.8 with offset of 0.25, 0.1, 0.25 and speed 0 at ({_p}'s location ~ vector(0, 0.15, 0)) in radius of 100
 		play 4 red dust with size 0.8 with offset of 0.25, 0.1, 0.25 and speed 0 at ({_p}'s location ~ vector(0, 0.15, 0)) in radius of 100
 		play 4 blue dust with size 0.8 with offset of 0.25, 0.1, 0.25 and speed 0 at ({_p}'s location ~ vector(0, 0.15, 0)) in radius of 100
 		wait 1 tick
