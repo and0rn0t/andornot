@@ -128,8 +128,13 @@ on every 1 ticks:
 				set {_ccprog} to 0
 			set {_nf} to floor({_ccprog} * 10)
 			set {_ne} to 10 - {_nf}
-			set {_fill} to "█" repeated {_nf} times
-			set {_empty} to "█" repeated {_ne} times
+			# "x" repeated 0 times 는 값이 없어서 글자에 넣으면 <none> 으로 찍힌다. 0칸일 땐 빈 문자열을 그대로 쓴다.
+			set {_fill} to ""
+			set {_empty} to ""
+			if {_nf} > 0:
+				set {_fill} to "█" repeated {_nf} times
+			if {_ne} > 0:
+				set {_empty} to "█" repeated {_ne} times
 			set {_ttl} to colored "&c%{_ccn}%"
 			set {_sub} to colored "&c%{_fill}%&8%{_empty}%"
 			set {_pl} to loop-player
