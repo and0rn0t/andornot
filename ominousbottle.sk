@@ -34,7 +34,7 @@ on rightclick:
 	set {_c} to player's location ~ vector(0, 1, 0)
 	loop 3 times:
 		play 1 flash at {_c} in radius of 100
-		wait 1 ticks
+		wait 2 ticks
 	# 빨간 발광: 발광 외곽선 색은 팀 색이라 빨강 팀 obred 에 7초 동안 넣는다.
 	# 팀은 명령어 대신 스코어보드 API 로 바꿔서 op/콘솔에 안내 메시지가 나오지 않는다. 원래 팀이 있었으면 끝난 뒤 돌려놓는다.
 	set {_n} to player's name
@@ -46,7 +46,7 @@ on rightclick:
 	set {_old} to {_sb}.getEntryTeam({_n})
 	{_team}.addEntry({_n})
 	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to player for 7 seconds replacing the existing effect
-	wait 137 ticks
+	wait 134 ticks
 	{_team}.removeEntry({_n})
 	if {_old} is set:
 		{_old}.addEntry({_n})
