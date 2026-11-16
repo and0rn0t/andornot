@@ -101,7 +101,7 @@ on fishing line cast:
 				set {_warn1} to now + 2 seconds
 				set {_warn2} to now + 2.5 seconds
 				if {_t} is a player:
-					# 플레이어면 구속(도약 불가) + 액션바 표시
+					# 플레이어면 구속(도약 불가) + 보스바 표시
 					set {-jumplock::%{_t}'s uuid%::fishing_%{_id}%} to true
 					setStatus({_t}, "fishing_%{_id}%", "구속", 3 seconds)
 				hookCatchSound({_p}, {_t})

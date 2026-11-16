@@ -1,11 +1,16 @@
-# [main.sk] 스태미너 회복/표시(경험치 바), 상태이상 액션바 표시, 전투 중 처리, 경험치 차단
+# [main.sk] 스태미너 회복/표시(경험치 바), 상태이상 보스바 표시, 전투 중 처리, 경험치 차단
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 전체 데미지 배율은 skill_core.sk 의 dmgMul() 한 곳에서 조절(현재 0.8).
 # 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지). 철퇴로 준 근접 데미지에만 적용(스킬/투사체 데미지는 제외).
 # 창 데미지는 최대 6(체력 기준, 스크립트 값 3). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
 # 도끼/곡괭이/괭이: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
 # 위 세 무기는 바닐라 공격 쿨다운 규칙(덜 충전하고 때리면 약해짐)과 크리티컬(x1.5, 바닐라 판정)을 따른다: 매 틱 기록한 {-atkcd} 로 cooldownScale() 을 곱한다.
-# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-atkcd} (접속 시 삭제)
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-atkcd} (접속 시 삭제)
+
+import:
+	org.bukkit.Bukkit
+	org.bukkit.boss.BarColor
+	org.bukkit.boss.BarStyle
 
 on join:
 	set {-st::%player's uuid%} to 100
@@ -17,7 +22,9 @@ on join:
 	delete {-bowcool::%player's uuid%}
 	delete {-status::%player's uuid%::*}
 	delete {-statusname::%player's uuid%::*}
-	delete {-statusbar::%player's uuid%}
+	delete {-statusdur::%player's uuid%::*}
+	delete {-statustype::%player's uuid%::*}
+	delete {-sbar::%player's uuid%}
 	delete {-skilldmg::%player's uuid%}
 	delete {-pickstack::%player's uuid%}
 	delete {-pickexp::%player's uuid%}
@@ -38,37 +45,85 @@ on every 1 ticks:
 			if {-st::%loop-player's uuid%} > 100:
 				set {-st::%loop-player's uuid%} to 100
 				set level progress of loop-player to 0.999
-# 상태이상 액션바 표시. 상태이상은 skill_core.sk 의 setStatus/clearStatus 로 등록한다.
-# 같은 이름이 여러 출처에서 걸려 있으면 남은 시간이 가장 긴 것 하나만 보여준다.
+# 상태이상(이로운/해로운 모두) 보스바 표시. 상태이상은 skill_core.sk 의 setStatus/clearStatus 로 등록한다.
+# 플레이어마다 보스바 하나에 전부 모아 표시한다. 같은 이름이 여러 출처에서 걸려 있으면 남은 시간이 가장 긴 것 하나만 보여준다.
+# 해로운 효과는 빨강(&c), 이로운 효과는 초록(&a). 막대 색: 해로운 것만=빨강, 이로운 것만=초록, 섞이면=보라.
+# 막대 길이는 남은 시간이 가장 긴 효과의 남은 비율.
+# 보스바는 skript-reflect 로 Bukkit API(Bukkit.createBossBar) 를 호출한다(Skript 2.13 에는 보스바 문법이 없음, 미검증).
 on every 5 ticks:
 	loop all players:
 		set {_uid} to "%loop-player's uuid%"
 		delete {_seen::*}
+		delete {_stype::*}
+		delete {_sdur::*}
 		loop {-status::%{_uid}%::*}:
 			set {_src} to loop-index
 			set {_end} to {-status::%{_uid}%::%{_src}%}
 			if {_end} <= now:
-				delete {-status::%{_uid}%::%{_src}%}
-				delete {-statusname::%{_uid}%::%{_src}%}
+				clearStatus(loop-player, {_src})
 			else:
 				set {_n} to {-statusname::%{_uid}%::%{_src}%}
 				set {_diff} to difference between now and {_end}
 				set {_left} to (seconds of {_diff}) + 1
+				set {_replace} to false
 				if {_seen::%{_n}%} is not set:
-					set {_seen::%{_n}%} to {_left}
+					set {_replace} to true
 				else if {_left} > {_seen::%{_n}%}:
+					set {_replace} to true
+				if {_replace} is true:
 					set {_seen::%{_n}%} to {_left}
+					set {_stype::%{_n}%} to {-statustype::%{_uid}%::%{_src}%}
+					set {_sdur::%{_n}%} to {-statusdur::%{_uid}%::%{_src}%}
+		set {_b} to {-sbar::%{_uid}%}
 		if {_seen::*} is set:
 			set {_msg} to ""
+			set {_good} to false
+			set {_bad} to false
+			set {_best} to 0
+			set {_prog} to 1
 			loop {_seen::*}:
+				set {_k} to loop-index
+				set {_c} to "&c"
+				if {_stype::%{_k}%} is "good":
+					set {_c} to "&a"
+					set {_good} to true
+				else:
+					set {_bad} to true
 				if {_msg} is not "":
 					set {_msg} to "%{_msg}% &8| "
-				set {_msg} to "%{_msg}%&c%loop-index% &f%{_seen::%loop-index%}%초"
-			send action bar {_msg} to loop-player
-			set {-statusbar::%{_uid}%} to true
-		else if {-statusbar::%{_uid}%} is set:
-			send action bar "" to loop-player
-			delete {-statusbar::%{_uid}%}
+				set {_msg} to "%{_msg}%%{_c}%%{_k}% &f%{_seen::%{_k}%}%초"
+				if {_seen::%{_k}%} > {_best}:
+					set {_best} to {_seen::%{_k}%}
+					set {_prog} to 1
+					if {_sdur::%{_k}%} > 0:
+						set {_prog} to {_seen::%{_k}%} / {_sdur::%{_k}%}
+			if {_prog} > 1:
+				set {_prog} to 1
+			if {_prog} < 0:
+				set {_prog} to 0
+			if {_b} is not set:
+				set {_b} to Bukkit.createBossBar("", BarColor.RED, BarStyle.SOLID)
+				{_b}.addPlayer(loop-player)
+				set {-sbar::%{_uid}%} to {_b}
+			set {_t} to colored {_msg}
+			{_b}.setTitle({_t})
+			{_b}.setProgress({_prog})
+			if {_good} is true:
+				if {_bad} is true:
+					{_b}.setColor(BarColor.PURPLE)
+				else:
+					{_b}.setColor(BarColor.GREEN)
+			else:
+				{_b}.setColor(BarColor.RED)
+			{_b}.setVisible(true)
+		else if {_b} is set:
+			{_b}.setVisible(false)
+
+on quit:
+	set {_b} to {-sbar::%player's uuid%}
+	if {_b} is set:
+		{_b}.removeAll()
+		delete {-sbar::%player's uuid%}
 
 on damage:
 	# 스킬 데미지({-skilldmg} 표시)와 투사체 데미지는 제외하고, 무기로 직접 때린 근접 데미지만 보정
@@ -120,6 +175,11 @@ on damage:
 					set damage to hp(2 + {_stack}) * {_cm}
 					set {-pickstack::%attacker's uuid%} to {_stack} + 1
 					set {-pickexp::%attacker's uuid%} to now + 3 seconds
+					# 보스바에 곡괭이 중첩(이로운 효과) 표시. 중첩 수가 바뀌어도 같은 출처 키라 한 줄로 갱신된다.
+					set {_ap} to attacker
+					if {_ap} is a player:
+						set {_ns} to {_stack} + 1
+						setStatus({_ap}, "pickaxe", "곡괭이 %{_ns}%중첩", 3 seconds, "good")
 				else:
 					# 그 외 근접(검, 맨손, 삼지창, 몹 등): 전체 데미지 배율만 적용
 					set damage to damage * dmgMul()
