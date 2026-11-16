@@ -53,6 +53,8 @@
 #   {-hookcd::uuid}          낚싯대 쿨타임 종료 시각                 fishing
 #   {-hookcdset::uuid}       이번 투척의 쿨타임 시작 여부            fishing
 #   {-hookdmg::uuid}         이번 투척에서 당겨서 이미 피해를 줬는지    fishing
+#   {-pickstack::uuid}       곡괭이 중첩 수                          main(곡괭이 데미지, 접속 시 삭제)
+#   {-pickexp::uuid}         곡괭이 중첩 만료 시각(타격마다 +3초)       main(접속 시 삭제)
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing
@@ -100,8 +102,11 @@
 #   - 아이템 쿨타임: set item cooldown of 아이템 for 플레이어 to 시간
 #   - shoot ... from player 로 쏜 투사체는 on shoot 이벤트가 발동하지 않음.
 #     쏜 직후 last spawned entity 로 직접 표시한다.
-#   - 스크립트의 damage(on damage 의 damage, set damage to)는 하트 단위. 2 = 하트 2칸 = 체력 4.
-#     damage 대상 by n hearts 도 같은 단위. 기획서의 데미지 숫자는 이 하트 단위 기준.
+#   - 스크립트의 damage(on damage 의 damage, set damage to)는 하트 단위. 1 = 하트 1칸 = 체력 2 (jar 문서로 확인).
+#     damage 대상 by n hearts 도 같은 단위. 기획서의 수치는 하트가 아니라 실 체력 수치이므로,
+#     스크립트에서는 hp(n) 함수로 바꿔 쓴다(hp(6) = 3). 기획서 수치를 그대로 set damage 에 넣지 말 것.
+#   - 체력 비율: health of 대상 / max health of 대상 (둘 다 jar 에서 확인). 한 식에 같이 쓰면 파싱이 꼬일 수 있어 변수에 나눠 담는다.
+#   - 문자열 끝 검사: 변수 ends with "텍스트" (jar 에서 확인).
 #   - 조건 두 개를 or 로 묶는 문법은 없음. if 를 나누거나 값 목록(is a or b)만 쓴다.
 #   - 효과음: play sound "이름" with volume n and pitch n to 플레이어 (위치 생략 시 그 플레이어 위치에서 재생).
 #     소리 이름 자체는 마인크래프트 쪽 값이라 jar로 확인 불가(미검증).
@@ -134,8 +139,8 @@
 #     걸릴 때 던진 사람(걸린 게 플레이어면 걸린 사람도)에게 당기는 소리, 끝나기 전 경고음, 풀릴 때 당겨지는 소리.
 #     효과음은 한쪽 이름이 틀려도 들리도록 2개씩 겹쳐 재생(hookPlay). 소리 이름은 미검증.
 #
-# 9. 스킬 아이템 기획서 (사용자 제공. 쿨타임/수치는 기획 기준, 데미지 숫자는 하트 단위)
-#   구현 상태: [완료] 쇠뇌, 낚싯대  /  나머지는 미구현
+# 9. 스킬 아이템 기획서 (사용자 제공. 쿨타임/수치는 기획 기준, 데미지 숫자는 실 체력 수치. 하트 아님)
+#   구현 상태: [완료] 쇠뇌, 낚싯대, 도끼, 곡괭이, 괭이  /  나머지는 미구현
 #   - 체력 포션(즉시 치유의 포션) / 쿨 7초 : 체력 8 즉시 회복
 #   - 스태미너 포션(도약의 물약) / 쿨 7초 : 스태미너 50 즉시 회복
 #       (※ "도약"은 F키 이동기 이름이기도 하니 코드에서는 스태미너 포션으로 부름)
@@ -151,14 +156,18 @@
 #   - 낚싯대 / 쿨 9초 : 아무 엔티티에도 못 맞추고 떨어지면 쿨타임 시작 + 찌 회수. 맞추면 3초간 걸림(플레이어는 구속,
 #       도약 불가), 3초 뒤 자동 회수, 찌를 당기면 4(하트 2) 피해
 #       [fishing.sk 구현됨]
-#   - 도끼 / 데미지 6 : 체력 80% 이상인 적에게 1.5배 피해
-#   - 곡괭이 / 데미지 2 : 타격 시 3초간 가하는 데미지 +1, 무한 중첩, 3초간 갱신 못 하면 전부 소멸
-#   - 괭이 / 데미지 3 : 체력 50% 이하인 적에게 가하는 데미지 100% 증가
+#   - 도끼 / 데미지 6 : 체력 80% 이상인 적에게 1.5배 피해   [완료: main.sk]
+#   - 곡괭이 / 데미지 2 : 타격 시 3초간 가하는 데미지 +1, 무한 중첩, 3초간 갱신 못 하면 전부 소멸   [완료: main.sk]
+#   - 괭이 / 데미지 3 : 체력 50% 이하인 적에게 가하는 데미지 100% 증가   [완료: main.sk]
+#     (도끼/곡괭이/괭이: 메인핸드에 든 아이템 재질 이름이 _AXE / _PICKAXE / _HOE 로 끝나면 모든 재질 공통.
+#      근접 데미지를 위 기본값으로 덮어쓴다 = 재질별 차이, 공격 쿨다운 약화, 크리티컬은 사라짐.
+#      곡괭이는 중첩이 이번 타격 데미지에는 포함되지 않고 다음 타격부터 적용, 곡괭이 타격에만 적용/중첩.
+#      기준 체력은 타격 직전 체력.)
 #   - 네더의 별 / 쿨 45초 : 8초간 저항1, 힘1, 재생1, 신속1 (포션 이펙트 표시 숨김)
 #   - 모루 / 쿨 60초 : 이번 게임 동안 가하는 피해 10% 증가 (게임 설계 확정 시 같이 업데이트)
 #   확정 사항
 #   - 철퇴(mace) 공격 데미지 x0.3 은 의도된 기능이라 main.sk 에 유지. 철퇴로 준 근접 데미지에만 적용(스킬/투사체 제외).
-#   - 창(spear) 데미지는 최대 6(하트 단위, 스크립트 값). 창을 메인핸드에 들었거나 사용 중인 아이템(오프핸드 포함)이
+#   - 창(spear) 데미지는 최대 6(실 체력 기준, 스크립트 값 3). 창을 메인핸드에 들었거나 사용 중인 아이템(오프핸드 포함)이
 #     창일 때의 근접 데미지에 적용. 창 아이템은 Skript 2.13 jar 에 없어서 재질 이름에 SPEAR 가 들어가는지로 판단
 #     (skript-reflect, 미검증). 삼지창(TRIDENT)은 포함하지 않는다.
 #   - 도약(F키)은 스킬 아이템이 아니며 현재 구현이 기획대로임.
@@ -184,8 +193,23 @@ function isSkillItem(i: itemtype) :: boolean:
 			return true
 	return false
 
-# 공격자가 쓰는 무기 종류: "spear"(이름에 SPEAR 가 들어간 모든 창), "mace"(철퇴), 아니면 "".
-# 창: 지금 사용 중인 아이템(오프핸드 포함) 또는 메인핸드. 철퇴: 메인핸드. 재질 이름은 skript-reflect 로 읽는다(미검증).
+# 기획서 수치(실 체력)를 스크립트 damage 값(하트 단위)으로 바꾼다. 스크립트 1 = 하트 1칸 = 체력 2.
+function hp(n: number) :: number:
+	return {_n} / 2
+
+# 현재 체력 비율(0~1). 살아 있는 생물이 아니면 1.
+function healthRatio(e: entity) :: number:
+	if {_e} is not a living entity:
+		return 1
+	set {_hp} to health of {_e}
+	set {_max} to max health of {_e}
+	if {_max} <= 0:
+		return 1
+	return {_hp} / {_max}
+
+# 공격자가 쓰는 무기 종류: "spear"(이름에 SPEAR 가 들어간 모든 창), "mace"(철퇴),
+# "axe"/"pickaxe"/"hoe"(재질 이름이 _AXE/_PICKAXE/_HOE 로 끝나는 모든 도구), 아니면 "".
+# 창: 지금 사용 중인 아이템(오프핸드 포함) 또는 메인핸드. 나머지: 메인핸드. 재질 이름은 skript-reflect 로 읽는다(미검증).
 function weaponKind(e: entity) :: text:
 	if {_e} is not a living entity:
 		return ""
@@ -200,6 +224,12 @@ function weaponKind(e: entity) :: text:
 		return "spear"
 	if {_main} is "MACE":
 		return "mace"
+	if {_main} ends with "_PICKAXE":
+		return "pickaxe"
+	if {_main} ends with "_AXE":
+		return "axe"
+	if {_main} ends with "_HOE":
+		return "hoe"
 	return ""
 
 # 상태이상 표시 등록/해제. 표시와 만료 처리는 main.sk 에서 한다. (사용법은 위 5번 참고)

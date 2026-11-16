@@ -1,8 +1,9 @@
 # [main.sk] 스태미너 회복/표시(경험치 바), 상태이상 액션바 표시, 전투 중 처리, 경험치 차단
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지). 철퇴로 준 근접 데미지에만 적용(스킬/투사체 데미지는 제외).
-# 창 데미지는 최대 6(하트 단위). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
-# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar}, {-skilldmg} (접속 시 삭제)
+# 창 데미지는 최대 6(체력 기준, 스크립트 값 3). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
+# 도끼/곡괭이/괭이: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar}, {-skilldmg}, {-pickstack}, {-pickexp} (접속 시 삭제)
 
 on join:
 	set {-st::%player's uuid%} to 100
@@ -16,6 +17,8 @@ on join:
 	delete {-statusname::%player's uuid%::*}
 	delete {-statusbar::%player's uuid%}
 	delete {-skilldmg::%player's uuid%}
+	delete {-pickstack::%player's uuid%}
+	delete {-pickexp::%player's uuid%}
 
 on every 1 ticks:
 	loop all players:
@@ -71,6 +74,28 @@ on damage:
 				else if {_w} is "spear":
 					if damage > 3:
 						set damage to 3
+				else if {_w} is "axe":
+					# 도끼: 기본 체력 6, 체력 80% 이상인 적에게 1.5배
+					set {_d} to hp(6)
+					if healthRatio(victim) >= 0.8:
+						set {_d} to {_d} * 1.5
+					set damage to {_d}
+				else if {_w} is "hoe":
+					# 괭이: 기본 체력 3, 체력 50% 이하인 적에게 100% 증가(2배)
+					set {_d} to hp(3)
+					if healthRatio(victim) <= 0.5:
+						set {_d} to {_d} * 2
+					set damage to {_d}
+				else if {_w} is "pickaxe":
+					# 곡괭이: 기본 체력 2 + 중첩 수. 타격마다 중첩 +1, 마지막 타격 후 3초 안에 못 때리면 전부 소멸.
+					# 이번 타격은 기존 중첩만 적용하고, 타격 후 중첩을 늘린다.
+					set {_stack} to 0
+					if {-pickexp::%attacker's uuid%} is set:
+						if {-pickexp::%attacker's uuid%} > now:
+							set {_stack} to {-pickstack::%attacker's uuid%}
+					set damage to hp(2 + {_stack})
+					set {-pickstack::%attacker's uuid%} to {_stack} + 1
+					set {-pickexp::%attacker's uuid%} to now + 3 seconds
 	if attacker is player:
 		add 8 to {-oc::%attacker's uuid%}
 		loop 8 times:
