@@ -4,6 +4,8 @@
 
 on swap hand items:
 	cancel event
+	if isStunned(player) is true:
+		stop
 	if {-jumplock::%player's uuid%::*} is set:
 		stop
 	if {-st::%player's uuid%} >= 25:

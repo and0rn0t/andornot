@@ -5,7 +5,7 @@
 # 창 데미지는 최대 6(체력 기준, 스크립트 값 3). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
 # 도끼/곡괭이/괭이: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
 # 위 세 무기는 바닐라 공격 쿨다운 규칙(덜 충전하고 때리면 약해짐)과 크리티컬(x1.5, 바닐라 판정)을 따른다: 매 틱 기록한 {-atkcd} 로 cooldownScale() 을 곱한다.
-# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-statuslabel}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-atkcd} (접속 시 삭제)
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-statuslabel}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-stunend}, {-atkcd} (접속 시 삭제)
 
 import:
 	org.bukkit.Bukkit
@@ -29,6 +29,7 @@ on join:
 	delete {-skilldmg::%player's uuid%}
 	delete {-pickstack::%player's uuid%}
 	delete {-pickexp::%player's uuid%}
+	delete {-stunend::%player's uuid%}
 	delete {-atkcd::%player's uuid%}
 
 on every 1 ticks:
@@ -121,6 +122,11 @@ on quit:
 	delete {-sbar::%player's uuid%::*}
 
 on damage:
+	# 기절 중인 공격자는 데미지를 줄 수 없음
+	if attacker is set:
+		if isStunned(attacker) is true:
+			cancel event
+			stop
 	# 스킬 데미지({-skilldmg} 표시)와 투사체 데미지는 제외하고, 무기로 직접 때린 근접 데미지만 보정
 	if attacker is set:
 		if {-skilldmg::%attacker's uuid%} is not set:

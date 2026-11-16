@@ -63,6 +63,8 @@
 #   {-statustype::uuid::출처} 상태이상 종류 bad/good(해로운/이로운)             skill_core 함수, main
 #   {-statusdur::uuid::출처}  상태이상 전체 시간(밀리초, 막대 길이 계산용)          skill_core 함수, main
 #   {-statuslabel::uuid::출처}  이름 뒤 가변 표시(예: " x2")   skill_core 함수, main
+#   {-tntcd::uuid}           TNT 쿨타임 종료 시각                    tnt
+#   {-stunend::uuid}         기절 종료 시각(지금보다 뒤면 기절 중)      skill_core(stun), isStunned 로 읽기, main(접속 시 삭제)
 #   {-sbar::uuid::효과이름}   효과 하나당 보스바 객체(BossBar)              main(접속 종료 시 제거)
 #                            출처 키: fishing_낚시꾼uuid
 #
@@ -95,6 +97,8 @@
 #   - jump.sk       : F키(손 바꾸기) 대시 스킬
 #   - crossbow.sk   : 석궁 스킬
 #   - fishing.sk    : 낚싯대 스킬
+#   - tnt.sk        : TNT 스킬(투척, 2초 뒤 기절 폭발)
+#   - stun.sk       : 기절 중 클릭/블럭/버리기 차단
 #
 # 7. jar에서 확인된 문법 메모 (Skript 2.13.0)
 #   - 낚시 이벤트: fishing line cast, entity hooked, bobber hit ground, fishing state change,
@@ -146,7 +150,7 @@
 #     효과음은 한쪽 이름이 틀려도 들리도록 2개씩 겹쳐 재생(hookPlay). 소리 이름은 미검증.
 #
 # 9. 스킬 아이템 기획서 (사용자 제공. 쿨타임/수치는 기획 기준, 데미지 숫자는 실 체력 수치. 하트 아님)
-#   구현 상태: [완료] 쇠뇌, 낚싯대, 도끼, 곡괭이, 괭이  /  나머지는 미구현
+#   구현 상태: [완료] 쇠뇌, 낚싯대, 도끼, 곡괭이, 괭이, TNT  /  나머지는 미구현
 #   - 체력 포션(즉시 치유의 포션) / 쿨 7초 : 체력 5 즉시 회복(2026-11 수정, 기존 8)
 #   - 스태미너 포션(도약의 물약) / 쿨 7초 : 스태미너 50 즉시 회복
 #       (※ "도약"은 F키 이동기 이름이기도 하니 코드에서는 스태미너 포션으로 부름)
@@ -157,7 +161,8 @@
 #       효과가 끝나면 탈진하여 스태미너 전부 소진
 #   - 불사의 토템 / 쿨 60초 : 5초간 무적, 그동안 도약 불가(jumplock 키 totem)
 #   - TNT / 쿨 12초 : 투척. 투척 2초 후 폭발(2026-11 수정, 기존 2.5초). 데미지는 주지 않고(기존 "TNT 기본 데미지" 폐기),
-#       폭발에 맞은 대상에게 2초간 기절(setStatus 로 상태이상 표시 "기절"). 블럭은 파괴/손상하지 않음.
+#       폭발에 맞은 대상에게 2초간 기절(setStatus 로 상태이상 표시 "기절"). 블럭은 파괴/손상하지 않음.   [완료: tnt.sk, stun.sk]
+#       구현: 진짜 폭발 없이 2초 뒤 점화 TNT 제거 + 소리/파티클, 반경 4칸 안의 플레이어(던진 사람 제외)에게 stun(). 몹은 기절 없음(미정).
 #       기절 중에는 아무 행동도 할 수 없음(이동, 공격, 스킬/아이템 사용, 도약 등 전부 차단. 구현 시 차단 범위 확정).
 #   - 브리즈 막대 / 쿨 5초 : 데미지 6(적용 5)의 돌풍구 발사
 #   ※ 2026-11 밸런스: 데미지를 기존의 약 80%로 조정하되 소수점 없는 정수로 반올림. 아래 수치는 기획 원본이고 괄호 안이 적용값.
@@ -263,9 +268,30 @@ function clearStatus(p: player, src: text):
 	delete {-statusdur::%{_p}'s uuid%::%{_src}%}
 	delete {-statuslabel::%{_p}'s uuid%::%{_src}%}
 
+# 기절 여부. 기절 종료 시각 {-stunend} 가 지금보다 뒤면 기절 중.
+function isStunned(e: entity) :: boolean:
+	if {-stunend::%{_e}'s uuid%} is set:
+		if {-stunend::%{_e}'s uuid%} > now:
+			return true
+	return false
+
+# 기절 걸기(src: 출처 키, 예 "tnt_시전자uuid"). 보스바에 "기절" 표시 + 이동/점프 불가 포션(숨김).
+# 이미 더 오래 기절 중이면 덮어쓰지 않는다. 행동 차단은 stun.sk 와 isStunned 를 확인하는 각 스킬 파일에서 한다.
+function stun(p: player, src: text, d: timespan):
+	set {_end} to now + {_d}
+	if {-stunend::%{_p}'s uuid%} is set:
+		if {-stunend::%{_p}'s uuid%} > {_end}:
+			stop
+	set {-stunend::%{_p}'s uuid%} to {_end}
+	setStatus({_p}, "stun_%{_src}%", "기절", {_d})
+	apply slowness potion of tier 8 without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
+	apply jump boost potion of tier 129 without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
+
 # 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
 # 오프핸드 아이템이 이 스킬이면, 메인핸드가 다른 스킬 아이템이 아닐 때만 true
 function skillHand(p: player, t: itemtype) :: boolean:
+	if isStunned({_p}) is true:
+		return false
 	if {_p}'s tool is {_t}:
 		return true
 	if {_p}'s offhand tool is {_t}:
