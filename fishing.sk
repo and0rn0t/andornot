@@ -62,7 +62,7 @@ function hookDamage(p: player, v: entity):
 		set the direct entity to {_p}
 	# main.sk 의 철퇴 x0.3 / 창 상한 보정에서 제외하려고 스킬 데미지 표시를 켰다가 끈다(damage 는 즉시 이벤트를 부름)
 	set {-skilldmg::%{_p}'s uuid%} to true
-	set {_amt} to 2 * dmgMul()
+	set {_amt} to hp(3)
 	damage {_v} by {_amt} hearts using {_src}
 	delete {-skilldmg::%{_p}'s uuid%}
 

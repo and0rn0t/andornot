@@ -85,14 +85,14 @@ on damage:
 				if {_w} is "mace":
 					set damage to damage * 0.3 * dmgMul()
 				else if {_w} is "spear":
-					# 전체 데미지 배율 적용 후, 상한은 기획 6 x 배율 (스크립트 값 3 x dmgMul)
+					# 바닐라 데미지에 전체 배율 적용 후, 상한은 실 체력 5(스크립트 값 2.5)
 					set damage to damage * dmgMul()
-					set {_cap} to 3 * dmgMul()
+					set {_cap} to hp(5)
 					if damage > {_cap}:
 						set damage to {_cap}
 				else if {_w} is "axe":
-					# 도끼: 기본 체력 6, 체력 80% 이상인 적에게 1.5배
-					set {_d} to hp(6)
+					# 도끼: 기본 체력 5, 체력 80% 이상인 적에게 1.5배
+					set {_d} to hp(5)
 					if healthRatio(victim) >= 0.8:
 						set {_d} to {_d} * 1.5
 						# 도끼 능력 발동: 타격 지점(피격자 위치)에 모루 소리
