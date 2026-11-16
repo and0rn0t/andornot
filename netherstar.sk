@@ -1,0 +1,26 @@
+# [netherstar.sk] 네더의 별 스킬(우클릭, 쿨 45초): 8초간 저항1, 힘1, 재생1, 신속1 (포션 이펙트 표시 숨김). 메인핸드 우선, 오프핸드도 작동
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-nscd}(쿨타임 종료 시각), {-skillitems::nether_star}, 상태이상 출처 키 netherstar(보스바에 이로운 효과 "네더의 별")
+# 재생 효과의 회복은 main.sk 의 on heal 이 전투 중 회복을 막는 규칙을 이 버프 동안만 통과한다(main.sk 참고).
+
+on load:
+	set {-skillitems::nether_star} to nether star
+
+on rightclick:
+	if skillHand(player, nether star) is false:
+		stop
+	cancel event
+	if {-nscd::%player's uuid%} is set:
+		if {-nscd::%player's uuid%} > now:
+			stop
+	set {-nscd::%player's uuid%} to now + 45 seconds
+	set item cooldown of nether star for player to 45 seconds
+	apply resistance potion of tier 1 without any particles whilst hiding the potion icon to player for 8 seconds replacing the existing effect
+	apply strength potion of tier 1 without any particles whilst hiding the potion icon to player for 8 seconds replacing the existing effect
+	apply regeneration potion of tier 1 without any particles whilst hiding the potion icon to player for 8 seconds replacing the existing effect
+	apply speed potion of tier 1 without any particles whilst hiding the potion icon to player for 8 seconds replacing the existing effect
+	setStatus(player, "netherstar", "네더의 별", 8 seconds, "good")
+	play sound "block.beacon.activate" with volume 1 and pitch 1.5 to player
+
+on join:
+	delete {-nscd::%player's uuid%}

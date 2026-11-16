@@ -242,6 +242,12 @@ on damage:
 				wait 1 seconds
 
 on heal:
+	# 불길한 병의 회복({-healok})과 네더의 별 효과 중의 재생은 전투 중 회복 차단을 통과한다.
+	if {-healok::%player's uuid%} is set:
+		stop
+	if {-status::%player's uuid%::netherstar} is set:
+		if {-status::%player's uuid%::netherstar} > now:
+			stop
 	if {-oc::%player's uuid%} > 0:
 		cancel event
 			
