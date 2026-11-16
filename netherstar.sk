@@ -1,6 +1,8 @@
 # [netherstar.sk] 네더의 별 스킬(우클릭, 쿨 45초): 6초간 저항1, 힘1, 재생1, 신속1 (포션 이펙트 표시 숨김). 메인핸드 우선, 오프핸드도 작동
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-nscd}(쿨타임 종료 시각), {-skillitems::nether_star}, 상태이상 출처 키 netherstar(보스바에 이로운 효과 "네더의 별")
+# 이펙트: 사용 시 하늘에서 신호기 빛줄기(end rod 파티클 기둥)가 사용한 자리에 내려와 1초 동안 그 자리에 서 있다가 사라진다(따라다니지 않음). 플레이어에게 발광(glowing)도 6초 건다.
+#   기둥 높이는 아래 40, 내려오는 속도는 {_i} * 8(갱신당 8칸, 5번 = 0.5초에 도달), 갱신 간격 2틱 x 10번 = 1초.
 # 재생 효과의 회복은 main.sk 의 on heal 이 전투 중 회복을 막는 규칙을 이 버프 동안만 통과한다(main.sk 참고).
 
 on load:
@@ -21,6 +23,20 @@ on rightclick:
 	apply speed potion of tier 1 without any particles whilst hiding the potion icon to player for 6 seconds replacing the existing effect
 	setStatus(player, "netherstar", "네더의 별", 6 seconds, "good")
 	play sound "block.beacon.activate" with volume 1 and pitch 1.5 to player
+	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to player for 6 seconds replacing the existing effect
+	# 신호기 빛줄기: 사용한 자리(고정)에서 위 40칸으로부터 0.5초 만에 내려오고, 1초가 될 때까지 그 자리에 서 있다가 사라진다.
+	set {_base} to player's location
+	set {_i} to 0
+	while {_i} < 10:
+		add 1 to {_i}
+		set {_top} to 40 - {_i} * 8
+		if {_top} < 0:
+			set {_top} to 0
+		loop (40 - {_top}) times:
+			set {_h} to {_top} + loop-number
+			play 1 end rod with offset of 0.1, 0, 0.1 and speed 0 at ({_base} ~ vector(0, {_h}, 0)) in radius of 100
+		wait 2 ticks
+
 
 on join:
 	delete {-nscd::%player's uuid%}
