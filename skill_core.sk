@@ -67,6 +67,7 @@
 #   {-tntowner::TNT엔티티uuid} 던진 사람 uuid(텍스트). 폭발하면 지움      tnt
 #   {-ccshown::uuid}         cc 타이틀을 보여주는 중(끝나면 clearTitle)   main(접속 시 삭제)
 #   {-stunend::uuid}         기절 종료 시각(지금보다 뒤면 기절 중)      skill_core(stun), isStunned 로 읽기, main(접속 시 삭제)
+#   {-stag_d::uuid}          체력바 위 상태이상 이름 표시(텍스트 디스플레이)   statustag
 #   {-sbar::uuid::효과이름}   효과 하나당 보스바 객체(BossBar)              main(접속 종료 시 제거)
 #                            출처 키: fishing_낚시꾼uuid
 #
@@ -102,6 +103,7 @@
 #   - crossbow.sk   : 석궁 스킬
 #   - fishing.sk    : 낚싯대 스킬
 #   - tnt.sk        : TNT 스킬(투척, 33틱 뒤 기절 폭발)
+#   - statustag.sk  : 해로운 상태이상을 체력바(healthbar.sk, 사용자 별도 파일) 위에 <이름> 으로 표시
 #   - stun.sk       : 기절 중 클릭/블럭/버리기 차단
 #
 # 7. jar에서 확인된 문법 메모 (Skript 2.13.0)
