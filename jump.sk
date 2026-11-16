@@ -9,7 +9,7 @@ on swap hand items:
 	if {-st::%player's uuid%} >= 25:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
-			push player forwards at speed 0.8
+			push player forwards at speed 1.1
 			play sound "entity.player.attack.sweep" with volume 1 and pitch 1.2 at player
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
