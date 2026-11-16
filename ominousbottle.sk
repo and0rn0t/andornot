@@ -32,7 +32,6 @@ on rightclick:
 	play sound "event.mob_effect.raid_omen" with volume 3 and pitch 0.8 at player
 	play sound "entity.wither.ambient" with volume 1.5 and pitch 0.5 at player
 	play sound "entity.warden.heartbeat" with volume 3 and pitch 0.7 at player
-	# 번쩍: 몸 중앙에서 붉은 flash 파티클이 번쩍하고 end rod 가 사방으로 터진다.
 	# flash 의 색 지정은 1.21.9 이상에서만 가능(skript 문법은 색을 못 받아서 reflect 로 직접 호출). 그 미만 버전이면 이 줄에서 오류가 난다.
 	set {_c} to player's location ~ vector(0, 1, 0)
 
