@@ -55,6 +55,7 @@
 #   {-hookdmg::uuid}         이번 투척에서 당겨서 이미 피해를 줬는지    fishing
 #   {-pickstack::uuid}       곡괭이 중첩 수                          main(곡괭이 데미지, 접속 시 삭제)
 #   {-pickexp::uuid}         곡괭이 중첩 만료 시각(타격마다 +3초)       main(접속 시 삭제)
+#   {-atkcd::uuid}           공격 쿨다운 충전도 0~1(매 틱 기록)        main(기록/접속 시 삭제), cooldownScale 이 읽음
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing
@@ -158,9 +159,9 @@
 #       [fishing.sk 구현됨]
 #   - 도끼 / 데미지 6 : 체력 80% 이상인 적에게 1.5배 피해   [완료: main.sk]
 #   - 곡괭이 / 데미지 2 : 타격 시 3초간 가하는 데미지 +1, 무한 중첩, 3초간 갱신 못 하면 전부 소멸   [완료: main.sk]
-#   - 괭이 / 데미지 3 : 체력 50% 이하인 적에게 가하는 데미지 100% 증가   [완료: main.sk]
+#   - 괭이 / 데미지 2 : 체력 50% 이하인 적에게 가하는 데미지 100% 증가   [완료: main.sk]
 #     (도끼/곡괭이/괭이: 메인핸드에 든 아이템 재질 이름이 _AXE / _PICKAXE / _HOE 로 끝나면 모든 재질 공통.
-#      근접 데미지를 위 기본값으로 덮어쓴다 = 재질별 차이, 공격 쿨다운 약화, 크리티컬은 사라짐.
+#      근접 데미지를 위 기본값으로 덮어쓴다 = 재질별 차이, 크리티컬은 사라짐. 공격 쿨다운 약화는 바닐라 공식(0.2+0.8*충전도^2)으로 다시 반영한다.
 #      곡괭이는 중첩이 이번 타격 데미지에는 포함되지 않고 다음 타격부터 적용, 곡괭이 타격에만 적용/중첩.
 #      기준 체력은 타격 직전 체력.)
 #   - 네더의 별 / 쿨 45초 : 8초간 저항1, 힘1, 재생1, 신속1 (포션 이펙트 표시 숨김)
@@ -251,3 +252,14 @@ function skillHand(p: player, t: itemtype) :: boolean:
 			return false
 		return true
 	return false
+
+# 바닐라 공격 쿨다운 배율(0.2~1). 덜 충전하고 때리면 약해지는 규칙. main.sk 가 매 틱 기록한 {-atkcd} 를 쓴다.
+function cooldownScale(e: entity) :: number:
+	if {-atkcd::%{_e}'s uuid%} is not set:
+		return 1
+	set {_s} to {-atkcd::%{_e}'s uuid%}
+	if {_s} > 1:
+		set {_s} to 1
+	if {_s} < 0:
+		set {_s} to 0
+	return 0.2 + 0.8 * {_s} * {_s}
