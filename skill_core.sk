@@ -287,7 +287,7 @@ function isStunned(e: entity) :: boolean:
 			return true
 	return false
 
-# 기절 걸기(src: 출처 키, 예 "tnt_시전자uuid"). 보스바에 "기절" 표시 + 이동/점프 불가 포션(숨김).
+# 기절 걸기(src: 출처 키, 예 "tnt_시전자uuid"). 타이틀에 "기절" 표시 + 이동/점프 불가 포션(숨김) + 실명(기절 끝나면 해제).
 # 이미 더 오래 기절 중이면 덮어쓰지 않는다. 행동 차단은 stun.sk 와 isStunned 를 확인하는 각 스킬 파일에서 한다.
 function stun(p: player, src: text, d: timespan):
 	set {_end} to now + {_d}
@@ -298,6 +298,11 @@ function stun(p: player, src: text, d: timespan):
 	setStatus({_p}, "stun_%{_src}%", "기절", {_d}, "cc")
 	apply slowness potion of tier 8 without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
 	apply jump boost potion of tier 129 without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
+	# 실명은 넉넉히 15초로 걸어 두고, 기절이 끝나면 직접 푼다(기절이 연장돼서 아직 기절 중이면 푸는 건 마지막 호출이 맡는다).
+	apply blindness potion without any particles whilst hiding the potion icon to {_p} for 15 seconds replacing the existing effect
+	wait {_d}
+	if isStunned({_p}) is false:
+		remove blindness from {_p}
 
 # 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
 # 오프핸드 아이템이 이 스킬이면, 메인핸드가 (쿨타임이 아닌 다른 스킬 아이템)도 창(SPEAR)도 아닐 때만 true.
