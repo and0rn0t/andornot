@@ -2,7 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-obcd}(쿨타임 종료 시각), {-bottle}(효과 종료 시각, 있고 지금보다 뒤면 효과 중), {-healok}(회복이 전투 중 차단을 통과하는 표시, main.sk 가 읽음),
 #   {-skillitems::ominous_bottle}, 상태이상 출처 키 ominousbottle(보스바 이로운 효과 "불길한 병")
-# 이펙트: 지속시간 7초 동안 2틱마다 몸 주변에서 검은색/붉은색(red)/푸른색(blue) dust 가 흘러나온다(크기 0.8).
+# 이펙트: 지속시간 7초 동안 2틱마다 오른손 근처에 검은색/붉은색(red)/푸른색(blue) dust 가 모여 나온다(크기 0.8, 색마다 8개).
 # 스태미너 추가 재생: 기본 재생이 틱당 +1(초당 20)이므로 효과 중엔 틱당 +1 을 더한다(기본 재생과 별개, stcap 영향 없음).
 # 회복량: 가한 피해(실제로 깎인 체력)의 30%. 다른 스크립트의 데미지 보정이 끝나도록 1틱 뒤 체력 차이로 계산한다.
 # "ominous bottle" 아이템 별칭이 Skript 2.13 별칭 목록에 있는지 jar 에서 확인 못 함(미검증). 컴파일 오류가 나면 이 줄이 원인.
@@ -22,7 +22,7 @@ on rightclick:
 	set {-bottle::%player's uuid%} to now + 7 seconds
 	setStatus(player, "ominousbottle", "불길한 병", 7 seconds, "good")
 	play sound "item.bottle.fill" with volume 1 and pitch 0.8 to player
-	# 검은색/붉은색/푸른색 이펙트: 7초(2틱 간격 70번) 동안 몸 전체에서 세 가지 색 dust 가 나온다.
+	# 검은색/붉은색/푸른색 이펙트: 7초(2틱 간격 70번) 동안 오른손 근처에서 세 가지 색 dust 가 나온다.
 	set {_p} to player
 	set {_i} to 0
 	while {_i} < 70:
@@ -31,9 +31,14 @@ on rightclick:
 		if {_p} is dead:
 			stop
 		add 1 to {_i}
-		play 2 black dust with size 0.8 with offset of 0.35, 0.7, 0.35 and speed 0 at ({_p}'s location ~ vector(0, 1, 0)) in radius of 100
-		play 2 red dust with size 0.8 with offset of 0.35, 0.7, 0.35 and speed 0 at ({_p}'s location ~ vector(0, 1, 0)) in radius of 100
-		play 2 blue dust with size 0.8 with offset of 0.35, 0.7, 0.35 and speed 0 at ({_p}'s location ~ vector(0, 1, 0)) in radius of 100
+		# 손 위치 계산: 바라보는 방향의 수평 성분(앞)과 그 오른쪽 벡터로, 오른손 근처(몸 중앙 높이 1.1칸, 오른쪽 0.4칸, 앞 0.5칸)를 구한다.
+		set {_dir} to {_p}.getEyeLocation().getDirection()
+		set {_fwd} to vector(x of {_dir}, 0, z of {_dir})
+		set {_right} to {_fwd} cross vector(0, 1, 0)
+		set {_hand} to {_p}'s location ~ vector(0, 1.1, 0) ~ ({_right} * 0.4) ~ ({_fwd} * 0.5)
+		play 8 black dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
+		play 8 red dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
+		play 8 blue dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
 		wait 2 ticks
 
 # 효과 중: 스태미너 틱당 +1 추가. 끝나면 탈진(스태미너 0).
