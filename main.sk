@@ -85,7 +85,7 @@ on every 1 ticks:
 					set {_slabel::%{_n}%} to {-statuslabel::%{_uid}%::%{_src}%}
 		# 효과마다 보스바를 하나씩 만든다(같은 이름은 한 줄로 합침). 효과가 끝나면 그 보스바만 제거.
 		# 단 모든 행동을 막는 cc(type "cc", 예: 기절)는 보스바 대신 타이틀(이름) + 서브타이틀(진행도 막대)로 보여준다.
-		set {_ccn} to ""
+		set {_hascc} to false
 		set {_ccbest} to 0
 		loop {_seen::*}:
 			set {_k} to loop-index
@@ -93,6 +93,7 @@ on every 1 ticks:
 				if {_seen::%{_k}%} > {_ccbest}:
 					set {_ccbest} to {_seen::%{_k}%}
 					set {_ccn} to {_k}
+					set {_hascc} to true
 			else:
 				set {_b} to {-sbar::%{_uid}%::%{_k}%}
 				if {_b} is not set:
@@ -116,7 +117,8 @@ on every 1 ticks:
 				{_b}.setColor({_col})
 				{_b}.setProgress({_prog})
 				{_b}.setVisible(true)
-		if {_ccn} is not "":
+		# 빈 문자열 비교는 변수가 비었을 때도 참이 되어 <none> 이 표시되던 버그가 있어, 찾았는지를 따로 기록한 플래그로 판단한다.
+		if {_hascc} is true:
 			set {_ccprog} to 1
 			if {_sdur::%{_ccn}%} > 0:
 				set {_ccprog} to {_ccbest} / {_sdur::%{_ccn}%}
@@ -124,8 +126,8 @@ on every 1 ticks:
 				set {_ccprog} to 1
 			if {_ccprog} < 0:
 				set {_ccprog} to 0
-			set {_nf} to floor({_ccprog} * 20)
-			set {_ne} to 20 - {_nf}
+			set {_nf} to floor({_ccprog} * 10)
+			set {_ne} to 10 - {_nf}
 			set {_fill} to "█" repeated {_nf} times
 			set {_empty} to "█" repeated {_ne} times
 			set {_ttl} to colored "&c%{_ccn}%"
