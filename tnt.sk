@@ -34,7 +34,7 @@ on rightclick:
 		set velocity of event-entity to {_vel}
 		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 20틱 = 1초 뒤 바닐라가 직접 폭발시킴.
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
-		{_t}.setFuseTicks(20)
+		{_t}.setFuseTicks(30)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
