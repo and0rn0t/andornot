@@ -26,10 +26,15 @@ on rightclick:
 	play sound "block.beacon.activate" with volume 3 and pitch 1.2 at player
 	play sound "entity.wither.spawn" with volume 0.6 and pitch 1.7 at player
 	play sound "entity.player.levelup" with volume 2 and pitch 0.7 at player
-	# 섬광: 몸 중앙에서 flash 파티클이 번쩍하고 end rod 가 사방으로 터진다.
+	# 섬광: 몸 중앙에서 flash 파티클이 번쩍
 	set {_c} to player's location ~ vector(0, 1, 0)
-	play 1 flash at {_c} in radius of 100
-	play 40 end rod with offset of 0.3, 0.5, 0.3 and speed 0.2 at {_c} in radius of 100
+	loop 3 times:
+		play 1 flash at {_c} in radius of 100
+		wait 1 ticks
+	wait 117 ticks
+	if {_p} is online:
+		play sound "block.beacon.deactivate" with volume 2 and pitch 1 at {_p}
+		play sound "block.conduit.deactivate" with volume 2 and pitch 1.2 at {_p}
 
 on join:
 	delete {-nscd::%player's uuid%}
