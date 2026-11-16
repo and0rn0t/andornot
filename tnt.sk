@@ -52,29 +52,29 @@ on rightclick:
 		set velocity of event-entity to {_vel}
 		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 40틱 = 2초 뒤 바닐라가 직접 폭발시킴.
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
-		{_t}.setFuseTicks(40)
+		{_t}.setFuseTicks(33)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
-	wait 15 ticks
+	wait 13 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
 	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
-	wait 5 ticks
+	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
 	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
-	wait 5 ticks
+	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
 	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
-	wait 5 ticks
+	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
 	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
-	wait 5 ticks
+	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
