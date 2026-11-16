@@ -291,7 +291,7 @@ function stun(p: player, src: text, d: timespan):
 	apply jump boost potion of tier 129 without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
 
 # 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
-# 오프핸드 아이템이 이 스킬이면, 메인핸드가 다른 스킬 아이템이거나 창(SPEAR)이 아닐 때만 true
+# 오프핸드 아이템이 이 스킬이면, 메인핸드가 다른 스킬 아이템도 창(SPEAR)도 아닐 때만 true
 function skillHand(p: player, t: itemtype) :: boolean:
 	if isStunned({_p}) is true:
 		return false
