@@ -1,8 +1,8 @@
-# [tnt.sk] TNT 스킬(우클릭 투척, 33틱(약 1.65초) 뒤 폭발, 데미지/블럭 피해 없음, 폭발 범위 안의 모두(던진 사람 포함) 2초 기절). 쿨타임 12초
+# [tnt.sk] TNT 스킬(우클릭 투척, 33틱(약 1.65초) 뒤 폭발, 블럭 피해 없음, 폭발 범위 안의 모두(던진 사람 포함)에게 피해 2(하트 1칸)와 플레이어는 2초 기절). 쿨타임 12초
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-tntcd}, {-tntowner}, {-skillitems::tnt} (기절은 skill_core.sk 의 stun() 함수와 {-stunend} 가 처리)
 # 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 33틱 = 약 1.65초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
-# 폭발 이벤트(on explosion)를 취소해서 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클과 기절만 직접 처리한다.
+# 폭발 이벤트(on explosion)를 취소해서 바닐라 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클, 고정 피해 2(hp(2)), 기절을 직접 처리한다.
 # 폭발 범위(반경)는 아래 tntRadius() 의 값 하나만 바꾸면 기절 범위와 폭발 이펙트가 같이 바뀐다. 날아가는 거리는 rightclick 의 speed 값(현재 1.5).
 # 경고음: 던지고 13틱 뒤부터 4틱 간격으로 TNT 위치에서 pling 소리가 5번(13, 17, 21, 25, 29틱) 나고 33틱에 터진다. 그 전에 TNT 가 사라지면 소리를 멈춘다.
 # 던지는 순간에는 entity.tnt.primed 소리가 난다. 퓨즈를 바꾸면(setFuseTicks 값) 경고음 타이밍(wait 값)도 같이 맞출 것.
@@ -31,8 +31,13 @@ function tntBlast(owner: text, loc: location):
 		if ({_x} * {_x} + {_y} * {_y} + {_z} * {_z}) <= (({_r} - 1) * ({_r} - 1)):
 			set {_p} to {_loc} ~ vector({_x}, {_y}, {_z})
 			play 1 large explosion at {_p} in radius of 100
-	loop all players in radius {_r} around {_loc}:
-		stun(loop-player, "tnt_%{_owner}%", 2 seconds)
+	# 범위 안의 모든 생명체(던진 사람 포함, 갑옷 거치대 제외)에게 고정 피해 실 체력 2. 플레이어는 추가로 기절.
+	loop all living entities in radius {_r} around {_loc}:
+		set {_e} to loop-entity
+		if {_e} is not an armor stand:
+			damage {_e} by hp(2) hearts
+			if {_e} is a player:
+				stun({_e}, "tnt_%{_owner}%", 2 seconds)
 
 on rightclick:
 	if skillHand(player, tnt) is false:
