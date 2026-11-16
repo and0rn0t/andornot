@@ -14,6 +14,7 @@ on rightclick:
 	if {-nscd::%player's uuid%} is set:
 		if {-nscd::%player's uuid%} > now:
 			stop
+	set {_p} to player
 	set {-nscd::%player's uuid%} to now + 45 seconds
 	set item cooldown of nether star for player to 45 seconds
 	apply resistance potion of tier 1 without any particles whilst hiding the potion icon to player for 6 seconds replacing the existing effect
@@ -30,8 +31,8 @@ on rightclick:
 	set {_c} to player's location ~ vector(0, 1, 0)
 	loop 3 times:
 		play 1 flash at {_c} in radius of 100
-		wait 1 ticks
-	wait 117 ticks
+		wait 2 ticks
+	wait 114 ticks
 	if {_p} is online:
 		play sound "block.beacon.deactivate" with volume 2 and pitch 1 at {_p}
 		play sound "block.conduit.deactivate" with volume 2 and pitch 1.2 at {_p}
