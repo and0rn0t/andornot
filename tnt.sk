@@ -24,13 +24,18 @@ on rightclick:
 			stop
 	set {-tntcd::%player's uuid%} to now + 12 seconds
 	set item cooldown of tnt for player to 12 seconds
-	shoot primed tnt from player at speed 1.5
-	set {_t} to last spawned entity
-	# 퓨즈 40틱 = 2초 뒤 바닐라가 직접 폭발시킴. 던진 사람을 기록해 두고 on explosion 에서 읽는다.
-	# (Bukkit 의 메서드 이름은 setFuseTicks. setFuse 는 없어서 오류가 나 뒤 코드가 멈췄었다)
-	set {-tntowner::%uuid of {_t}%} to "%uuid of player%"
-	{_t}.setFuseTicks(40)
-	play sound "entity.tnt.primed" with volume 1 and pitch 1 at player
+	set {_p} to player
+	# shoot 뒤의 last spawned entity 가 TNT 가 아니라 다른 엔티티(텍스트 디스플레이)를 가리켜서 spawn 섹션의 event-entity 로 직접 잡는다.
+	set {_eye} to {_p}.getEyeLocation()
+	set {_dir} to {_eye}.getDirection()
+	set {_vel} to {_dir} * 1.5
+	spawn primed tnt at {_eye}:
+		set {_t} to event-entity
+		set velocity of event-entity to {_vel}
+		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 40틱 = 2초 뒤 바닐라가 직접 폭발시킴.
+		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
+		{_t}.setFuseTicks(40)
+	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
 on explosion:
