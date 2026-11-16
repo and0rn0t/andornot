@@ -91,6 +91,9 @@ on damage:
 					set {_d} to hp(6)
 					if healthRatio(victim) >= 0.8:
 						set {_d} to {_d} * 1.5
+						# 도끼 능력 발동: 타격 지점(피격자 위치)에 모루 소리
+						set {_loc} to location of victim
+						play sound "block.anvil.place" with volume 1 and pitch 1 at {_loc}
 					set damage to {_d} * {_cm}
 				else if {_w} is "hoe":
 					# 괭이: 기본 체력 2, 체력 50% 이하인 적에게 100% 증가(2배)
