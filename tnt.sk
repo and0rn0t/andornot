@@ -54,8 +54,17 @@ on rightclick:
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
 		{_t}.setFuseTicks(40)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
-	# 폭발 직전 삐삐삐: 퓨즈 40틱 중 25틱째, 30틱째, 35틱째에 5틱 간격으로 3번 울리고 40틱째에 펑 터진다.
-	wait 25 ticks
+	wait 15 ticks
+	if {_t} is not alive:
+		stop
+	set {_l} to location of {_t}
+	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	wait 5 ticks
+	if {_t} is not alive:
+		stop
+	set {_l} to location of {_t}
+	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	wait 5 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
