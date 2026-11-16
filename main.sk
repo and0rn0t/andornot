@@ -5,7 +5,7 @@
 # 창 데미지는 최대 6(체력 기준, 스크립트 값 3). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
 # 도끼/곡괭이/괭이: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
 # 위 세 무기는 바닐라 공격 쿨다운 규칙(덜 충전하고 때리면 약해짐)과 크리티컬(x1.5, 바닐라 판정)을 따른다: 매 틱 기록한 {-atkcd} 로 cooldownScale() 을 곱한다.
-# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-statuslabel}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-stunend}, {-atkcd} (접속 시 삭제)
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-statuslabel}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-stunend}, {-ccshown}, {-atkcd} (접속 시 삭제)
 
 import:
 	org.bukkit.Bukkit
@@ -30,6 +30,7 @@ on join:
 	delete {-pickstack::%player's uuid%}
 	delete {-pickexp::%player's uuid%}
 	delete {-stunend::%player's uuid%}
+	delete {-ccshown::%player's uuid%}
 	delete {-atkcd::%player's uuid%}
 
 on every 1 ticks:
@@ -129,7 +130,14 @@ on every 1 ticks:
 			set {_empty} to "█" repeated {_ne} times
 			set {_ttl} to colored "&c%{_ccn}%"
 			set {_sub} to colored "&c%{_fill}%&8%{_empty}%"
-			send title {_ttl} with subtitle {_sub} to loop-player for 6 ticks with fadein 0 ticks and fade out 0 ticks
+			set {_pl} to loop-player
+			send title {_ttl} with subtitle {_sub} to {_pl} for 10 ticks with fadein 0 ticks and fade out 0 ticks
+			set {-ccshown::%{_uid}%} to true
+		# cc 가 끝나면 남아 있는 타이틀을 바로 지운다(Paper clearTitle).
+		else if {-ccshown::%{_uid}%} is set:
+			set {_pl2} to loop-player
+			{_pl2}.clearTitle()
+			delete {-ccshown::%{_uid}%}
 		# 끝난 효과의 보스바 제거
 		loop {-sbar::%{_uid}%::*}:
 			set {_k2} to loop-index

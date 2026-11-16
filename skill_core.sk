@@ -65,6 +65,7 @@
 #   {-statuslabel::uuid::출처}  이름 뒤 가변 표시(예: " x2")   skill_core 함수, main
 #   {-tntcd::uuid}           TNT 쿨타임 종료 시각                    tnt
 #   {-tntowner::TNT엔티티uuid} 던진 사람 uuid(텍스트). 폭발하면 지움      tnt
+#   {-ccshown::uuid}         cc 타이틀을 보여주는 중(끝나면 clearTitle)   main(접속 시 삭제)
 #   {-stunend::uuid}         기절 종료 시각(지금보다 뒤면 기절 중)      skill_core(stun), isStunned 로 읽기, main(접속 시 삭제)
 #   {-sbar::uuid::효과이름}   효과 하나당 보스바 객체(BossBar)              main(접속 종료 시 제거)
 #                            출처 키: fishing_낚시꾼uuid
