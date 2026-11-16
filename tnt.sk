@@ -1,4 +1,4 @@
-# [tnt.sk] TNT 스킬(우클릭 투척, 2초 뒤 폭발, 데미지/블럭 피해 없음, 폭발 범위 안의 모두(던진 사람 포함) 2초 기절). 쿨타임 12초
+# [tnt.sk] TNT 스킬(우클릭 투척, 1초 뒤 폭발, 데미지/블럭 피해 없음, 폭발 범위 안의 모두(던진 사람 포함) 2초 기절). 쿨타임 12초
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-tntcd}, {-tntowner}, {-skillitems::tnt} (기절은 skill_core.sk 의 stun() 함수와 {-stunend} 가 처리)
 # 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 2초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
@@ -32,9 +32,9 @@ on rightclick:
 	spawn primed tnt at {_eye}:
 		set {_t} to event-entity
 		set velocity of event-entity to {_vel}
-		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 40틱 = 2초 뒤 바닐라가 직접 폭발시킴.
+		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 20틱 = 1초 뒤 바닐라가 직접 폭발시킴.
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
-		{_t}.setFuseTicks(40)
+		{_t}.setFuseTicks(20)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
