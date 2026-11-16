@@ -49,7 +49,8 @@ on every 1 ticks:
 				set level progress of loop-player to 0.999
 # 상태이상(이로운/해로운 모두) 보스바 표시. 상태이상은 skill_core.sk 의 setStatus/clearStatus 로 등록한다.
 # 효과 하나당 보스바 하나(여러 효과가 걸리면 보스바가 여러 개 쌓임). 같은 이름이 여러 출처에서 걸려 있으면 남은 시간이 가장 긴 것 하나만 보여준다.
-# 해로운 효과는 빨강(막대 빨강), 이로운 효과는 초록(막대 초록). 남은 초는 표시하지 않고, 막대 길이(남은 시간 비율)로만 알린다.
+# 모든 행동을 막는 cc(기절 등, type "cc")는 보스바 대신 화면 가운데 타이틀(효과 이름) + 서브타이틀(남은 시간 막대)로 표시한다.
+# 일부 행동만 막는 cc(구속 등)와 이로운 효과는 보스바. 해로운 효과는 빨강(막대 빨강), 이로운 효과는 초록(막대 초록). 남은 초는 표시하지 않고, 막대 길이(남은 시간 비율)로만 알린다.
 # 막대는 매 틱(1/20초) 갱신해 클라이언트가 부드럽게 줄어드는 것처럼 보이게 한다.
 # 보스바는 skript-reflect 로 Bukkit API(Bukkit.createBossBar) 를 호출한다(Skript 2.13 에는 보스바 문법이 없음, 미검증).
 on every 1 ticks:
@@ -82,30 +83,53 @@ on every 1 ticks:
 					set {_sdur::%{_n}%} to {-statusdur::%{_uid}%::%{_src}%}
 					set {_slabel::%{_n}%} to {-statuslabel::%{_uid}%::%{_src}%}
 		# 효과마다 보스바를 하나씩 만든다(같은 이름은 한 줄로 합침). 효과가 끝나면 그 보스바만 제거.
+		# 단 모든 행동을 막는 cc(type "cc", 예: 기절)는 보스바 대신 타이틀(이름) + 서브타이틀(진행도 막대)로 보여준다.
+		set {_ccn} to ""
+		set {_ccbest} to 0
 		loop {_seen::*}:
 			set {_k} to loop-index
-			set {_b} to {-sbar::%{_uid}%::%{_k}%}
-			if {_b} is not set:
-				set {_b} to Bukkit.createBossBar("", BarColor.RED, BarStyle.SOLID)
-				{_b}.addPlayer(loop-player)
-				set {-sbar::%{_uid}%::%{_k}%} to {_b}
-			set {_c} to "&c"
-			set {_col} to BarColor.RED
-			if {_stype::%{_k}%} is "good":
-				set {_c} to "&a"
-				set {_col} to BarColor.GREEN
-			set {_prog} to 1
-			if {_sdur::%{_k}%} > 0:
-				set {_prog} to {_seen::%{_k}%} / {_sdur::%{_k}%}
-			if {_prog} > 1:
+			if {_stype::%{_k}%} is "cc":
+				if {_seen::%{_k}%} > {_ccbest}:
+					set {_ccbest} to {_seen::%{_k}%}
+					set {_ccn} to {_k}
+			else:
+				set {_b} to {-sbar::%{_uid}%::%{_k}%}
+				if {_b} is not set:
+					set {_b} to Bukkit.createBossBar("", BarColor.RED, BarStyle.SOLID)
+					{_b}.addPlayer(loop-player)
+					set {-sbar::%{_uid}%::%{_k}%} to {_b}
+				set {_c} to "&c"
+				set {_col} to BarColor.RED
+				if {_stype::%{_k}%} is "good":
+					set {_c} to "&a"
+					set {_col} to BarColor.GREEN
 				set {_prog} to 1
-			if {_prog} < 0:
-				set {_prog} to 0
-			set {_t} to colored "%{_c}%%{_k}%%{_slabel::%{_k}%}%"
-			{_b}.setTitle({_t})
-			{_b}.setColor({_col})
-			{_b}.setProgress({_prog})
-			{_b}.setVisible(true)
+				if {_sdur::%{_k}%} > 0:
+					set {_prog} to {_seen::%{_k}%} / {_sdur::%{_k}%}
+				if {_prog} > 1:
+					set {_prog} to 1
+				if {_prog} < 0:
+					set {_prog} to 0
+				set {_t} to colored "%{_c}%%{_k}%%{_slabel::%{_k}%}%"
+				{_b}.setTitle({_t})
+				{_b}.setColor({_col})
+				{_b}.setProgress({_prog})
+				{_b}.setVisible(true)
+		if {_ccn} is not "":
+			set {_ccprog} to 1
+			if {_sdur::%{_ccn}%} > 0:
+				set {_ccprog} to {_ccbest} / {_sdur::%{_ccn}%}
+			if {_ccprog} > 1:
+				set {_ccprog} to 1
+			if {_ccprog} < 0:
+				set {_ccprog} to 0
+			set {_nf} to floor({_ccprog} * 20)
+			set {_ne} to 20 - {_nf}
+			set {_fill} to "█" repeated {_nf} times
+			set {_empty} to "█" repeated {_ne} times
+			set {_ttl} to colored "&c%{_ccn}%"
+			set {_sub} to colored "&c%{_fill}%&8%{_empty}%"
+			send title {_ttl} with subtitle {_sub} to loop-player for 6 ticks with fadein 0 ticks and fade out 0 ticks
 		# 끝난 효과의 보스바 제거
 		loop {-sbar::%{_uid}%::*}:
 			set {_k2} to loop-index

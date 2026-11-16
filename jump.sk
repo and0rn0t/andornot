@@ -41,6 +41,8 @@ on flight toggle:
 		jumpFlightOn({_pl})
 		stop
 	if {-jumplock::%player's uuid%::*} is set:
+		# 구속 등으로 도약이 막힌 상태에서 시도하면 틱 소리
+		ccDeny({_pl})
 		wait 1 tick
 		jumpFlightOn({_pl})
 		stop
