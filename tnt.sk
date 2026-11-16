@@ -4,7 +4,7 @@
 # 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 1초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
 # 폭발 이벤트(on explosion)를 취소해서 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클과 기절만 직접 처리한다.
 # 폭발 범위(반경)는 아래 tntRadius() 의 값 하나만 바꾸면 기절 범위와 폭발 이펙트가 같이 바뀐다. 날아가는 거리는 rightclick 의 speed 값(현재 1.5).
-# 경고: TNT 를 던진 순간부터 폭발까지 C4 처럼 점점 빨라지는 삐- 소리가 TNT 위치에서 난다(dust 경고는 없음).
+# 경고: TNT 를 던지면 TNT 위치에서 삐- 삐- 삐- 소리가 3번 나고 펑 하고 터진다(퓨즈 40틱).
 # 폭발 이펙트: 폭발 범위 안쪽을 large explosion 으로 2칸 간격으로 채운다(범위 끝에서 파티클 크기만큼 닿도록 반경-1 까지만 배치).
 
 on load:
@@ -54,18 +54,18 @@ on rightclick:
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
 		{_t}.setFuseTicks(40)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
-	# C4 카운트다운 소리: 던진 순간부터 TNT 위치에서 삐-삐- 소리가 점점 빨라지고 높아진다.
-	# 간격(틱) 합계 = 퓨즈(40틱). 퓨즈 값을 바꾸면 이 간격 목록도 합이 같도록 맞출 것.
-	set {_gaps::*} to 10, 8, 6, 5, 4, 3, 2, 2
-	set {_n} to 0
-	loop {_gaps::*}:
-		set {_g} to loop-value
-		if {_t} is not alive:
-			stop
-		add 1 to {_n}
-		set {_l} to location of {_t}
-		play sound "block.note_block.pling" with volume 2 and pitch (1.2 + 0.1 * {_n}) at {_l}
-		wait ({_g} * 1 tick)
+	set {_l} to location of {_t}
+	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	wait 5 ticks
+	if {_t} is not alive:
+		stop
+	set {_l} to location of {_t}
+	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	wait 5 ticks
+	if {_t} is not alive:
+		stop
+	set {_l} to location of {_t}
+	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
 on explosion:
