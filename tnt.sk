@@ -73,7 +73,7 @@ on rightclick:
 		set velocity of event-entity to {_vel}
 		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 40틱 = 2초 뒤 바닐라가 직접 폭발시킴.
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
-		{_t}.setFuseTicks(40)
+		{_t}.setFuseTicks(33)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
 	# 경고 이펙트: TNT 가 살아있는 동안 4틱마다 확인해서, 착지한 뒤에만 표시한다(최대 25번 = 100틱 안전장치).
 	set {_n} to 0
