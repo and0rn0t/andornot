@@ -97,8 +97,8 @@ on damage:
 						# 강타 이펙트: 피격자 몸통 높이에 크리티컬 파티클 + 폭발 파티클
 						set {_fx} to location of victim
 						add 1 to y-coordinate of {_fx}
-						draw 20 of crit at {_fx}
-						draw 1 of explosion at {_fx}
+						play 20 crit with offset of 0.3, 0.3, 0.3 and speed 0.3 at {_fx} in radius of 100
+						play 1 large explosion with offset of 0, 0, 0 and speed 0 at {_fx} in radius of 100
 					set damage to {_d} * {_cm}
 				else if {_w} is "hoe":
 					# 괭이: 기본 체력 2, 체력 50% 이하인 적에게 100% 증가(2배)
