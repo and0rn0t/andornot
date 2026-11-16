@@ -7,12 +7,23 @@
 # 경고 이펙트(바닥 원판 + 범위 안 무작위 dust): TNT 가 착지한 뒤부터 폭발할 때까지 4틱마다 표시한다. 공중에서는 안 나온다.
 # 폭발 이펙트: 폭발 범위 안쪽을 large explosion 으로 2칸 간격으로 채운다(범위 끝에서 파티클 크기만큼 닿도록 반경-1 까지만 배치).
 
+import:
+	org.bukkit.Particle
+	org.bukkit.Color
+	org.bukkit.Particle$DustOptions as DustOptions
+
 on load:
 	set {-skillitems::tnt} to tnt
+	# 밝은 빨강 dust 옵션(색 RGB, 크기). skript 의 'red dust' 는 어두운 빨강이라 skript-reflect 로 직접 만든다.
+	set {-tntdust} to new DustOptions(Color.fromRGB(255, 30, 30), 1.0)
 
 # 폭발 범위(반경, 칸). 기절/이펙트/경고가 모두 이 값을 쓴다.
 function tntRadius() :: number:
 	return 4
+
+# 밝은 빨강 dust 한 개를 loc 에 띄운다.
+function tntDust(loc: location):
+	{_loc}.getWorld().spawnParticle(Particle.DUST, {_loc}, 1, 0, 0, 0, 0, {-tntdust})
 
 # 경고 이펙트: 폭발 범위(구) 안의 무작위 위치에 붉은 dust 를 흩뿌린다.
 function tntWarn(loc: location):
@@ -22,20 +33,20 @@ function tntWarn(loc: location):
 		set {_yaw} to random number between 0 and 360
 		set {_pitch} to random number between -90 and 90
 		set {_p} to {_loc} ~ spherical vector {_d}, {_yaw}, {_pitch}
-		play 1 red dust with size 1.5 at {_p} in radius of 100
+		tntDust({_p})
 
-# 바닥 표시: TNT 가 착지한 자리의 바닥에, 폭발 범위만큼 붉은 dust 를 원판(동심원)으로 깐다.
+# 바닥 표시: TNT 가 착지한 자리의 바닥에, 폭발 범위만큼 밝은 빨강 dust 를 원판(동심원)으로 깐다.
 function tntGroundMark(loc: location):
 	set {_r} to tntRadius()
 	set {_base} to {_loc} ~ vector(0, 0.1, 0)
 	set {_ring} to {_r}
-	# 바깥 원(= 폭발 범위 경계)부터 1칸씩 안쪽으로. 반지름이 클수록 점을 더 찍는다.
+	# 바깥 원(= 폭발 범위 경계)부터 0.5칸씩 안쪽으로 빽빽하게 채운다(장판 느낌). 반지름이 클수록 점을 더 찍는다.
 	while {_ring} > 0:
-		set {_cnt} to floor({_ring} * 16)
+		set {_cnt} to floor({_ring} * 14)
 		loop {_cnt} times:
 			set {_p} to {_base} ~ spherical vector {_ring}, (loop-number * 360 / {_cnt}), 0
-			play 1 red dust with size 1.2 at {_p} in radius of 100
-		subtract 1 from {_ring}
+			tntDust({_p})
+		subtract 0.5 from {_ring}
 
 # owner: 던진 사람 uuid(텍스트). 던진 사람 본인도 범위 안이면 기절한다.
 function tntBlast(owner: text, loc: location):
