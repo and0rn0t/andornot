@@ -3,37 +3,16 @@
 # 이 파일이 쓰는 변수: {-tntcd}, {-tntowner}, {-skillitems::tnt} (기절은 skill_core.sk 의 stun() 함수와 {-stunend} 가 처리)
 # 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 1초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
 # 폭발 이벤트(on explosion)를 취소해서 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클과 기절만 직접 처리한다.
-# 폭발 범위(반경)는 아래 tntRadius() 의 값 하나만 바꾸면 기절 범위, 폭발 이펙트, 경고 이펙트가 전부 같이 바뀐다. 날아가는 거리는 rightclick 의 speed 값(현재 1.5).
-# 경고 이펙트(폭발 범위 +1칸 안 무작위 dust): TNT 가 착지한 뒤부터 폭발할 때까지 4틱마다 표시한다. 공중에서는 안 나온다.
+# 폭발 범위(반경)는 아래 tntRadius() 의 값 하나만 바꾸면 기절 범위와 폭발 이펙트가 같이 바뀐다. 날아가는 거리는 rightclick 의 speed 값(현재 1.5).
+# 경고: TNT 를 던진 순간부터 폭발까지 C4 처럼 점점 빨라지는 삐- 소리가 TNT 위치에서 난다(dust 경고는 없음).
 # 폭발 이펙트: 폭발 범위 안쪽을 large explosion 으로 2칸 간격으로 채운다(범위 끝에서 파티클 크기만큼 닿도록 반경-1 까지만 배치).
-
-import:
-	org.bukkit.Particle
-	org.bukkit.Color
-	org.bukkit.Particle$DustOptions as DustOptions
 
 on load:
 	set {-skillitems::tnt} to tnt
-	# 밝은 빨강 dust 옵션(색 RGB, 크기). skript 의 'red dust' 는 어두운 빨강이라 skript-reflect 로 직접 만든다.
-	set {-tntdust} to new DustOptions(Color.fromRGB(255, 30, 30), 1.0)
 
-# 폭발 범위(반경, 칸). 기절/이펙트/경고가 모두 이 값을 쓴다.
+# 폭발 범위(반경, 칸). 기절/폭발 이펙트가 이 값을 쓴다.
 function tntRadius() :: number:
 	return 4
-
-# 밝은 빨강 dust 한 개를 loc 에 띄운다.
-function tntDust(loc: location):
-	{_loc}.getWorld().spawnParticle(Particle.DUST, {_loc}, 1, 0, 0, 0, 0, {-tntdust})
-
-# 경고 이펙트: 폭발 범위보다 1칸 넓은 구 안의 무작위 위치에 붉은 dust 를 흩뿌린다.
-function tntWarn(loc: location):
-	set {_r} to tntRadius() + 1
-	loop 200 times:
-		set {_d} to random number between 0 and {_r}
-		set {_yaw} to random number between 0 and 360
-		set {_pitch} to random number between -90 and 90
-		set {_p} to {_loc} ~ spherical vector {_d}, {_yaw}, {_pitch}
-		tntDust({_p})
 
 # owner: 던진 사람 uuid(텍스트). 던진 사람 본인도 범위 안이면 기절한다.
 function tntBlast(owner: text, loc: location):
@@ -73,19 +52,20 @@ on rightclick:
 		set velocity of event-entity to {_vel}
 		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 40틱 = 2초 뒤 바닐라가 직접 폭발시킴.
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
-		{_t}.setFuseTicks(33)
+		{_t}.setFuseTicks(40)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
-	# 경고 이펙트: TNT 가 살아있는 동안 4틱마다 확인해서, 착지한 뒤에만 표시한다(최대 25번 = 100틱 안전장치).
+	# C4 카운트다운 소리: 던진 순간부터 TNT 위치에서 삐-삐- 소리가 점점 빨라지고 높아진다.
+	# 간격(틱) 합계 = 퓨즈(40틱). 퓨즈 값을 바꾸면 이 간격 목록도 합이 같도록 맞출 것.
+	set {_gaps::*} to 10, 8, 6, 5, 4, 3, 2, 2
 	set {_n} to 0
-	while {_t} is alive:
-		add 1 to {_n}
-		if {_n} > 25:
+	loop {_gaps::*}:
+		set {_g} to loop-value
+		if {_t} is not alive:
 			stop
-		# 모든 경고 이펙트는 TNT 가 착지한 뒤에만 나온다.
-		if {_t} is on ground:
-			set {_wl} to location of {_t}
-			tntWarn({_wl})
-		wait 4 ticks
+		add 1 to {_n}
+		set {_l} to location of {_t}
+		play sound "block.note_block.pling" with volume 2 and pitch (1.2 + 0.1 * {_n}) at {_l}
+		wait {_g} ticks
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
 on explosion:
