@@ -12,6 +12,11 @@ function jumpFlightOn(p: player):
 	else if gamemode of {_p} is adventure:
 		set flight mode of {_p} to true
 
+# 스크립트를 리로드하면 이미 접속 중인 플레이어는 join 이 다시 일어나지 않으므로 로드 때 한 번 켠다.
+on load:
+	loop all players:
+		jumpFlightOn(loop-player)
+
 on join:
 	jumpFlightOn(player)
 
