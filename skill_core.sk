@@ -53,6 +53,7 @@
 #   {-hookcd::uuid}          낚싯대 쿨타임 종료 시각                 fishing
 #   {-hookcdset::uuid}       이번 투척의 쿨타임 시작 여부            fishing
 #   {-hookdmg::uuid}         이번 투척에서 당겨서 이미 피해를 줬는지    fishing
+#   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing
 #   {-statusname::uuid::출처} 상태이상 표시 이름(예: 구속)                      skill_core 함수, main
@@ -70,6 +71,8 @@
 #       (탭)cancel event
 #   - 규칙: 메인핸드에 스킬 아이템이 있으면 그 스킬이 우선. 오프핸드 스킬은 메인핸드가
 #     다른 스킬 아이템이 아닐 때만 발동. 이 판정은 아래 함수가 전부 처리한다.
+#   - 스킬이 damage 효과로 직접 데미지를 줄 때는 앞뒤로 {-skilldmg::%공격자 uuid%} 를 set / delete 한다(fishing.sk hookDamage 참고).
+#     그래야 main.sk 의 철퇴 x0.3, 창 상한 보정이 스킬 데미지에 적용되지 않는다. (투사체 데미지는 자동 제외)
 #   - 새 스킬이 쓰는 변수는 위 목록에 추가하고, 공용으로 필요한 함수는 이 파일에 추가한다.
 #   - 아이템 쿨타임 표시는 set item cooldown of 아이템타입 for 플레이어 to 시간 (재질 단위).
 #   - 상태이상(구속 등)을 거는 스킬은 아래 함수로 액션바에 표시한다. 표시/만료 처리는 main.sk 가 한다.
@@ -154,7 +157,10 @@
 #   - 네더의 별 / 쿨 45초 : 8초간 저항1, 힘1, 재생1, 신속1 (포션 이펙트 표시 숨김)
 #   - 모루 / 쿨 60초 : 이번 게임 동안 가하는 피해 10% 증가 (게임 설계 확정 시 같이 업데이트)
 #   확정 사항
-#   - 철퇴(mace) 공격 데미지 x0.3 은 의도된 기능이라 main.sk 에 유지.
+#   - 철퇴(mace) 공격 데미지 x0.3 은 의도된 기능이라 main.sk 에 유지. 철퇴로 준 근접 데미지에만 적용(스킬/투사체 제외).
+#   - 창(spear) 데미지는 최대 6(하트 단위, 스크립트 값). 창을 메인핸드에 들었거나 사용 중인 아이템(오프핸드 포함)이
+#     창일 때의 근접 데미지에 적용. 창 아이템은 Skript 2.13 jar 에 없어서 재질 이름에 SPEAR 가 들어가는지로 판단
+#     (skript-reflect, 미검증). 삼지창(TRIDENT)은 포함하지 않는다.
 #   - 도약(F키)은 스킬 아이템이 아니며 현재 구현이 기획대로임.
 #   - 낚싯대: 후한 판정은 플레이어만 걸지만, 걸림/효과음/피해는 모든 엔티티에 적용. 피해는 찌를 당길 때(on entity hooked)만 준다.
 #     구속은 도약 잠금만(이동 제한 없음), 3초 지속. 쿨타임/잠금/상태이상 표시 해제는 풀리는 모든 경우에 처리.
@@ -177,6 +183,24 @@ function isSkillItem(i: itemtype) :: boolean:
 		if {_i} is loop-value:
 			return true
 	return false
+
+# 공격자가 쓰는 무기 종류: "spear"(이름에 SPEAR 가 들어간 모든 창), "mace"(철퇴), 아니면 "".
+# 창: 지금 사용 중인 아이템(오프핸드 포함) 또는 메인핸드. 철퇴: 메인핸드. 재질 이름은 skript-reflect 로 읽는다(미검증).
+function weaponKind(e: entity) :: text:
+	if {_e} is not a living entity:
+		return ""
+	set {_use} to {_e}.getActiveItem().getType().name()
+	if {_use} contains "SPEAR":
+		return "spear"
+	set {_eq} to {_e}.getEquipment()
+	if {_eq} is not set:
+		return ""
+	set {_main} to {_eq}.getItemInMainHand().getType().name()
+	if {_main} contains "SPEAR":
+		return "spear"
+	if {_main} is "MACE":
+		return "mace"
+	return ""
 
 # 상태이상 표시 등록/해제. 표시와 만료 처리는 main.sk 에서 한다. (사용법은 위 5번 참고)
 function setStatus(p: player, src: text, n: text, d: timespan):

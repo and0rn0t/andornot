@@ -1,6 +1,6 @@
 # [fishing.sk] 낚싯대 스킬(찌 속도 증가, 후한 판정(플레이어만), 엔티티에 걸리면 3초 걸림, 당길 때 피해, 쿨타임, 효과음, 상태이상 표시)
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수: {-hook}, {-hooked}, {-hookcd}, {-hookcdset}, {-hookdmg}, {-jumplock}(걸린 대상의 도약 잠금, 키 fishing_낚시꾼uuid), {-status}/{-statusname}(걸린 대상의 구속 표시, 출처 fishing_낚시꾼uuid), {-skillitems::fishing_rod}
+# 이 파일이 쓰는 변수: {-hook}, {-hooked}, {-hookcd}, {-hookcdset}, {-hookdmg}, {-skilldmg}(스킬 데미지 표시, main.sk 보정 제외용), {-jumplock}(걸린 대상의 도약 잠금, 키 fishing_낚시꾼uuid), {-status}/{-statusname}(걸린 대상의 구속 표시, 출처 fishing_낚시꾼uuid), {-skillitems::fishing_rod}
 # 효과음을 바꾸고 싶으면 아래 hookCatchSound / hookWarnSound / hookReleaseSound 함수의 소리 이름만 바꾸면 된다.
 
 using damage sources
@@ -60,7 +60,10 @@ function hookDamage(p: player, v: entity):
 		set the damage type to player attack
 		set the causing entity to {_p}
 		set the direct entity to {_p}
+	# main.sk 의 철퇴 x0.3 / 창 상한 보정에서 제외하려고 스킬 데미지 표시를 켰다가 끈다(damage 는 즉시 이벤트를 부름)
+	set {-skilldmg::%{_p}'s uuid%} to true
 	damage {_v} by 2 hearts using {_src}
+	delete {-skilldmg::%{_p}'s uuid%}
 
 on fishing line cast:
 	set {_id} to uuid of player

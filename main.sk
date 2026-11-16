@@ -1,7 +1,8 @@
 # [main.sk] 스태미너 회복/표시(경험치 바), 상태이상 액션바 표시, 전투 중 처리, 경험치 차단
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지).
-# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar} (접속 시 삭제)
+# 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지). 철퇴로 준 근접 데미지에만 적용(스킬/투사체 데미지는 제외).
+# 창 데미지는 최대 6(하트 단위). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusbar}, {-skilldmg} (접속 시 삭제)
 
 on join:
 	set {-st::%player's uuid%} to 100
@@ -14,6 +15,7 @@ on join:
 	delete {-status::%player's uuid%::*}
 	delete {-statusname::%player's uuid%::*}
 	delete {-statusbar::%player's uuid%}
+	delete {-skilldmg::%player's uuid%}
 
 on every 1 ticks:
 	loop all players:
@@ -59,8 +61,16 @@ on every 5 ticks:
 			delete {-statusbar::%{_uid}%}
 
 on damage:
-	if attacker's tool is mace:
-		set damage to damage*0.3
+	# 스킬 데미지({-skilldmg} 표시)와 투사체 데미지는 제외하고, 무기로 직접 때린 근접 데미지만 보정
+	if attacker is set:
+		if {-skilldmg::%attacker's uuid%} is not set:
+			if projectile is not set:
+				set {_w} to weaponKind(attacker)
+				if {_w} is "mace":
+					set damage to damage*0.3
+				else if {_w} is "spear":
+					if damage > 6:
+						set damage to 6
 	if attacker is player:
 		add 8 to {-oc::%attacker's uuid%}
 		loop 8 times:
