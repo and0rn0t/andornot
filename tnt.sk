@@ -4,7 +4,7 @@
 # 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 1초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
 # 폭발 이벤트(on explosion)를 취소해서 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클과 기절만 직접 처리한다.
 # 폭발 범위(반경)는 아래 tntRadius() 의 값 하나만 바꾸면 기절 범위와 폭발 이펙트가 같이 바뀐다. 날아가는 거리는 rightclick 의 speed 값(현재 1.5).
-# 경고: TNT 를 던지면 TNT 위치에서 삐- 삐- 삐- 소리가 3번 나고 펑 하고 터진다(퓨즈 40틱).
+# 경고: TNT 를 던지면 TNT 위치에서 폭발 직전에 5틱 간격으로 삐삐삐 3번 소리가 나고 펑 하고 터진다(퓨즈 40틱).
 # 폭발 이펙트: 폭발 범위 안쪽을 large explosion 으로 2칸 간격으로 채운다(범위 끝에서 파티클 크기만큼 닿도록 반경-1 까지만 배치).
 
 on load:
@@ -54,6 +54,10 @@ on rightclick:
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
 		{_t}.setFuseTicks(40)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
+	# 폭발 직전 삐삐삐: 퓨즈 40틱 중 25틱째, 30틱째, 35틱째에 5틱 간격으로 3번 울리고 40틱째에 펑 터진다.
+	wait 25 ticks
+	if {_t} is not alive:
+		stop
 	set {_l} to location of {_t}
 	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
 	wait 5 ticks
