@@ -1,18 +1,19 @@
-# [tnt.sk] TNT 스킬(우클릭 투척, 2초 뒤 폭발, 데미지/블럭 피해 없음, 맞은 플레이어는 2초 기절). 쿨타임 12초
+# [tnt.sk] TNT 스킬(우클릭 투척, 2초 뒤 폭발, 데미지/블럭 피해 없음, 폭발 범위 안의 모두(던진 사람 포함) 2초 기절). 쿨타임 12초
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수: {-tntcd}, {-skillitems::tnt} (기절은 skill_core.sk 의 stun() 함수와 {-stunend} 가 처리)
-# 진짜 폭발을 일으키지 않는다. 날아가는 점화된 TNT 는 모양으로만 쓰고, 2초 뒤 제거하면서 폭발 효과(소리/파티클)와 기절만 준다.
-# 폭발 범위(반경)는 아래 tntBlast 의 4칸 값만 바꾸면 된다.
+# 이 파일이 쓰는 변수: {-tntcd}, {-tntowner}, {-skillitems::tnt} (기절은 skill_core.sk 의 stun() 함수와 {-stunend} 가 처리)
+# 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 2초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
+# 폭발 이벤트(on explosion)를 취소해서 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클과 기절만 직접 처리한다.
+# 폭발 범위(반경)는 아래 tntBlast 의 4칸 값만 바꾸면 된다. 날아가는 거리는 rightclick 의 speed 값.
 
 on load:
 	set {-skillitems::tnt} to tnt
 
-function tntBlast(p: player, loc: location):
+# owner: 던진 사람 uuid(텍스트). 던진 사람 본인도 범위 안이면 기절한다.
+function tntBlast(owner: text, loc: location):
 	play sound "entity.generic.explode" with volume 1 and pitch 1.2 at {_loc}
 	play 1 large explosion with offset of 0, 0, 0 and speed 0 at {_loc} in radius of 100
 	loop all players in radius 4 around {_loc}:
-		if loop-player is not {_p}:
-			stun(loop-player, "tnt_%{_p}'s uuid%", 2 seconds)
+		stun(loop-player, "tnt_%{_owner}%", 2 seconds)
 
 on rightclick:
 	if skillHand(player, tnt) is false:
@@ -23,14 +24,21 @@ on rightclick:
 			stop
 	set {-tntcd::%player's uuid%} to now + 12 seconds
 	set item cooldown of tnt for player to 12 seconds
-	set {_p} to player
-	shoot primed tnt from player at speed 1.2
+	shoot primed tnt from player at speed 2
 	set {_t} to last spawned entity
-	# 혹시 제거가 안 돼도 바로 터지지 않게 퓨즈를 길게(스크립트가 2초 뒤에 직접 제거)
-	{_t}.setFuse(200)
-	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
-	wait 40 ticks
-	if {_t} is valid:
-		set {_loc} to location of {_t}
-		{_t}.remove()
-		tntBlast({_p}, {_loc})
+	# 퓨즈 40틱 = 2초 뒤 바닐라가 직접 폭발시킴. 던진 사람을 기록해 두고 on explosion 에서 읽는다.
+	{_t}.setFuse(40)
+	set {-tntowner::%uuid of {_t}%} to "%uuid of player%"
+	play sound "entity.tnt.primed" with volume 1 and pitch 1 at player
+
+# 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
+on explosion:
+	set {_e} to event-entity
+	if {_e} is a primed tnt:
+		set {_eid} to uuid of {_e}
+		if {-tntowner::%{_eid}%} is set:
+			cancel event
+			set {_owner} to {-tntowner::%{_eid}%}
+			delete {-tntowner::%{_eid}%}
+			set {_loc} to location of {_e}
+			tntBlast({_owner}, {_loc})
