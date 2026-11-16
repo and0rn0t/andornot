@@ -13,14 +13,14 @@ on swap hand items:
 			play sound "entity.player.attack.sweep" with volume 1 and pitch 1.2 at player
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
-			loop 6 times:
-				remove 3 from {-st::%player's uuid%}
+			loop 5 times:
+				remove 2.5 from {-st::%player's uuid%}
 				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			delete {-jump::%player's uuid%}
 			loop 5 times:
-				remove 3 from {-st::%player's uuid%}
+				remove 2.5 from {-st::%player's uuid%}
 				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				if {-st::%player's uuid%} <= 0:
 					set level progress of player to 0
