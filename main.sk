@@ -69,8 +69,8 @@ on damage:
 				if {_w} is "mace":
 					set damage to damage*0.3
 				else if {_w} is "spear":
-					if damage > 6:
-						set damage to 6
+					if damage > 3:
+						set damage to 3
 	if attacker is player:
 		add 8 to {-oc::%attacker's uuid%}
 		loop 8 times:
