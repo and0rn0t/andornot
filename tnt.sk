@@ -28,7 +28,7 @@ function tntDust(loc: location):
 # 경고 이펙트: 폭발 범위(구) 안의 무작위 위치에 붉은 dust 를 흩뿌린다.
 function tntWarn(loc: location):
 	set {_r} to tntRadius()
-	loop 25 times:
+	loop 150 times:
 		set {_d} to random number between 0 and {_r}
 		set {_yaw} to random number between 0 and 360
 		set {_pitch} to random number between -90 and 90
