@@ -62,6 +62,7 @@
 #   {-statusname::uuid::출처} 상태이상 표시 이름(예: 구속)                      skill_core 함수, main
 #   {-statustype::uuid::출처} 상태이상 종류 bad/good(해로운/이로운)             skill_core 함수, main
 #   {-statusdur::uuid::출처}  상태이상 전체 시간(초, 막대 길이 계산용)          skill_core 함수, main
+#   {-statuslabel::uuid::출처}  이름 뒤 가변 표시(예: " x2")   skill_core 함수, main
 #   {-sbar::uuid::효과이름}   효과 하나당 보스바 객체(BossBar)              main(접속 종료 시 제거)
 #                            출처 키: fishing_낚시꾼uuid
 #
@@ -165,7 +166,7 @@
 #       도약 불가), 3초 뒤 자동 회수, 찌를 당기면 4(적용 3) 피해
 #       [fishing.sk 구현됨]
 #   - 도끼 / 데미지 6(적용 5, 능력 발동 시 7.5) : 체력 80% 이상인 적에게 1.5배 피해   [완료: main.sk]
-#   - 곡괭이 / 데미지 2(적용 2, 중첩 +1 그대로) : 타격 시 3초간 가하는 데미지 +1, 무한 중첩, 3초간 갱신 못 하면 전부 소멸   [완료: main.sk]
+#   - 곡괭이 / 데미지 2(적용 2, 중첩 +1 그대로) : 타격 시 3초간 가하는 데미지 +1(보스바 표시 이름 "채굴 x1, 채굴 x2…"), 무한 중첩, 3초간 갱신 못 하면 전부 소멸   [완료: main.sk]
 #   - 괭이 / 데미지 2(적용 2, 능력 발동 시 4) : 체력 50% 이하인 적에게 가하는 데미지 100% 증가   [완료: main.sk]
 #     (도끼/곡괭이/괭이: 메인핸드에 든 아이템 재질 이름이 _AXE / _PICKAXE / _HOE 로 끝나면 모든 재질 공통.
 #      근접 데미지를 위 기본값으로 덮어쓴다 = 재질별 차이는 사라짐. 공격 쿨다운 약화(0.2+0.8*충전도^2)와 크리티컬(x1.5, 바닐라 판정)은 다시 반영한다.
@@ -247,17 +248,20 @@ function weaponKind(e: entity) :: text:
 
 # 상태이상 표시 등록/해제. 표시와 만료 처리는 main.sk 에서 한다. (사용법은 위 5번 참고)
 # type: "bad"(해로운, 기본값) 또는 "good"(이로운). 보스바에서 색이 갈린다.
-function setStatus(p: player, src: text, n: text, d: timespan, type: text = "bad"):
+# label: 이름 뒤에 붙는 가변 표시(예: " x2" 중첩). 보스바는 이름 기준으로 하나를 유지하므로, 중첩 수처럼 바뀌는 값은 이름이 아니라 label 로 넘긴다.
+function setStatus(p: player, src: text, n: text, d: timespan, type: text = "bad", label: text = ""):
 	set {-status::%{_p}'s uuid%::%{_src}%} to now + {_d}
 	set {-statusname::%{_p}'s uuid%::%{_src}%} to {_n}
 	set {-statustype::%{_p}'s uuid%::%{_src}%} to {_type}
 	set {-statusdur::%{_p}'s uuid%::%{_src}%} to seconds of {_d}
+	set {-statuslabel::%{_p}'s uuid%::%{_src}%} to {_label}
 
 function clearStatus(p: player, src: text):
 	delete {-status::%{_p}'s uuid%::%{_src}%}
 	delete {-statusname::%{_p}'s uuid%::%{_src}%}
 	delete {-statustype::%{_p}'s uuid%::%{_src}%}
 	delete {-statusdur::%{_p}'s uuid%::%{_src}%}
+	delete {-statuslabel::%{_p}'s uuid%::%{_src}%}
 
 # 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
 # 오프핸드 아이템이 이 스킬이면, 메인핸드가 다른 스킬 아이템이 아닐 때만 true

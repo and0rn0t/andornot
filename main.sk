@@ -5,7 +5,7 @@
 # 창 데미지는 최대 6(체력 기준, 스크립트 값 3). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
 # 도끼/곡괭이/괭이: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
 # 위 세 무기는 바닐라 공격 쿨다운 규칙(덜 충전하고 때리면 약해짐)과 크리티컬(x1.5, 바닐라 판정)을 따른다: 매 틱 기록한 {-atkcd} 로 cooldownScale() 을 곱한다.
-# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-atkcd} (접속 시 삭제)
+# 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-statuslabel}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-atkcd} (접속 시 삭제)
 
 import:
 	org.bukkit.Bukkit
@@ -24,6 +24,7 @@ on join:
 	delete {-statusname::%player's uuid%::*}
 	delete {-statusdur::%player's uuid%::*}
 	delete {-statustype::%player's uuid%::*}
+	delete {-statuslabel::%player's uuid%::*}
 	delete {-sbar::%player's uuid%::*}
 	delete {-skilldmg::%player's uuid%}
 	delete {-pickstack::%player's uuid%}
@@ -55,6 +56,7 @@ on every 5 ticks:
 		delete {_seen::*}
 		delete {_stype::*}
 		delete {_sdur::*}
+		delete {_slabel::*}
 		loop {-status::%{_uid}%::*}:
 			set {_src} to loop-index
 			set {_end} to {-status::%{_uid}%::%{_src}%}
@@ -73,6 +75,7 @@ on every 5 ticks:
 					set {_seen::%{_n}%} to {_left}
 					set {_stype::%{_n}%} to {-statustype::%{_uid}%::%{_src}%}
 					set {_sdur::%{_n}%} to {-statusdur::%{_uid}%::%{_src}%}
+					set {_slabel::%{_n}%} to {-statuslabel::%{_uid}%::%{_src}%}
 		# 효과마다 보스바를 하나씩 만든다(같은 이름은 한 줄로 합침). 효과가 끝나면 그 보스바만 제거.
 		loop {_seen::*}:
 			set {_k} to loop-index
@@ -93,7 +96,7 @@ on every 5 ticks:
 				set {_prog} to 1
 			if {_prog} < 0:
 				set {_prog} to 0
-			set {_t} to colored "%{_c}%%{_k}% &f%{_seen::%{_k}%}%초"
+			set {_t} to colored "%{_c}%%{_k}%%{_slabel::%{_k}%}% &f%{_seen::%{_k}%}%초"
 			{_b}.setTitle({_t})
 			{_b}.setColor({_col})
 			{_b}.setProgress({_prog})
@@ -167,7 +170,7 @@ on damage:
 					set {_ap} to attacker
 					if {_ap} is a player:
 						set {_ns} to {_stack} + 1
-						setStatus({_ap}, "pickaxe", "곡괭이 %{_ns}%중첩", 3 seconds, "good")
+						setStatus({_ap}, "pickaxe", "채굴", 3 seconds, "good", " x%{_ns}%")
 				else:
 					# 그 외 근접(검, 맨손, 삼지창, 몹 등): 전체 데미지 배율만 적용
 					set damage to damage * dmgMul()
