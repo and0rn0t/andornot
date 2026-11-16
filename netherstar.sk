@@ -19,7 +19,7 @@ on rightclick:
 	apply strength potion of tier 1 without any particles whilst hiding the potion icon to player for 6 seconds replacing the existing effect
 	apply regeneration potion of tier 1 without any particles whilst hiding the potion icon to player for 6 seconds replacing the existing effect
 	apply speed potion of tier 1 without any particles whilst hiding the potion icon to player for 6 seconds replacing the existing effect
-	setStatus(player, "netherstar", "네더의 별", 8 seconds, "good")
+	setStatus(player, "netherstar", "네더의 별", 6 seconds, "good")
 	play sound "block.beacon.activate" with volume 1 and pitch 1.5 to player
 
 on join:
