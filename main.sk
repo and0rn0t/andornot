@@ -76,8 +76,8 @@ on damage:
 			remove 1 from {-oc::%victim's uuid%}
 		loop 10 times:
 			if {-oc::%victim's uuid%} = 0:
-				heal victim by 1
-				wait 0.75 seconds
+				heal victim by 0.5
+				wait 1 seconds
 
 on heal:
 	if {-oc::%player's uuid%} > 0:
