@@ -103,7 +103,8 @@
 #   - crossbow.sk   : 석궁 스킬
 #   - fishing.sk    : 낚싯대 스킬
 #   - tnt.sk        : TNT 스킬(투척, 33틱 뒤 기절 폭발)
-#   - statustag.sk  : 해로운 상태이상을 체력바(healthbar.sk, 사용자 별도 파일) 위에 <이름> 으로 표시
+#   - statustag.sk  : 해로운 상태이상을 체력바(healthbar.sk) 위에 <이름> 으로 표시
+#   - healthbar.sk  : 머리 위 체력바 + 데미지 숫자(사용자가 직접 작성한 파일, statustag.sk 가 이 위에 상태이상을 띄움)
 #   - stun.sk       : 기절 중 클릭/블럭/버리기 차단
 #
 # 7. jar에서 확인된 문법 메모 (Skript 2.13.0)

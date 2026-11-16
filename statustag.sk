@@ -31,8 +31,12 @@ function stagUpdate(p: player):
 		stagRemove({_id})
 		stop
 	set {_txt} to ""
+	set {_i} to 0
 	loop {_n::*}:
-		set {_txt} to "%{_txt}%&c<%loop-index%> "
+		add 1 to {_i}
+		if {_i} > 1:
+			set {_txt} to "%{_txt}% "
+		set {_txt} to "%{_txt}%&c<%loop-index%>"
 	set {_d} to {-stag_d::%{_id}%}
 	set {_new} to false
 	if {_d} is not set:
