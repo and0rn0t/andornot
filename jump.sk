@@ -23,9 +23,6 @@ on gamemode change:
 	wait 1 tick
 	jumpFlightOn(player)
 
-on swap hand items:
-	cancel event
-
 on flight toggle:
 	if gamemode of player is not survival:
 		if gamemode of player is not adventure:
