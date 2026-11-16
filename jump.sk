@@ -1,12 +1,46 @@
-# [jump.sk] F키(손 바꾸기)로 발동하는 대시 스킬. 스태미너 33 이상에서 사용, 스태미너 소모
+# [jump.sk] 점프(스페이스)를 두 번 눌러 발동하는 대시 스킬. 스태미너 25 이상에서 사용, 스태미너 소모
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-st}, {-stcap}, {-jump}(도약 실행 중), {-jumplock}(읽기 전용: 하나라도 있으면 도약 불가)
+# 발동 방식: 서바이벌/어드벤처 플레이어에게 비행 허용(flight mode)을 켜 두면, 스페이스 두 번이 "비행 전환(flight toggle)" 이벤트로 들어온다.
+# 그 이벤트를 취소해서 실제로 날지는 못하게 하고, 그 순간에 도약을 쓴다. (지상에서 두 번 눌러도, 공중에서 두 번 눌러도 발동)
+# 비행 허용은 접속/리스폰/게임모드 변경 때 다시 켠다. 크리에이티브/관전자는 건드리지 않는다.
+# F키(손 바꾸기)는 예전처럼 취소만 한다(도약은 더 이상 F키로 안 나감).
+
+function jumpFlightOn(p: player):
+	if gamemode of {_p} is survival:
+		set flight mode of {_p} to true
+	else if gamemode of {_p} is adventure:
+		set flight mode of {_p} to true
+
+on join:
+	jumpFlightOn(player)
+
+on respawn:
+	wait 1 tick
+	jumpFlightOn(player)
+
+on gamemode change:
+	wait 1 tick
+	jumpFlightOn(player)
 
 on swap hand items:
 	cancel event
-	if isStunned(player) is true:
+
+on flight toggle:
+	if gamemode of player is not survival:
+		if gamemode of player is not adventure:
+			stop
+	# 실제 비행은 막는다. 클라이언트의 비행 상태를 되돌리기 위해 한 틱 꺼 뒀다가 다시 켠다.
+	cancel event
+	set flight mode of player to false
+	set {_pl} to player
+	if isStunned({_pl}) is true:
+		wait 1 tick
+		jumpFlightOn({_pl})
 		stop
 	if {-jumplock::%player's uuid%::*} is set:
+		wait 1 tick
+		jumpFlightOn({_pl})
 		stop
 	if {-st::%player's uuid%} >= 25:
 		if {-jump::%player's uuid%} is not set:
@@ -21,6 +55,8 @@ on swap hand items:
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			delete {-jump::%player's uuid%}
+			# 도약이 시작된 뒤(5틱 후) 비행 허용을 다시 켜서 다음 도약 입력을 받는다
+			jumpFlightOn({_pl})
 			loop 5 times:
 				remove 2.5 from {-st::%player's uuid%}
 				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
@@ -31,3 +67,9 @@ on swap hand items:
 			wait 39 ticks
 			if {-stcap::%player's uuid%} > 0:
 				remove 1 from {-stcap::%player's uuid%}
+		else:
+			wait 1 tick
+			jumpFlightOn({_pl})
+	else:
+		wait 1 tick
+		jumpFlightOn({_pl})
