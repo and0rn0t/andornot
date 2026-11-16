@@ -4,8 +4,7 @@
 # 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 1초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
 # 폭발 이벤트(on explosion)를 취소해서 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클과 기절만 직접 처리한다.
 # 폭발 범위(반경)는 아래 tntRadius() 의 값 하나만 바꾸면 기절 범위, 폭발 이펙트, 경고 이펙트가 전부 같이 바뀐다. 날아가는 거리는 rightclick 의 speed 값(현재 1.5).
-# 바닥 표시: TNT 가 땅에 닿아 있는 동안 같은 주기로 폭발 범위만큼 바닥에 dust 원판을 깐다.
-# 경고 이펙트: TNT 가 살아있는 동안 4틱마다 TNT 를 따라다니며 폭발 범위 경계(구)를 붉은색 dust 로 표시한다.
+# 경고 이펙트(바닥 원판 + 범위 안 무작위 dust): TNT 가 착지한 뒤부터 폭발할 때까지 4틱마다 표시한다. 공중에서는 안 나온다.
 # 폭발 이펙트: 폭발 범위 안쪽을 large explosion 으로 2칸 간격으로 채운다(범위 끝에서 파티클 크기만큼 닿도록 반경-1 까지만 배치).
 
 on load:
@@ -15,16 +14,14 @@ on load:
 function tntRadius() :: number:
 	return 4
 
-# 경고 이펙트: loc 중심, 반경 tntRadius() 의 구를 이루는 큰 원 3개(수평 1, 수직 2)를 붉은 dust 로 그린다.
+# 경고 이펙트: 폭발 범위(구) 안의 무작위 위치에 붉은 dust 를 흩뿌린다.
 function tntWarn(loc: location):
 	set {_r} to tntRadius()
-	loop 36 times:
-		set {_a} to loop-number * 10
-		set {_p} to {_loc} ~ spherical vector {_r}, {_a}, 0
-		play 1 red dust with size 1.5 at {_p} in radius of 100
-		set {_p} to {_loc} ~ spherical vector {_r}, 0, {_a}
-		play 1 red dust with size 1.5 at {_p} in radius of 100
-		set {_p} to {_loc} ~ spherical vector {_r}, 90, {_a}
+	loop 25 times:
+		set {_d} to random number between 0 and {_r}
+		set {_yaw} to random number between 0 and 360
+		set {_pitch} to random number between -90 and 90
+		set {_p} to {_loc} ~ spherical vector {_d}, {_yaw}, {_pitch}
 		play 1 red dust with size 1.5 at {_p} in radius of 100
 
 # 바닥 표시: TNT 가 착지한 자리의 바닥에, 폭발 범위만큼 붉은 dust 를 원판(동심원)으로 깐다.
@@ -34,7 +31,7 @@ function tntGroundMark(loc: location):
 	set {_ring} to {_r}
 	# 바깥 원(= 폭발 범위 경계)부터 1칸씩 안쪽으로. 반지름이 클수록 점을 더 찍는다.
 	while {_ring} > 0:
-		set {_cnt} to floor({_ring} * 8)
+		set {_cnt} to floor({_ring} * 16)
 		loop {_cnt} times:
 			set {_p} to {_base} ~ spherical vector {_ring}, (loop-number * 360 / {_cnt}), 0
 			play 1 red dust with size 1.2 at {_p} in radius of 100
@@ -80,16 +77,17 @@ on rightclick:
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
 		{_t}.setFuseTicks(40)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
-	# 경고 이펙트: TNT 가 살아있는 동안 TNT 위치를 따라가며 폭발 범위를 붉은 dust 로 표시(최대 25번 = 100틱 안전장치).
+	# 경고 이펙트: TNT 가 살아있는 동안 4틱마다 확인해서, 착지한 뒤에만 표시한다(최대 25번 = 100틱 안전장치).
 	set {_n} to 0
 	while {_t} is alive:
 		add 1 to {_n}
 		if {_n} > 25:
 			stop
-		tntWarn(location of {_t})
-		# 착지했으면 바닥에 폭발 범위 표시
+		# 모든 경고 이펙트는 TNT 가 착지한 뒤에만 나온다.
 		if {_t} is on ground:
-			tntGroundMark(location of {_t})
+			set {_wl} to location of {_t}
+			tntGroundMark({_wl})
+			tntWarn({_wl})
 		wait 4 ticks
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
