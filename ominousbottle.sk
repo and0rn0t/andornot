@@ -36,9 +36,9 @@ on rightclick:
 		set {_fwd} to vector(x of {_dir}, 0, z of {_dir})
 		set {_right} to {_fwd} cross vector(0, 1, 0)
 		set {_hand} to {_p}'s location ~ vector(0, 1.1, 0) ~ ({_right} * 0.4) ~ ({_fwd} * 0.5)
-		play 8 black dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
-		play 8 red dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
-		play 8 blue dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
+		play 24 black dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
+		play 24 red dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
+		play 24 blue dust with size 0.8 with offset of 0.15, 0.15, 0.15 and speed 0 at {_hand} in radius of 100
 		wait 2 ticks
 
 # 효과 중: 스태미너 틱당 +1 추가. 끝나면 탈진(스태미너 0).
