@@ -94,6 +94,11 @@ on damage:
 						# 도끼 능력 발동: 타격 지점(피격자 위치)에 모루 소리
 						set {_loc} to location of victim
 						play sound "block.anvil.place" with volume 1 and pitch 1 at {_loc}
+						# 강타 이펙트: 피격자 몸통 높이에 크리티컬 파티클 + 폭발 파티클
+						set {_fx} to location of victim
+						add 1 to y-coordinate of {_fx}
+						draw 20 of crit at {_fx}
+						draw 1 of explosion at {_fx}
 					set damage to {_d} * {_cm}
 				else if {_w} is "hoe":
 					# 괭이: 기본 체력 2, 체력 50% 이하인 적에게 100% 증가(2배)
