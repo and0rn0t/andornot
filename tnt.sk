@@ -65,7 +65,7 @@ on rightclick:
 		add 1 to {_n}
 		set {_l} to location of {_t}
 		play sound "block.note_block.pling" with volume 2 and pitch (1.2 + 0.1 * {_n}) at {_l}
-		wait {_g} ticks
+		wait ({_g} * 1 tick)
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
 on explosion:
