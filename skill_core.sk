@@ -79,7 +79,8 @@
 #       (탭)(탭)stop
 #       (탭)cancel event
 #   - 규칙: 메인핸드에 스킬 아이템이 있으면 그 스킬이 우선. 오프핸드 스킬은 메인핸드가
-#     다른 스킬 아이템이 아니고 창(SPEAR)도 아닐 때만 발동(창은 우클릭으로 쓰는 아이템이라 취소하면 안 됨). 이 판정은 아래 함수가 전부 처리한다.
+#     다른 스킬 아이템이 아니고 창(SPEAR)도 아닐 때만 발동(창은 우클릭으로 쓰는 아이템이라 취소하면 안 됨).
+#     단 메인핸드 스킬이 쿨타임(아이템 쿨타임)이면 오프핸드 스킬이 발동한다. 그래서 모든 스킬은 쿨타임을 set item cooldown 으로도 걸어야 한다. 이 판정은 아래 함수가 전부 처리한다.
 #   - 스킬이 damage 효과로 직접 데미지를 줄 때는 앞뒤로 {-skilldmg::%공격자 uuid%} 를 set / delete 한다(fishing.sk hookDamage 참고).
 #     그래야 main.sk 의 철퇴 x0.3, 창 상한 보정이 스킬 데미지에 적용되지 않는다. (투사체 데미지는 자동 제외)
 #   - 새 스킬이 쓰는 변수는 위 목록에 추가하고, 공용으로 필요한 함수는 이 파일에 추가한다.
@@ -291,15 +292,26 @@ function stun(p: player, src: text, d: timespan):
 	apply jump boost potion of tier 129 without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
 
 # 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
-# 오프핸드 아이템이 이 스킬이면, 메인핸드가 다른 스킬 아이템도 창(SPEAR)도 아닐 때만 true
+# 오프핸드 아이템이 이 스킬이면, 메인핸드가 (쿨타임이 아닌 다른 스킬 아이템)도 창(SPEAR)도 아닐 때만 true.
+# 메인핸드 스킬이 쿨타임이면 오프핸드 스킬이 발동한다(메인핸드 스킬은 양보). 쿨타임은 아이템 쿨타임(set item cooldown)으로 판단.
 function skillHand(p: player, t: itemtype) :: boolean:
 	if isStunned({_p}) is true:
 		return false
 	if {_p}'s tool is {_t}:
+		# 메인핸드 스킬이 쿨타임이고 오프핸드에 다른 스킬 아이템이 있으면 오프핸드 스킬에 양보한다.
+		if {_p} has {_t} on cooldown:
+			if isSkillItem({_p}'s offhand tool) is true:
+				if {_p}'s offhand tool is not {_t}:
+					return false
 		return true
 	if {_p}'s offhand tool is {_t}:
 		if isSkillItem({_p}'s tool) is true:
-			return false
+			# 메인핸드 스킬이 쿨타임이면 오프핸드 스킬이 발동한다.
+			set {_mc} to false
+			if {_p} has {_p}'s tool on cooldown:
+				set {_mc} to true
+			if {_mc} is false:
+				return false
 		# 메인핸드에 창이 있으면 우클릭은 창이 쓴다(바닐라 창 사용). 오프핸드 스킬이 이벤트를 취소해서 창을 막지 않게 한다.
 		set {_m} to {_p}.getEquipment().getItemInMainHand().getType().name()
 		if {_m} contains "SPEAR":
