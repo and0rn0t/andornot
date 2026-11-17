@@ -73,7 +73,12 @@ function killWeaponSprite(a: entity) :: text:
 	set {_n} to {_eq}.getItemInMainHand().getType().name()
 	if {_n} is "AIR":
 		return "stick"
-	return {_n}.toLowerCase()
+	set {_sp} to {_n}.toLowerCase()
+	# 금속 아이템은 재질이 네더라이트지만 겉모습이 철이라(items.sk 의 item_model) 킬로그 아이콘도 철 아이콘으로 바꾼다.
+	if {_sp} starts with "netherite_":
+		if {_sp} ends with "_axe" or "_hoe" or "_sword" or "_spear":
+			replace first "netherite_" in {_sp} with "iron_"
+	return {_sp}
 
 on death of player:
 	set the death message to ""
