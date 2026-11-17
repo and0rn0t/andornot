@@ -30,6 +30,8 @@
 
 import:
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	io.papermc.paper.datacomponent.DataComponentTypes
+	io.papermc.paper.datacomponent.item.TooltipDisplay
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
 function itemIds() :: texts:
@@ -135,6 +137,13 @@ function itemBuild(id: text, extra: text = "") :: itemtype:
 	set {_i} to {_i} named itemName({_id})
 	set lore of {_i} to {_l::*}
 	set {_i} to {_i} with item flags hide attributes and hide additional tooltip
+	# 불길한 병의 기본 설명(불길한 징조 N)은 위 플래그로 안 숨겨져서, 툴팁에서 해당 컴포넌트를 직접 숨긴다(Paper 데이터 컴포넌트, 미검증).
+	# 이 방법이 안 되면 {_st}.unsetData(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER) 로 컴포넌트 자체를 지우는 방법으로 바꿀 것.
+	if {_id} is "ominous_bottle":
+		set {_st} to {_i}.getRandom()
+		set {_td} to TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER).build()
+		{_st}.setData(DataComponentTypes.TOOLTIP_DISPLAY, {_td})
+		set {_i} to {_st}
 	return {_i}
 
 # 플레이어 인벤토리 s 번 칸(0부터)의 아이템이 카탈로그의 어떤 아이템인지. 아니면 "".
