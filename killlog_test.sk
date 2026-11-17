@@ -1,0 +1,96 @@
+# [killlog_test.sk] 킬로그 테스트용: op 플레이어가 플레이어가 아닌 생명체(몬스터/동물 등)를 죽이면 killlog.sk 와 같은 형식으로 채팅에 띄운다.
+# 형식: [검] [공격자 얼굴] 공격자이름 [사망 원인 아이콘] [피격자 아이콘] 피격자종류
+#   검: 보는 사람 기준으로 공격자가 아군이면 다이아몬드 검, 적군이면 구리 검(killlog.sk 와 같은 규칙, isAlly + {-team}). 테스트 중 팀이 없으면 항상 구리 검(본인이 보면 다이아몬드 검).
+#   피격자는 몹이라 얼굴이 없어서 몹 스폰알 아이콘(item/종류_spawn_egg)으로 대신한다. 스폰알이 없는 종류는 보라/검정 체크무늬가 뜰 수 있다.
+# 플레이어가 죽는 경우는 killlog.sk 가 처리하므로 여기서는 건드리지 않는다(같이 켜도 겹치지 않음). 테스트가 끝나면 이 파일을 지우거나 이름 앞에 - 를 붙여 끈다.
+# 이 파일이 쓰는 변수: 없음(전부 지역 변수). 함수 이름은 killlog.sk 와 겹치지 않게 kt 로 시작한다.
+# 아이콘 만드는 방식과 미검증 부분은 killlog.sk 맨 위 주석 참고.
+
+import:
+	org.bukkit.Bukkit
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+function ktIcon(s: text) :: text:
+	return "{""object"":""atlas"",""atlas"":""minecraft:items"",""sprite"":""minecraft:item/%{_s}%""}"
+
+function ktFace(n: text) :: text:
+	return "{""object"":""player"",""player"":{""name"":""%{_n}%""}}"
+
+# 공격자가 메인핸드에 든 아이템 이름(소문자)이 스프라이트 이름. 맨손이면 stick.
+function ktWeapon(a: entity) :: text:
+	if {_a} is not a living entity:
+		return "stick"
+	set {_eq} to {_a}.getEquipment()
+	if {_eq} is not set:
+		return "stick"
+	set {_n} to {_eq}.getItemInMainHand().getType().name()
+	if {_n} is "AIR":
+		return "stick"
+	# 금속 아이템은 재질이 네더라이트지만 겉모습이 철이라(items.sk 의 item_model) 아이콘도 철로 바꾼다(killlog.sk 와 같은 규칙).
+	if {_n} is "NETHERITE_AXE":
+		return "iron_axe"
+	if {_n} is "NETHERITE_PICKAXE":
+		return "iron_pickaxe"
+	if {_n} is "NETHERITE_HOE":
+		return "iron_hoe"
+	if {_n} is "NETHERITE_SWORD":
+		return "iron_sword"
+	if {_n} is "NETHERITE_SPEAR":
+		return "iron_spear"
+	return {_n}.toLowerCase()
+
+function ktCause(v: entity, a: entity) :: text:
+	set {_ldc} to {_v}.getLastDamageCause()
+	if {_ldc} is not set:
+		return "barrier"
+	set {_c} to {_ldc}.getCause().name()
+	if {_c} is "ENTITY_ATTACK":
+		return ktWeapon({_a})
+	if {_c} is "ENTITY_SWEEP_ATTACK":
+		return ktWeapon({_a})
+	if {_c} is "PROJECTILE":
+		return "arrow"
+	if {_c} is "ENTITY_EXPLOSION":
+		return "gunpowder"
+	if {_c} is "BLOCK_EXPLOSION":
+		return "gunpowder"
+	return "barrier"
+
+on death:
+	if victim is a player:
+		stop
+	if attacker is not a player:
+		stop
+	set {_a} to attacker
+	if {_a} is not op:
+		stop
+	set {_v} to victim
+	# 몹 종류 이름(예: zombie). 아이콘은 종류_spawn_egg 스프라이트.
+	set {_vt} to {_v}.getType().name().toLowerCase()
+	set {_gap} to "{""text"":"" ""}"
+	set {_an} to "%{_a}'s name%"
+	set {_af} to ktFace({_an})
+	set {_anj} to "{""text"":""%{_an}%""}"
+	set {_ci} to ktIcon(ktCause({_v}, {_a}))
+	set {_vi} to ktIcon("%{_vt}%_spawn_egg")
+	set {_vnj} to "{""text"":""%{_vt}%""}"
+	set {_mid} to "%{_af}%,%{_gap}%,%{_anj}%,%{_gap}%,%{_ci}%,%{_gap}%,%{_vi}%,%{_gap}%,%{_vnj}%"
+	set {_swa} to ktIcon("diamond_sword")
+	set {_swe} to ktIcon("copper_sword")
+	set {_jsona} to "{""text"":"""",""extra"":[%{_swa}%,%{_gap}%,%{_mid}%]}"
+	set {_jsone} to "{""text"":"""",""extra"":[%{_swe}%,%{_gap}%,%{_mid}%]}"
+	set {_ca} to GsonComponentSerializer.gson().deserialize({_jsona})
+	set {_ce} to GsonComponentSerializer.gson().deserialize({_jsone})
+	set {_aid} to "%uuid of {_a}%"
+	loop all players:
+		set {_vw} to loop-player
+		set {_ally} to false
+		if {_vw} is {_a}:
+			set {_ally} to true
+		if isAlly("%uuid of {_vw}%", {_aid}) is true:
+			set {_ally} to true
+		if {_ally} is true:
+			{_vw}.sendMessage({_ca})
+		else:
+			{_vw}.sendMessage({_ce})
+	Bukkit.getConsoleSender().sendMessage({_ce})

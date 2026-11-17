@@ -118,6 +118,7 @@
 #   - fishing.sk    : 낚싯대 스킬
 #   - gamesetup.sk  : 게임 사전 설정 GUI(팀 수/게임모드/랜덤 아이템, 변경 시 전체 알림). 게임 시스템은 gcTeams()/gcMode()/gcRandom() 로 읽는다
 #   - admin.sk      : /admin 관리자 메뉴(6줄 GUI, op 전용). 앞으로 관리자 전용 기능은 이 메뉴에 버튼으로 추가한다(추가법은 admin.sk 맨 위)
+#   - killlog_test.sk : 킬로그 테스트용(op 가 몹을 죽이면 킬로그 형식으로 표시). 테스트가 끝나면 지워도 됨
 #   - team.sk       : /team 명령으로 {-team} 설정(op 전용, 테스트용)
 #   - totem.sk      : 불사의 토템 스킬
 #   - anvil.sk      : 모루 스킬
