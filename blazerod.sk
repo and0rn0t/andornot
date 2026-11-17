@@ -54,7 +54,9 @@ on rightclick:
 		set {_n} to 0
 	if {-brlast::%{_id}%} is set:
 		set {_lim} to brReset()
-		if {-brlast::%{_id}%} + {_lim} seconds < now:
+		set {_lt} to {_lim} seconds
+		set {_since} to now - {-brlast::%{_id}%}
+		if {_since} > {_lt}:
 			set {_n} to 0
 	set {_n} to {_n} + 1
 	set {-brlast::%{_id}%} to now
