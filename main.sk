@@ -171,6 +171,11 @@ on damage:
 		if {-skilldmg::%attacker's uuid%} is not set:
 			if projectile is not set:
 				set {_w} to weaponKind(attacker)
+				# 힘 효과(네더의 별 등): 도끼/곡괭이/괭이는 데미지를 고정값으로 덮어써서 바닐라 힘 보너스가 사라지므로 직접 더한다(실 체력 +3, 바닐라 힘 I 과 같은 값).
+				set {_sb} to 0
+				set {_la} to attacker
+				if {_la} has strength:
+					set {_sb} to hp(3)
 				# 공격 쿨다운 배율 + 크리티컬(바닐라 판정, 1.5배). 덮어쓰는 무기(도끼/곡괭이/괭이)에만 쓴다.
 				set {_cm} to cooldownScale(attacker)
 				set {_ev} to event
@@ -198,12 +203,14 @@ on damage:
 						add 1 to y-coordinate of {_fx}
 						play 20 crit with offset of 0.3, 0.3, 0.3 and speed 0.3 at {_fx} in radius of 100
 						play 1 large explosion with offset of 0, 0, 0 and speed 0 at {_fx} in radius of 100
+					set {_d} to {_d} + {_sb}
 					set damage to {_d} * {_cm}
 				else if {_w} is "hoe":
 					# 괭이: 기본 체력 2, 체력 50% 이하인 적에게 100% 증가(2배)
 					set {_d} to hp(2)
 					if healthRatio(victim) <= 0.5:
 						set {_d} to {_d} * 2
+					set {_d} to {_d} + {_sb}
 					set damage to {_d} * {_cm}
 				else if {_w} is "pickaxe":
 					# 곡괭이: 기본 체력 2 + 중첩 수. 타격마다 중첩 +1, 마지막 타격 후 3초 안에 못 때리면 전부 소멸.
@@ -212,7 +219,8 @@ on damage:
 					if {-pickexp::%attacker's uuid%} is set:
 						if {-pickexp::%attacker's uuid%} > now:
 							set {_stack} to {-pickstack::%attacker's uuid%}
-					set damage to hp(2 + {_stack}) * {_cm}
+					set {_pd} to hp(2 + {_stack}) + {_sb}
+					set damage to {_pd} * {_cm}
 					set {-pickstack::%attacker's uuid%} to {_stack} + 1
 					set {-pickexp::%attacker's uuid%} to now + 3 seconds
 					# 보스바에 곡괭이 중첩(이로운 효과) 표시. 중첩 수가 바뀌어도 같은 출처 키라 한 줄로 갱신된다.

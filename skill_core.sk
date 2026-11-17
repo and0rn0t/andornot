@@ -64,6 +64,7 @@
 #   {-statusdur::uuid::출처}  상태이상 전체 시간(밀리초, 막대 길이 계산용)          skill_core 함수, main
 #   {-statuslabel::uuid::출처}  이름 뒤 가변 표시(예: " x2")   skill_core 함수, main
 #   {-tntcd::uuid}           TNT 쿨타임 종료 시각                    tnt
+#   {-tntownerp::TNT엔티티uuid} 던진 플레이어(피해 출처 지정용)     tnt
 #   {-tntowner::TNT엔티티uuid} 던진 사람 uuid(텍스트). 폭발하면 지움      tnt
 #   {-ccshown::uuid}         cc 타이틀을 보여주는 중(끝나면 clearTitle)   main(접속 시 삭제)
 #   {-nscd::uuid}            네더의 별 쿨타임 종료 시각               netherstar
