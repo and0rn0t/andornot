@@ -73,7 +73,7 @@
 #   {-ccshown::uuid}         cc 타이틀을 보여주는 중(끝나면 clearTitle)   main(접속 시 삭제)
 #   {-nscd::uuid}            네더의 별 쿨타임 종료 시각               netherstar
 #   {-obcd::uuid}            불길한 병 쿨타임 종료 시각               ominousbottle
-#   {-team::uuid}            소속 팀 이름(텍스트). 같으면 아군. 팀 설정 코드는 아직 없음(게임 설계 확정 후)   isAlly 로 읽기, tnt
+#   {-team::uuid}            소속 팀 이름(텍스트). 같으면 아군. 팀 설정은 team.sk 의 /team 명령(게임 설계 확정 후 대체)   isAlly 로 읽기, tnt
 #   {-potcd::uuid::종류}     포션 쿨타임 종료 시각(종류: heal, stamina, invis)  potions
 #   {-invis::uuid}          투명 포션 효과 종료 시각(피해를 주고받으면 풀림)    potions
 #   {-exhaust::uuid}         불길한 병 탈진 종료 시각(탈진 중 stcap +1)   ominousbottle
@@ -115,6 +115,7 @@
 #   - jump.sk       : 점프 두 번(비행 전환 이벤트) 대시 스킬
 #   - crossbow.sk   : 석궁 스킬
 #   - fishing.sk    : 낚싯대 스킬
+#   - team.sk       : /team 명령으로 {-team} 설정(op 전용, 테스트용)
 #   - tnt.sk        : TNT 스킬(투척, 33틱 뒤 기절 폭발)
 #   - statustag.sk  : 해로운 상태이상을 체력바(healthbar.sk) 위에 <이름> 으로 표시
 #   - healthbar.sk  : 머리 위 체력바 + 데미지 숫자(사용자가 직접 작성한 파일, statustag.sk 가 이 위에 상태이상을 띄움)

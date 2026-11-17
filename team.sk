@@ -1,0 +1,24 @@
+# [team.sk] 팀 설정 명령(op 전용, 게임 설계 전 테스트용). 팀은 스코어보드가 아니라 Skript 변수 {-team::uuid}(팀 이름)로 관리한다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-team::uuid}(RAM 전용, 서버를 끄면 사라짐). 읽는 곳: skill_core.sk 의 isAlly()
+#   /team <플레이어> <팀이름> : 그 플레이어를 팀에 넣는다(같은 팀 이름이면 서로 아군)
+#   /team <플레이어> none     : 팀에서 뺀다
+# 게임 설계가 확정되면 팀 배정은 게임 시작 코드에서 {-team} 을 채우면 되고, 이 파일은 지워도 된다.
+
+command /team <player> <text>:
+	description: 플레이어의 팀을 설정해요 (op 전용, 팀 이름이 none 이면 해제)
+	executable by: players and console
+	trigger:
+		if sender is a player:
+			if player is not op:
+				send "&c권한이 없어요."
+				stop
+		if arg-2 is "none":
+			delete {-team::%uuid of arg-1%}
+			send "&7%arg-1% 의 팀을 해제했어요."
+		else:
+			set {-team::%uuid of arg-1%} to arg-2
+			send "&7%arg-1% 의 팀을 %arg-2% 로 설정했어요."
+
+on quit:
+	delete {-team::%uuid of player%}
