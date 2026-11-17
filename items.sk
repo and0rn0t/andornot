@@ -41,7 +41,7 @@ import:
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
 function itemIds() :: texts:
-	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem" and "anvil"
+	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge" and "flint_steel"
 
 # 아이템 이름
 function itemName(id: text) :: text:
@@ -77,6 +77,14 @@ function itemName(id: text) :: text:
 		return "&e불사의 토템"
 	if {_id} is "anvil":
 		return "&f모루"
+	if {_id} is "bow":
+		return "&f활"
+	if {_id} is "blaze_rod":
+		return "&6블레이즈 막대기"
+	if {_id} is "wind_charge":
+		return "&b돌풍구"
+	if {_id} is "flint_steel":
+		return "&c부싯돌과 부시"
 	return "&f%{_id}%"
 
 # 아이템 재료(포션은 바닐라 포션 종류가 스킬 판정에 쓰이므로 종류를 바꾸지 말 것: skill_core.sk 의 potionKind)
@@ -113,6 +121,14 @@ function itemBase(id: text) :: itemtype:
 		return totem of undying
 	if {_id} is "anvil":
 		return anvil
+	if {_id} is "bow":
+		return bow
+	if {_id} is "blaze_rod":
+		return blaze rod
+	if {_id} is "wind_charge":
+		return wind charge
+	if {_id} is "flint_steel":
+		return flint and steel
 	return stone
 
 # 아이템 설명(lore). 여기를 직접 고치면 된다. 수치는 현재 코드 기준(2026-11): 체력 숫자는 하트가 아니라 기획서의 실제 체력.
@@ -145,6 +161,14 @@ function itemLoreLines(id: text) :: texts:
 		return "&7[우클릭] 스태미너 50 회복", "&7쿨타임 7초"
 	if {_id} is "totem":
 		return "&7[우클릭] 5초간 무적이 돼요", "&7무적 동안 도약을 쓸 수 없어요", "&7쿨타임 60초"
+	if {_id} is "bow":
+		return "&7[당겼다 놓기] 최대 3초까지 충전해요", "&7충전할수록 피해(4~10)와 화살 속도가 늘어요", "&7최대 충전 시 소닉붐", "&7발사 후 쿨타임 2초"
+	if {_id} is "blaze_rod":
+		return "&7[우클릭] 0.5초 뒤 화염구를 발사해요", "&7피해 5", "&73번째 사용은 머리 위에서 화염구 3개", "&7쿨타임 4초"
+	if {_id} is "wind_charge":
+		return "&7[우클릭] 던진 자리에 5초간 연막(반경 15칸)", "&7연막 안의 플레이어는 실명이에요", "&7쿨타임 18초"
+	if {_id} is "flint_steel":
+		return "&7[우클릭] 주변 10칸 안의 적을", "&75초간 취약(받는 피해 1.2배)으로 만들고 불태워요", "&7쿨타임 20초"
 	if {_id} is "anvil":
 		return "&7[우클릭] 이번 게임 동안", "&7가하는 피해가 10%% 증가해요", "&7사용할 때마다 중첩돼요(합연산)", "&7쿨타임 90초"
 	if {_id} is "potion_invis":
@@ -223,6 +247,12 @@ function itemCategory(id: text) :: number:
 		return 2
 	if {_id} is "tnt":
 		return 3
+	if {_id} is "bow":
+		return 2
+	if {_id} is "wind_charge":
+		return 3
+	if {_id} is "flint_steel":
+		return 3
 	if {_id} is "nether_star":
 		return 4
 	if {_id} is "ominous_bottle":
@@ -239,6 +269,7 @@ function itemCategory(id: text) :: number:
 		return 4
 	return 0
 
+# 주의: blaze_rod(블레이즈 막대기)는 어느 분류인지 사용자 확인 전이라 일부러 미분류(0, 맨 뒤)로 둔다.
 # ids 중 분류가 c 인 것만 순서 그대로 돌려준다.
 function itemCatPick(ids: texts, c: number) :: texts:
 	loop {_ids::*}:
@@ -309,6 +340,14 @@ function itemSprite(id: text) :: text:
 		return "totem_of_undying"
 	if {_id} is "anvil":
 		return "block/anvil"
+	if {_id} is "bow":
+		return "bow"
+	if {_id} is "blaze_rod":
+		return "blaze_rod"
+	if {_id} is "wind_charge":
+		return "wind_charge"
+	if {_id} is "flint_steel":
+		return "flint_and_steel"
 	return "barrier"
 
 # 처음 접속한 플레이어에게 줄 기본 구성(1~5번). 서로 달라야 한다.

@@ -1,0 +1,109 @@
+# [blazerod.sk] 블레이즈 막대기 스킬(우클릭, 쿨 4초): 사용 0.5초 후 데미지 5의 화염구 발사, 불꽃 이펙트로 궤적. 3번째 사용은 머리 위 3개 지점에서 바라보는 곳으로 화염구 3개를 차례로 발사.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-brcd}(쿨타임 종료 시각), {-brcount}(연속 사용 횟수), {-brlast}(마지막 사용 시각), {-fb::화염구uuid}(우리 화염구 표시, main.sk 가 읽어서 데미지를 고정), {-skillitems::blaze_rod}
+# 쿨 4초는 발사 딜레이(0.5초)를 뺀 값이라 사용 시점부터 4.5초로 건다. 3번째 사용 때 화염구 3개를 5틱 간격으로 날리고 횟수는 0 으로 돌아간다.
+# 횟수는 마지막 사용 후 BR_RESET 초(아래 함수 brReset) 동안 안 쓰면 0 으로 돌아간다(기획에 없어서 내가 정한 값, 미정이라 확인 필요).
+# 화염구: 작은 화염구(small fireball) 엔티티. 불타는 블럭/엔티티 점화는 끄고(setIsIncendiary(false)), 맞으면 main.sk 에서 데미지를 hp(5)로 고정, 1틱 뒤 불을 끈다(불 데미지 방지).
+# 미검증: small fireball 스폰/shooter 설정/setDirection/setIsIncendiary, 파티클 FLAME, extinguish.
+
+import:
+	org.bukkit.Particle
+
+on load:
+	set {-skillitems::blaze_rod} to blaze rod
+
+# 연속 사용 횟수가 0 으로 돌아가는 시간(초). 이 시간 안에 계속 써야 3번째 사용이 된다.
+function brReset() :: number:
+	return 10
+
+# from 에서 to 방향으로 화염구 하나를 쏘고 궤적을 그린다.
+function brFire(p: player, from: location, to: location):
+	set {_d} to vector from {_from} to {_to}
+	set {_vel} to (normalized {_d}) * 1.2
+	spawn a small fireball at {_from}:
+		set {_f} to event-entity
+		{_f}.setShooter({_p})
+		{_f}.setIsIncendiary(false)
+		{_f}.setDirection({_vel})
+		set velocity of event-entity to {_vel}
+		set {-fb::%uuid of event-entity%} to true
+	set {_fid} to uuid of {_f}
+	play sound "entity.blaze.shoot" with volume 1 and pitch 1 at {_from}
+	loop 60 times:
+		if {_f} is not alive:
+			exit loop
+		set {_l} to location of {_f}
+		{_l}.getWorld().spawnParticle(Particle.FLAME, {_l}, 4, 0.1, 0.1, 0.1, 0.01)
+		wait 1 tick
+	delete {_f}
+	delete {-fb::%{_fid}%}
+
+on rightclick:
+	if skillHand(player, blaze rod) is false:
+		stop
+	cancel event
+	set {_p} to player
+	set {_id} to "%player's uuid%"
+	if {-brcd::%{_id}%} is set:
+		if {-brcd::%{_id}%} > now:
+			stop
+	set {-brcd::%{_id}%} to now + 4500 milliseconds
+	set item cooldown of blaze rod for {_p} to 4500 milliseconds
+	set {_n} to {-brcount::%{_id}%}
+	if {_n} is not a number:
+		set {_n} to 0
+	if {-brlast::%{_id}%} is set:
+		set {_lim} to brReset()
+		if {-brlast::%{_id}%} + {_lim} seconds < now:
+			set {_n} to 0
+	set {_n} to {_n} + 1
+	set {-brlast::%{_id}%} to now
+	set {_triple} to false
+	if {_n} >= 3:
+		set {_triple} to true
+		set {-brcount::%{_id}%} to 0
+	else:
+		set {-brcount::%{_id}%} to {_n}
+	play sound "item.firecharge.use" with volume 1 and pitch 0.8 at {_p}
+	wait 10 ticks
+	if {_p} is not online:
+		stop
+	if health of {_p} <= 0:
+		stop
+	if {_triple} is false:
+		set {_eye} to {_p}.getEyeLocation()
+		set {_dir} to {_eye}.getDirection()
+		set {_from} to {_eye} ~ {_dir}
+		set {_to} to {_eye} ~ ({_dir} * 30)
+		brFire({_p}, {_from}, {_to})
+		stop
+	# 3번째 사용: 머리 위 왼쪽/가운데/오른쪽 3개 지점에서 바라보는 곳으로 차례로 발사
+	loop 3 times:
+		if {_p} is not online:
+			stop
+		if health of {_p} <= 0:
+			stop
+		set {_k} to loop-number - 2
+		set {_yaw} to yaw of {_p}
+		set {_rx} to 0 - cos({_yaw})
+		set {_rz} to 0 - sin({_yaw})
+		set {_eye} to {_p}.getEyeLocation()
+		set {_dir} to {_eye}.getDirection()
+		set {_ox} to {_rx} * {_k} * 1.6
+		set {_oz} to {_rz} * {_k} * 1.6
+		set {_from} to {_eye} ~ vector({_ox}, 1.8, {_oz})
+		set {_to} to {_eye} ~ ({_dir} * 30)
+		brFire({_p}, {_from}, {_to})
+		wait 5 ticks
+
+# 우리 화염구가 맞으면 불을 바로 끈다(점화 데미지 방지, 데미지는 main.sk 가 고정)
+on damage:
+	if projectile is set:
+		if {-fb::%uuid of projectile%} is set:
+			set {_v} to victim
+			wait 1 tick
+			extinguish {_v}
+
+on join:
+	delete {-brcd::%player's uuid%}
+	delete {-brcount::%player's uuid%}
