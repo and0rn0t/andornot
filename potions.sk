@@ -16,17 +16,26 @@ import:
 # 주의: getEquipment() 는 아이템의 복사본을 줘서 컴포넌트를 달아도 실제 아이템에 안 붙는다(게이지가 안 나왔던 원인으로 추정).
 # 실제 아이템을 바로 바꾸는 getInventory() 의 손 아이템을 써야 한다.
 function potionVisual(p: player, kind: text, secs: number):
+	# 실제 아이템에 컴포넌트가 붙도록: 손 아이템을 복제해서 컴포넌트를 달고 같은 손에 다시 넣는다.
+	set {_main} to false
 	if potionKind({_p}, "main") is {_kind}:
-		set {_it} to {_p}.getInventory().getItemInMainHand()
+		set {_main} to true
+	if {_main} is true:
+		set {_it} to {_p}.getInventory().getItemInMainHand().clone()
 	else:
-		set {_it} to {_p}.getInventory().getItemInOffHand()
+		set {_it} to {_p}.getInventory().getItemInOffHand().clone()
 	set {_key} to Key.key("andornot", "potion_%{_kind}%")
 	set {_cd} to UseCooldown.useCooldown({_secs}).cooldownGroup({_key}).build()
 	{_it}.setData(DataComponentTypes.USE_COOLDOWN, {_cd})
-	# 클라이언트가 아이템의 쿨타임 그룹을 알도록 인벤토리를 다시 보낸다
-	{_p}.updateInventory()
+	if {_main} is true:
+		{_p}.getInventory().setItemInMainHand({_it})
+	else:
+		{_p}.getInventory().setItemInOffHand({_it})
 	set {_ticks} to {_secs} * 20
 	{_p}.setCooldown({_it}, {_ticks})
+	# 임시 디버그: 컴포넌트가 실제로 붙었는지 확인(해결되면 지울 것)
+	set {_has} to {_it}.hasData(DataComponentTypes.USE_COOLDOWN)
+	send "&7[포션 쿨타임] 컴포넌트 적용=%{_has}% 손=%{_main}% 종류=%{_kind}%" to {_p}
 
 # 이번 우클릭에서 발동할 포션 종류("" 이면 없음). 메인핸드 포션 우선, 메인핸드 포션이 쿨타임이면 오프핸드로 양보.
 # 메인핸드가 다른 스킬 아이템이면(쿨타임이 아닐 때) 그 스킬이 우선이라 발동하지 않는다. 메인핸드에 창이 있으면 창이 우클릭을 쓴다.
