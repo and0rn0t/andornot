@@ -12,8 +12,8 @@
 #   - 선택 GUI: 위 3줄(27칸)은 아이템, 맨 아래 1줄은 나중에 페이지 넘기기 자리(지금은 회색 유리판). 빈 칸은 전부 회색 색유리판(이름 공백)이고 클릭해도 아무 일도 안 일어난다.
 #   - 아이템이 27개를 넘으면 페이지 기능을 추가해야 한다(지금은 27개까지만 표시).
 #   - 모든 GUI 칸 클릭에 UI 버튼 소리가 난다.
-#   - 구성 1~5번 아이템은 실제 핫바에도 계속 지급된다(loadoutGive). 입장, 리스폰, 구성 변경, 1초마다 확인해서 모자라거나 다른 아이템이면 채우고,
-#     구성 칸이 아닌 곳에 있는 카탈로그 아이템(떨어뜨림/옮김)은 치운다. 구성 번호가 들어갈 핫바 칸은 loadoutSlot() 에서 직접 정한다.
+#   - 구성 1~5번 아이템은 실제 인벤토리에도 지급된다(loadoutGive). 입장, 리스폰, 구성 변경 때만 확인해서 없는 아이템을 채우고, 핫바 어느 칸에 두든 자유다.
+#     처음 넣는 칸은 loadoutSlot() 의 선호 칸이 비었으면 거기, 아니면 빈 칸. 게임 중이 아닐 때는 구성 아이템을 버릴 수 없다(잃어버려도 다시 확인하지 않아서).
 #   - 구성 1~5번 아이템은 탭리스트의 플레이어 이름 옆에 아이콘으로 표시된다(킬로그와 같은 방식).
 #   - /itemorder (op 전용): GUI 에 나오는 순서를 바꾸는 편집 GUI. 아이템을 클릭 -> 바꿀 다른 아이템 클릭 하면 두 아이템의 자리가 서로 바뀌고 저장된다.
 #
@@ -241,7 +241,7 @@ function itemIcon(id: text) :: text:
 		replace "}" in {_j} with ",""color"":""%{_c}%""}"
 	return {_j}
 
-# 구성 k 번(1~5)이 들어갈 핫바 번호(1~9). 여기를 고치면 된다. 9번은 무기고 자리라 쓰지 말 것. 서로 겹치면 안 된다.
+# 구성 k 번(1~5)을 처음 지급할 때 넣을 핫바 번호(1~9). 그 칸이 비어 있을 때만 쓰고, 이후 플레이어가 핫바에서 자유롭게 옮겨도 된다. 9번은 무기고 자리라 쓰지 말 것.
 function loadoutSlot(k: number) :: number:
 	if {_k} is 1:
 		return 1
@@ -253,32 +253,46 @@ function loadoutSlot(k: number) :: number:
 		return 4
 	return 5
 
-# s 번 칸(0부터)의 상태를 want(아이템 id, 비어 있으면 "")에 맞춘다. 다르면 want 로 교체, want 가 없는데 카탈로그 아이템이면 치운다.
-function loadoutFixSlot(p: player, s: number, want: text):
-	set {_cur} to itemIdAt({_p}, {_s})
-	if {_cur} is {_want}:
-		stop
-	if {_want} is not "":
-		set slot {_s} of {_p}'s inventory to itemBuild({_want})
-	else if {_cur} is not "":
-		clear slot {_s} of {_p}'s inventory
+# 구성 아이템이 인벤토리 어디에 있는지(첫 번째 칸, 0부터). 없으면 -1.
+function loadoutFind(p: player, id: text) :: number:
+	loop integers from 0 to 35:
+		if itemIdAt({_p}, loop-value) is {_id}:
+			return loop-value
+	return -1
 
-# 구성 1~5번 아이템을 loadoutSlot() 이 정한 핫바 칸에 맞춰 지급한다(이미 맞으면 건드리지 않음). 9번 칸(무기고)은 armoryEnsure 가 맡는다.
-function loadoutGive(p: player):
-	delete {_want::*}
-	loop integers from 1 to 5:
-		set {_k} to loop-value
-		set {_s} to loadoutSlot({_k}) - 1
-		if {_s} is not 8:
-			set {_want::%{_s}%} to loadoutGet({_p}, {_k})
+# 구성 아이템을 넣을 빈 칸(0부터). 선호 칸(pref)이 비어 있으면 그 칸, 아니면 핫바, 그 다음 인벤토리 순. 없으면 -1.
+# 게임 중이 아닐 때 8번 칸(9번 슬롯)은 무기고 자리라 쓰지 않는다.
+function loadoutEmpty(p: player, pref: number) :: number:
+	set {_res} to true
+	if {-ingame} is not true:
+		if {_pref} is 8:
+			set {_res} to false
+	if {_res} is true:
+		if slot {_pref} of {_p}'s inventory is air:
+			return {_pref}
 	loop integers from 0 to 35:
 		set {_s} to loop-value
-		if {_s} is not 8:
-			set {_w} to {_want::%{_s}%}
-			if {_w} is not set:
-				set {_w} to ""
-			loadoutFixSlot({_p}, {_s}, {_w})
-	loadoutFixSlot({_p}, 40, "")
+		set {_ok} to true
+		if {-ingame} is not true:
+			if {_s} is 8:
+				set {_ok} to false
+		if {_ok} is true:
+			if slot {_s} of {_p}'s inventory is air:
+				return {_s}
+	return -1
+
+# 구성 1~5번 아이템이 인벤토리에 없으면 채운다. 이미 어디든 있으면 건드리지 않는다(핫바 어느 칸에 두든 자유).
+# 새로 넣을 때 칸은 loadoutSlot() 이 정한 선호 칸이 비어 있으면 거기, 아니면 빈 칸. 확인하는 때: 입장, 리스폰, 구성 변경(이 파일의 호출부).
+function loadoutGive(p: player):
+	loop integers from 1 to 5:
+		set {_k} to loop-value
+		set {_id} to loadoutGet({_p}, {_k})
+		if loadoutFind({_p}, {_id}) < 0:
+			set {_s} to loadoutEmpty({_p}, loadoutSlot({_k}) - 1)
+			if {_s} < 0:
+				send "&c인벤토리가 가득 차서 %itemName({_id})% &c을(를) 지급하지 못했어요." to {_p}
+			else:
+				set slot {_s} of {_p}'s inventory to itemBuild({_id})
 
 # 탭리스트의 플레이어 이름 옆에 구성 1~5번 아이콘을 붙인다(킬로그와 같은 스프라이트 컴포넌트, 미검증).
 function tabUpdate(p: player):
@@ -380,8 +394,11 @@ function itemGuiOpen(p: player, mode: text, idx: number = 0):
 on join:
 	loadoutInit(player)
 	tabUpdate(player)
-	if {-ingame} is not true:
-		loadoutGive(player)
+	loadoutGive(player)
+
+on respawn:
+	wait 1 tick
+	loadoutGive(player)
 
 on load:
 	loop all players:
@@ -394,7 +411,6 @@ every second:
 		stop
 	loop all players:
 		armoryEnsure(loop-player)
-		loadoutGive(loop-player)
 
 # 무기고 우클릭: 배치를 막고 GUI 를 연다(상자 여는 소리)
 on right click:
@@ -418,8 +434,16 @@ on right click:
 on drop:
 	if {-ingame} is true:
 		stop
-	if name of event-item is armoryName():
+	set {_dn} to name of event-item
+	if {_dn} is not set:
+		stop
+	if {_dn} is armoryName():
 		cancel the event
+		stop
+	loop itemIds():
+		if {_dn} is itemName(loop-value):
+			cancel the event
+			stop
 
 command /itemorder:
 	description: 아이템 변경 GUI 의 표시 순서를 편집해요 (op 전용)
@@ -487,7 +511,12 @@ on inventory click:
 						send "&c이미 구성에 있는 아이템이에요." to {_p}
 						play sound "entity.villager.no" with volume 0.5 to {_p}
 						stop
+			set {_old} to loadoutGet({_p}, {_k})
+			set {_os} to loadoutFind({_p}, {_old})
 			set {loadout::%{_uid}%::%{_k}%} to {_id}
+			# 기존 아이템이 있던 칸에 새 아이템을 넣는다(없으면 loadoutGive 가 빈 칸에 지급)
+			if {_os} >= 0:
+				set slot {_os} of {_p}'s inventory to itemBuild({_id})
 			tabUpdate({_p})
 			loadoutGive({_p})
 		itemGuiOpen({_p}, "armory")
