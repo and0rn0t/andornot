@@ -1,0 +1,113 @@
+# [killlog.sk] 킬로그: 플레이어가 죽으면 채팅에 [검] [공격자 얼굴] 공격자이름 [사망 원인 아이콘] [피격자 얼굴] 피격자이름 을 띄운다. 바닐라 사망 메시지는 지운다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: 없음(전부 지역 변수). 팀 판정은 skill_core.sk 의 isAlly() 가 {-team} 변수를 읽는다.
+# 맨 앞 검 아이콘: 보는 사람 기준으로 공격자가 아군이면 다이아몬드 검, 적군이면 구리 검. 그래서 메시지를 접속자마다 따로 보낸다.
+#   아군 = 보는 사람이 공격자 본인이거나 isAlly(보는 사람, 공격자) 가 true. 팀이 없으면(둘 중 하나라도 {-team} 없음) 모두 적군으로 본다.
+# 공격자가 없으면(낙사, 용암, 스킬 데미지 등) 검/공격자 부분 없이 [사망 원인 아이콘] [피격자 얼굴] 피격자이름 만 모두에게 똑같이 띄운다.
+# 아이콘은 마인크래프트 기본 텍스트 컴포넌트(리소스팩 없음, 1.21.9 이상)로 넣는다.
+#   아이템: {"object":"atlas","atlas":"minecraft:items","sprite":"minecraft:item/이름"} (사용자가 /tellraw 로 확인함)
+#   얼굴:   {"object":"player","player":{"name":"플레이어이름"}} (미검증. 안 보이면 이 형태를 /tellraw 로 먼저 시험)
+#   컴포넌트는 skript-reflect 로 Adventure 의 GsonComponentSerializer 에 JSON 을 넣어 만들고 sendMessage 로 보낸다(미검증).
+# 사망 원인 아이콘은 아래 killCauseSprite 한 곳에서 정한다. 스프라이트 이름이 틀리거나 item/ 에 텍스처가 없으면 보라/검정 체크무늬가 뜬다.
+# 한계: TNT 처럼 공격자 정보 없이 주는 스킬 데미지는 공격자 없음 + 원인 barrier 로 나온다. 낚싯대 데미지는 플레이어 공격으로 잡혀 낚싯대 아이콘이 나온다.
+
+import:
+	org.bukkit.Bukkit
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+# 아이템 스프라이트 하나를 가리키는 JSON 조각(문자열 안의 따옴표는 "" 로 쓴다)
+function killIcon(s: text) :: text:
+	return "{""object"":""atlas"",""atlas"":""minecraft:items"",""sprite"":""minecraft:item/%{_s}%""}"
+
+# 플레이어 얼굴 하나를 가리키는 JSON 조각(미검증)
+function killFace(n: text) :: text:
+	return "{""object"":""player"",""player"":{""name"":""%{_n}%""}}"
+
+# 사망 원인에 맞는 아이콘 스프라이트 이름을 돌려준다. a 는 공격자(없으면 피격자 본인을 넘긴다).
+# 근접(ENTITY_ATTACK/ENTITY_SWEEP_ATTACK)은 공격자가 메인핸드에 든 아이템 이름을 그대로 쓰고(예: diamond_sword), 맨손이면 stick.
+function killCauseSprite(v: player, a: entity) :: text:
+	set {_ldc} to {_v}.getLastDamageCause()
+	if {_ldc} is not set:
+		return "barrier"
+	set {_c} to {_ldc}.getCause().name()
+	if {_c} is "ENTITY_ATTACK":
+		return killWeaponSprite({_a})
+	if {_c} is "ENTITY_SWEEP_ATTACK":
+		return killWeaponSprite({_a})
+	if {_c} is "PROJECTILE":
+		return "arrow"
+	if {_c} is "FALL":
+		return "feather"
+	if {_c} is "FIRE":
+		return "flint_and_steel"
+	if {_c} is "FIRE_TICK":
+		return "flint_and_steel"
+	if {_c} is "LAVA":
+		return "lava_bucket"
+	if {_c} is "VOID":
+		return "ender_pearl"
+	if {_c} is "ENTITY_EXPLOSION":
+		return "gunpowder"
+	if {_c} is "BLOCK_EXPLOSION":
+		return "gunpowder"
+	if {_c} is "DROWNING":
+		return "water_bucket"
+	if {_c} is "THORNS":
+		return "cactus"
+	return "barrier"
+
+function killWeaponSprite(a: entity) :: text:
+	if {_a} is not a living entity:
+		return "stick"
+	set {_eq} to {_a}.getEquipment()
+	if {_eq} is not set:
+		return "stick"
+	set {_n} to {_eq}.getItemInMainHand().getType().name()
+	if {_n} is "AIR":
+		return "stick"
+	return {_n}.toLowerCase()
+
+on death of player:
+	set the death message to ""
+	set {_v} to victim
+	set {_vn} to "%{_v}'s name%"
+	# 공격자가 없으면 함수에 빈 값을 넘길 수 없어서 피격자 본인을 대신 넘긴다(근접 원인이 아니라 무기 아이콘은 안 쓰인다).
+	set {_ae} to {_v}
+	if attacker is set:
+		set {_ae} to attacker
+	set {_ci} to killIcon(killCauseSprite({_v}, {_ae}))
+	set {_vf} to killFace({_vn})
+	set {_gap} to "{""text"":"" ""}"
+	set {_vnj} to "{""text"":""%{_vn}%""}"
+	set {_pvp} to false
+	if {_ae} is a player:
+		if {_ae} is not {_v}:
+			set {_pvp} to true
+	if {_pvp} is false:
+		set {_json} to "{""text"":"""",""extra"":[%{_ci}%,%{_gap}%,%{_vf}%,%{_gap}%,%{_vnj}%]}"
+		Bukkit.broadcast(GsonComponentSerializer.gson().deserialize({_json}))
+		stop
+	set {_an} to "%{_ae}'s name%"
+	set {_af} to killFace({_an})
+	set {_anj} to "{""text"":""%{_an}%""}"
+	set {_mid} to "%{_af}%,%{_gap}%,%{_anj}%,%{_gap}%,%{_ci}%,%{_gap}%,%{_vf}%,%{_gap}%,%{_vnj}%"
+	set {_swa} to killIcon("diamond_sword")
+	set {_swe} to killIcon("copper_sword")
+	set {_jsona} to "{""text"":"""",""extra"":[%{_swa}%,%{_gap}%,%{_mid}%]}"
+	set {_jsone} to "{""text"":"""",""extra"":[%{_swe}%,%{_gap}%,%{_mid}%]}"
+	set {_ca} to GsonComponentSerializer.gson().deserialize({_jsona})
+	set {_ce} to GsonComponentSerializer.gson().deserialize({_jsone})
+	set {_aid} to "%uuid of {_ae}%"
+	loop all players:
+		set {_vw} to loop-player
+		set {_ally} to false
+		if {_vw} is {_ae}:
+			set {_ally} to true
+		if isAlly("%uuid of {_vw}%", {_aid}) is true:
+			set {_ally} to true
+		if {_ally} is true:
+			{_vw}.sendMessage({_ca})
+		else:
+			{_vw}.sendMessage({_ce})
+	# 콘솔 로그(적군 형태로 한 번)
+	Bukkit.getConsoleSender().sendMessage({_ce})
