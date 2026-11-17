@@ -1,0 +1,115 @@
+# [potions.sk] 포션 3종 스킬(우클릭, 마시지 않고 효과만): 체력 포션(쿨 7초, 체력 5 회복), 스태미너 포션(쿨 7초, 스태미너 50 회복),
+#   투명 포션(쿨 18초, 4초간 투명화 - 피해를 입거나 입히면 풀림). 메인핸드 우선, 오프핸드도 작동.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-potcd}(종류별 쿨타임 종료 시각), {-invis}(투명 효과 종료 시각), {-healok}(회복이 전투 중 차단을 통과하는 표시, main.sk 가 읽음)
+# 포션 종류 판정(potionKind), 종류별 쿨타임 확인(potionReady), skillHand 와의 우선순위는 skill_core.sk 에 있다.
+# 쿨타임: 종류별 {-potcd} 로 계산한다. 화면의 회색 쿨타임 게이지는 포션마다 쿨타임 그룹(use_cooldown 컴포넌트의 cooldown_group)을
+#   달리 줘서 따로 돌게 한다(potionVisual, Paper 데이터 컴포넌트 API 를 skript-reflect 로 호출, 미검증). 이 함수가 실패해도 효과/쿨타임 로직은 이미 끝난 뒤라 동작한다.
+# 마시는 동작은 이벤트를 취소해서 막는다(아이템은 줄지 않음).
+
+import:
+	io.papermc.paper.datacomponent.DataComponentTypes
+	io.papermc.paper.datacomponent.item.UseCooldown
+	net.kyori.adventure.key.Key
+
+# 화면 쿨타임 게이지(쿨타임 그룹). secs 초 동안 이 포션 종류의 그룹에만 쿨타임을 건다.
+function potionVisual(p: player, kind: text, secs: number):
+	if potionKind({_p}, "main") is {_kind}:
+		set {_it} to {_p}.getEquipment().getItemInMainHand()
+	else:
+		set {_it} to {_p}.getEquipment().getItemInOffHand()
+	set {_key} to Key.key("andornot", "potion_%{_kind}%")
+	set {_cd} to UseCooldown.useCooldown({_secs}).cooldownGroup({_key}).build()
+	{_it}.setData(DataComponentTypes.USE_COOLDOWN, {_cd})
+	set {_ticks} to {_secs} * 20
+	{_p}.setCooldown({_it}, {_ticks})
+
+# 이번 우클릭에서 발동할 포션 종류("" 이면 없음). 메인핸드 포션 우선, 메인핸드 포션이 쿨타임이면 오프핸드로 양보.
+# 메인핸드가 다른 스킬 아이템이면(쿨타임이 아닐 때) 그 스킬이 우선이라 발동하지 않는다. 메인핸드에 창이 있으면 창이 우클릭을 쓴다.
+function potionToUse(p: player) :: text:
+	if isStunned({_p}) is true:
+		return ""
+	set {_mk} to potionKind({_p}, "main")
+	set {_ok} to potionKind({_p}, "off")
+	if {_mk} is not "":
+		if potionReady({_p}, {_mk}) is true:
+			return {_mk}
+		if {_ok} is not "":
+			if {_ok} is not {_mk}:
+				if potionReady({_p}, {_ok}) is true:
+					return {_ok}
+		return ""
+	if {_ok} is "":
+		return ""
+	if isSkillItem({_p}'s tool) is true:
+		set {_mc} to false
+		if {_p} has {_p}'s tool on cooldown:
+			set {_mc} to true
+		if {_mc} is false:
+			return ""
+	set {_m} to {_p}.getEquipment().getItemInMainHand().getType().name()
+	if {_m} contains "SPEAR":
+		return ""
+	return {_ok}
+
+# 효과 발동(쿨타임 확인 포함). 효과 -> 쿨타임 기록 -> 화면 쿨타임 게이지 순서.
+function potionUse(p: player, kind: text):
+	if potionReady({_p}, {_kind}) is false:
+		stop
+	set {_id} to "%uuid of {_p}%"
+	if {_kind} is "heal":
+		set {-potcd::%{_id}%::heal} to now + 7 seconds
+		# 체력 5 = 2.5 하트. 전투 중 회복 차단(main.sk on heal)을 통과시킨다.
+		set {-healok::%{_id}%} to true
+		heal {_p} by 2.5 hearts
+		delete {-healok::%{_id}%}
+		play sound "entity.generic.drink" with volume 1 and pitch 1 to {_p}
+		potionVisual({_p}, "heal", 7)
+	else if {_kind} is "stamina":
+		set {-potcd::%{_id}%::stamina} to now + 7 seconds
+		add 50 to {-st::%{_id}%}
+		if {-st::%{_id}%} > 100:
+			set {-st::%{_id}%} to 100
+		set level progress of {_p} to ({-st::%{_id}%} * 0.01 - 0.001)
+		play sound "entity.generic.drink" with volume 1 and pitch 1.3 to {_p}
+		potionVisual({_p}, "stamina", 7)
+	else if {_kind} is "invis":
+		set {-potcd::%{_id}%::invis} to now + 18 seconds
+		set {-invis::%{_id}%} to now + 4 seconds
+		apply invisibility potion without any particles whilst hiding the potion icon to {_p} for 4 seconds replacing the existing effect
+		setStatus({_p}, "potion_invis", "투명화", 4 seconds, "good")
+		play sound "entity.generic.drink" with volume 1 and pitch 0.7 to {_p}
+		potionVisual({_p}, "invis", 18)
+
+on rightclick:
+	set {_mk} to potionKind(player, "main")
+	# 메인핸드에 스킬 포션이 있으면 어떤 경우에도 마시지 못하게 막는다
+	if {_mk} is not "":
+		cancel event
+	set {_k} to potionToUse(player)
+	if {_k} is "":
+		stop
+	cancel event
+	potionUse(player, {_k})
+
+# 투명 포션: 피해를 입거나 입히면 투명이 풀린다
+function invisBreak(e: entity):
+	if {_e} is a player:
+		if {-invis::%uuid of {_e}%} is set:
+			if {-invis::%uuid of {_e}%} > now:
+				set {_pl} to {_e}
+				remove invisibility from {_pl}
+				delete {-invis::%uuid of {_e}%}
+				clearStatus({_pl}, "potion_invis")
+
+on damage:
+	invisBreak(victim)
+	if attacker is set:
+		invisBreak(attacker)
+
+on death:
+	delete {-invis::%victim's uuid%}
+
+on join:
+	delete {-potcd::%player's uuid%::*}
+	delete {-invis::%player's uuid%}

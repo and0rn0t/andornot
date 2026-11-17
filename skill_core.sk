@@ -69,6 +69,8 @@
 #   {-nscd::uuid}            네더의 별 쿨타임 종료 시각               netherstar
 #   {-obcd::uuid}            불길한 병 쿨타임 종료 시각               ominousbottle
 #   {-team::uuid}            소속 팀 이름(텍스트). 같으면 아군. 팀 설정 코드는 아직 없음(게임 설계 확정 후)   isAlly 로 읽기, tnt
+#   {-potcd::uuid::종류}     포션 쿨타임 종료 시각(종류: heal, stamina, invis)  potions
+#   {-invis::uuid}          투명 포션 효과 종료 시각(피해를 주고받으면 풀림)    potions
 #   {-exhaust::uuid}         불길한 병 탈진 종료 시각(탈진 중 stcap +1)   ominousbottle
 #   {-bottle::uuid}          불길한 병 효과 종료 시각(효과 중이면 지금보다 뒤)   ominousbottle
 #   {-healok::uuid}          전투 중 회복 차단을 통과시키는 표시(회복하는 동안만)  ominousbottle(set/delete), main(on heal 에서 읽기)
@@ -112,6 +114,7 @@
 #   - statustag.sk  : 해로운 상태이상을 체력바(healthbar.sk) 위에 <이름> 으로 표시
 #   - healthbar.sk  : 머리 위 체력바 + 데미지 숫자(사용자가 직접 작성한 파일, statustag.sk 가 이 위에 상태이상을 띄움)
 #   - netherstar.sk : 네더의 별 스킬
+#   - potions.sk    : 포션 3종(체력/스태미너/투명) 스킬
 #   - ominousbottle.sk : 불길한 병 스킬
 #   - stun.sk       : 기절 중 클릭/블럭/버리기 차단
 #
@@ -167,11 +170,11 @@
 #     효과음은 한쪽 이름이 틀려도 들리도록 2개씩 겹쳐 재생(hookPlay). 소리 이름은 미검증.
 #
 # 9. 스킬 아이템 기획서 (사용자 제공. 쿨타임/수치는 기획 기준, 데미지 숫자는 실 체력 수치. 하트 아님)
-#   구현 상태: [완료] 쇠뇌, 낚싯대, 도끼, 곡괭이, 괭이, TNT, 네더의 별, 불길한 병  /  나머지는 미구현
-#   - 체력 포션(즉시 치유의 포션) / 쿨 7초 : 체력 5 즉시 회복(2026-11 수정, 기존 8)
-#   - 스태미너 포션(도약의 물약) / 쿨 7초 : 스태미너 50 즉시 회복
+#   구현 상태: [완료] 쇠뇌, 낚싯대, 도끼, 곡괭이, 괭이, TNT, 네더의 별, 불길한 병, 포션 3종  /  나머지는 미구현
+#   - 체력 포션(즉시 치유의 포션) / 쿨 7초 : 체력 5 즉시 회복(2026-11 수정, 기존 8)   [완료: potions.sk]
+#   - 스태미너 포션(도약의 물약) / 쿨 7초 : 스태미너 50 즉시 회복   [완료: potions.sk]
 #       (※ "도약"은 F키 이동기 이름이기도 하니 코드에서는 스태미너 포션으로 부름)
-#   - 투명 포션(투명화 포션) / 쿨 18초 : 4초간 투명화(포션 이펙트 아이콘/파티클 X).
+#   - 투명 포션(투명화 포션) / 쿨 18초 : 4초간 투명화(포션 이펙트 아이콘/파티클 X).   [완료: potions.sk]
 #       피해를 입거나 입히면 풀림
 #   - 불길한 병 / 쿨 30초 : 7초간 가한 피해의 30% 회복 + 스태미너 초당 20 추가 재생.
 #       스태미너 재생은 기본 회복과 별개로 더해지고 stcap 의 영향을 받지 않음.
@@ -324,6 +327,37 @@ function stun(p: player, src: text, d: timespan):
 	apply jump boost potion of tier 129 without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
 	apply blindness potion without any particles whilst hiding the potion icon to {_p} for {_d} replacing the existing effect
 
+# 포션 스킬 종류. 해당 손의 아이템이 바닐라 포션(POTION)이고 기본 포션 종류가 치유/도약/투명화 계열이면
+# "heal"(체력 포션), "stamina"(스태미너 포션), "invis"(투명 포션), 아니면 "". hand: "main" 또는 "off".
+# 포션은 재질이 같아서 포션 종류로 구분한다(getBasePotionType 의 이름, skript-reflect, 미검증).
+function potionKind(p: player, hand: text) :: text:
+	if {_hand} is "main":
+		set {_it} to {_p}.getEquipment().getItemInMainHand()
+	else:
+		set {_it} to {_p}.getEquipment().getItemInOffHand()
+	set {_mat} to {_it}.getType().name()
+	if {_mat} is not "POTION":
+		return ""
+	set {_meta} to {_it}.getItemMeta()
+	set {_bt} to {_meta}.getBasePotionType()
+	if {_bt} is not set:
+		return ""
+	set {_n} to {_bt}.name()
+	if {_n} contains "HEALING":
+		return "heal"
+	if {_n} contains "LEAPING":
+		return "stamina"
+	if {_n} contains "INVISIBILITY":
+		return "invis"
+	return ""
+
+# 포션 종류별 쿨타임이 끝났는지(스크립트 변수 {-potcd} 로 판단). 포션은 재질이 같아 아이템 쿨타임으로 구분할 수 없다.
+function potionReady(p: player, kind: text) :: boolean:
+	if {-potcd::%{_p}'s uuid%::%{_kind}%} is set:
+		if {-potcd::%{_p}'s uuid%::%{_kind}%} > now:
+			return false
+	return true
+
 # 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
 # 오프핸드 아이템이 이 스킬이면, 메인핸드가 (쿨타임이 아닌 다른 스킬 아이템)도 창(SPEAR)도 아닐 때만 true.
 # 메인핸드 스킬이 쿨타임이면 오프핸드 스킬이 발동한다(메인핸드 스킬은 양보). 쿨타임은 아이템 쿨타임(set item cooldown)으로 판단.
@@ -336,6 +370,11 @@ function skillHand(p: player, t: itemtype) :: boolean:
 			if isSkillItem({_p}'s offhand tool) is true:
 				if {_p}'s offhand tool is not {_t}:
 					return false
+			# 오프핸드에 쿨타임이 아닌 포션 스킬이 있으면 그쪽에 양보한다.
+			set {_ok} to potionKind({_p}, "off")
+			if {_ok} is not "":
+				if potionReady({_p}, {_ok}) is true:
+					return false
 		return true
 	if {_p}'s offhand tool is {_t}:
 		if isSkillItem({_p}'s tool) is true:
@@ -344,6 +383,11 @@ function skillHand(p: player, t: itemtype) :: boolean:
 			if {_p} has {_p}'s tool on cooldown:
 				set {_mc} to true
 			if {_mc} is false:
+				return false
+		# 메인핸드에 쿨타임이 아닌 포션 스킬이 있으면 포션이 우선이다.
+		set {_mk} to potionKind({_p}, "main")
+		if {_mk} is not "":
+			if potionReady({_p}, {_mk}) is true:
 				return false
 		# 메인핸드에 창이 있으면 우클릭은 창이 쓴다(바닐라 창 사용). 오프핸드 스킬이 이벤트를 취소해서 창을 막지 않게 한다.
 		set {_m} to {_p}.getEquipment().getItemInMainHand().getType().name()
