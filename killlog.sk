@@ -105,7 +105,10 @@ on death of player:
 			set {_pvp} to true
 	if {_pvp} is false:
 		set {_json} to "{""text"":"""",""extra"":[%{_ci}%,%{_gap}%,%{_vf}%,%{_gap}%,%{_vnj}%]}"
-		Bukkit.broadcast(GsonComponentSerializer.gson().deserialize({_json}))
+		# broadcast 는 콘솔에도 찍히므로 접속자에게만 보낸다.
+		set {_cc} to GsonComponentSerializer.gson().deserialize({_json})
+		loop all players:
+			loop-player.sendMessage({_cc})
 		stop
 	set {_an} to "%{_ae}'s name%"
 	set {_af} to killFace({_an})
@@ -129,5 +132,3 @@ on death of player:
 			{_vw}.sendMessage({_ca})
 		else:
 			{_vw}.sendMessage({_ce})
-	# 콘솔 로그(적군 형태로 한 번)
-	Bukkit.getConsoleSender().sendMessage({_ce})

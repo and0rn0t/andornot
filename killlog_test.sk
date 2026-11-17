@@ -93,4 +93,3 @@ on death:
 			{_vw}.sendMessage({_ca})
 		else:
 			{_vw}.sendMessage({_ce})
-	Bukkit.getConsoleSender().sendMessage({_ce})
