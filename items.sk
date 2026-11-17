@@ -25,7 +25,7 @@
 #   - 탭 아이콘 모양: itemSprite(id)(스프라이트 이름은 미검증, 틀리면 보라/검정 체크무늬). 표시 순서: /itemorder GUI (목록에 새로 추가된 아이템은 맨 뒤에 붙고, 삭제된 아이템은 순서에서 빠진다).
 #   - 금속 재료 도구/무기는 모두 네더라이트 도구/무기로 통일하되(재료만 네더라이트, id 는 저장된 구성 호환을 위해 iron_ 그대로) 이름에는 '철'을 붙이지 않는다(도끼/곡괭이/괭이/창). 철퇴(mace)는 원래 금속 등급이 없다.
 #
-# 미검증 문법: 무기고 클릭 방어(reflect), skull owner, playerListName(reflect), 아이콘 스프라이트 이름(특히 포션은 색이 안 나옴), 아이템 이름 비교(name of), lore 리스트 설정, 아이템 플래그(with item flags), netherite spear/ominous bottle/potion of ~ 별칭,
+# 미검증 문법: item_model 컴포넌트(네더라이트를 철 겉모습으로), 무기고 클릭 방어(reflect), skull owner, playerListName(reflect), 아이콘 스프라이트 이름(특히 포션은 색이 안 나옴), 아이템 이름 비교(name of), lore 리스트 설정, 아이템 플래그(with item flags), netherite spear/ominous bottle/potion of ~ 별칭,
 #   event.getRawSlot()/getHeldItemSlot() (skript-reflect), chest inventory with 4 rows named, 클릭/드래그 취소. 오류가 나면 콘솔 로그를 보내줘.
 #   아이템을 만드는 기능에서 문제가 생기면 itemBuild() 를 먼저 의심할 것.
 # 같은 아이템인지는 이름으로 구분한다(itemIdAt). 이름 앞에 색 코드를 붙여도 itemName() 이 같은 값을 쓰므로 일치한다.
@@ -35,6 +35,7 @@ import:
 	io.papermc.paper.datacomponent.DataComponentTypes
 	io.papermc.paper.datacomponent.item.TooltipDisplay
 	io.papermc.paper.datacomponent.item.ChargedProjectiles
+	net.kyori.adventure.key.Key
 	org.bukkit.Material
 	org.bukkit.inventory.ItemStack
 
@@ -172,6 +173,12 @@ function itemBuild(id: text, extra: text = "") :: itemtype:
 		set {_st2} to {_i}.getRandom()
 		{_st2}.unsetData(DataComponentTypes.DEATH_PROTECTION)
 		set {_i} to {_st2}
+	# 금속 도구/무기: 재질은 네더라이트지만 겉모습(아이템 모델)은 철 도구/무기로 보이게 한다(item_model 컴포넌트, 미검증).
+	# id 가 iron_axe 처럼 철 이름이라 id 가 곧 모델 이름이다. 데미지는 코드에서 고정이라 재질과 무관하다.
+	if {_id} starts with "iron_":
+		set {_st4} to {_i}.getRandom()
+		{_st4}.setData(DataComponentTypes.ITEM_MODEL, Key.key("minecraft", {_id}))
+		set {_i} to {_st4}
 	# 석궁: 화살이 장전된 상태로 만든다(charged_projectiles 컴포넌트, 미검증). 발사는 crossbow.sk 가 우클릭을 취소하고 직접 하므로 장전 상태는 계속 유지된다.
 	# 장전 화살 설명 줄은 툴팁에서 숨긴다.
 	if {_id} is "crossbow":
@@ -275,17 +282,17 @@ function itemSprite(id: text) :: text:
 	if {_id} is "fishing_rod":
 		return "fishing_rod"
 	if {_id} is "iron_axe":
-		return "netherite_axe"
+		return "iron_axe"
 	if {_id} is "iron_pickaxe":
-		return "netherite_pickaxe"
+		return "iron_pickaxe"
 	if {_id} is "iron_hoe":
-		return "netherite_hoe"
+		return "iron_hoe"
 	if {_id} is "mace":
 		return "mace"
 	if {_id} is "iron_spear":
-		return "netherite_spear"
+		return "iron_spear"
 	if {_id} is "iron_sword":
-		return "netherite_sword"
+		return "iron_sword"
 	if {_id} is "tnt":
 		return "block/tnt_side"
 	if {_id} is "nether_star":
