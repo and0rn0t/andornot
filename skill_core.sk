@@ -57,8 +57,9 @@
 #   {-pickexp::uuid}         곡괭이 중첩 만료 시각(타격마다 +3초)       main(접속 시 삭제)
 #   {-atkcd::uuid}           공격 쿨다운 충전도 0~1(매 틱 기록)        main(기록/접속 시 삭제), cooldownScale 이 읽음
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
-#   {-ingame}                게임 진행 여부(true 면 아이템 변경 GUI 막음). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
+#   {-ingame}                게임 진행 여부(true 면 무기고 해제). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
 #   {itemorder::*}           아이템 GUI 표시 순서(저장 변수, 대시 없음)           items
+#   {loadout::uuid::1~5}     플레이어별 아이템 구성 id(저장 변수, 대시 없음)       items
 #   {-itemgui::uuid} {-itemguislot::uuid} {-itemguimap::uuid::슬롯} {-itemguipick::uuid}  아이템 GUI 상태   items
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing
@@ -120,7 +121,7 @@
 #   - netherstar.sk : 네더의 별 스킬
 #   - potions.sk    : 포션 3종(체력/스태미너/투명) 스킬
 #   - ominousbottle.sk : 불길한 병 스킬
-#   - items.sk      : 아이템 시스템(카탈로그, 앉기+버리기 변경 GUI, /itemorder 순서 편집). 상세는 items.sk 맨 위
+#   - items.sk      : 아이템 시스템(카탈로그, 플레이어별 구성, 무기고 GUI, /itemorder 순서 편집, 탭리스트 아이콘). 상세는 items.sk 맨 위
 #   - stun.sk       : 기절 중 클릭/블럭/버리기 차단
 #
 # 7. jar에서 확인된 문법 메모 (Skript 2.13.0)
