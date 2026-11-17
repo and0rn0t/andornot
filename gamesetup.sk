@@ -1,0 +1,183 @@
+# [gamesetup.sk] 게임 사전 설정 메뉴(관리자 메뉴 /admin 의 "게임 설정" 버튼으로 연다, op 전용): 팀 수, 게임모드, 랜덤 아이템 on/off.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수(저장 변수, 대시 없음이라 재시작해도 유지): {gamecfg::teams}(팀 수. 0 = 개인전, 2~gcTeamMax()), {gamecfg::mode}(게임모드 id), {gamecfg::random}(랜덤 아이템 true/false)
+#   GUI 상태(RAM): {-gamecfggui::uuid}
+# 게임 시스템이 설정을 읽을 때는 아래 getter 함수를 쓴다: gcTeams(), gcMode(), gcRandom().
+# 설정을 바꿀 때마다 접속한 모든 유저에게 채팅 알림 + 소리가 간다(gcAnnounce).
+# 조작: 팀 수/게임모드는 좌클릭 = 다음, 우클릭 = 이전. 랜덤 아이템은 클릭하면 on/off.
+# 게임모드 추가법: gcModeIds() 에 id, gcModeName(id) 에 이름, gcModeDesc(id) 에 설명을 추가한다.
+# 이 설정은 값만 저장한다. 실제로 팀을 나누고 게임을 시작하는 일(팀 배정은 {-team} 변수), 랜덤 아이템 지급은 게임 설계 때 한다.
+# 미검증 문법: 클릭 종류 판별 event.isRightClick() (skript-reflect), 3줄 GUI 클릭 처리(items.sk 와 같은 방식).
+
+# 선택할 수 있는 최대 팀 수(여기만 고치면 됨)
+function gcTeamMax() :: number:
+	return 8
+
+function gcModeIds() :: texts:
+	return "bounty" and "annihilation"
+
+function gcModeName(id: text) :: text:
+	if {_id} is "bounty":
+		return "바운티"
+	if {_id} is "annihilation":
+		return "섬멸전"
+	return "%{_id}%"
+
+function gcModeDesc(id: text) :: text:
+	if {_id} is "bounty":
+		return "&7(설명 추가 예정)"
+	if {_id} is "annihilation":
+		return "&7(설명 추가 예정)"
+	return "&7설명 없음"
+
+# 현재 설정(없으면 기본값: 2팀, 첫 번째 게임모드, 랜덤 아이템 off)
+function gcTeams() :: number:
+	if {gamecfg::teams} is not set:
+		return 2
+	return {gamecfg::teams}
+
+function gcMode() :: text:
+	set {_ids::*} to gcModeIds()
+	if {gamecfg::mode} is set:
+		if {_ids::*} contains {gamecfg::mode}:
+			return {gamecfg::mode}
+	return {_ids::1}
+
+function gcRandom() :: boolean:
+	if {gamecfg::random} is true:
+		return true
+	return false
+
+function gcTeamLabel(n: number) :: text:
+	if {_n} is 0:
+		return "개인전"
+	return "%{_n}%팀"
+
+# 설정 변경 알림: 접속한 모든 유저에게 채팅 + 소리
+function gcAnnounce(who: text, what: text):
+	loop all players:
+		send "&6[게임 설정] &f%{_who}% &7님이 %{_what}%" to loop-player
+		play sound "entity.experience_orb.pickup" with volume 0.5 to loop-player
+
+function gcFill(inv: inventory):
+	loop 27 times:
+		set {_s} to loop-value - 1
+		set slot {_s} of {_inv} to gray stained glass pane named " "
+	# 팀 수(칸 11)
+	set {_i} to white banner named "&f팀 수"
+	set lore of {_i} to "&7현재: &e%gcTeamLabel(gcTeams())%", "&7개인전, 2팀 ~ %gcTeamMax()%팀", "", "&e▶ 좌클릭: 다음 / 우클릭: 이전"
+	set slot 11 of {_inv} to {_i}
+	# 게임모드(칸 13)
+	set {_ids::*} to gcModeIds()
+	set {_cur} to gcMode()
+	set {_l::*} to "&7현재: &e%gcModeName({_cur})%", ""
+	loop {_ids::*}:
+		if loop-value is {_cur}:
+			add "&e▶ %gcModeName(loop-value)%" to {_l::*}
+		else:
+			add "&8  %gcModeName(loop-value)%" to {_l::*}
+	add "" to {_l::*}
+	add gcModeDesc({_cur}) to {_l::*}
+	add "" to {_l::*}
+	add "&e▶ 좌클릭: 다음 / 우클릭: 이전" to {_l::*}
+	set {_i} to diamond sword named "&f게임모드"
+	set lore of {_i} to {_l::*}
+	set {_i} to {_i} with item flags hide attributes and hide additional tooltip
+	set slot 13 of {_inv} to {_i}
+	# 랜덤 아이템(칸 15)
+	set {_st} to "&cOFF"
+	if gcRandom() is true:
+		set {_st} to "&aON"
+	set {_i} to dispenser named "&f랜덤 아이템으로 플레이"
+	set lore of {_i} to "&7현재: %{_st}%", "&7켜면 정해진 구성 대신 랜덤 아이템으로 플레이해요", "", "&e▶ 클릭: on/off"
+	set slot 15 of {_inv} to {_i}
+	# 뒤로가기(칸 22)
+	set {_i} to arrow named "&f관리자 메뉴로"
+	set slot 22 of {_inv} to {_i}
+
+function gameSetupOpen(p: player):
+	set {_inv} to chest inventory with 3 rows named "게임 설정"
+	open {_inv} to {_p}
+	set {-gamecfggui::%{_p}'s uuid%} to true
+	gcFill({_inv})
+
+on inventory click:
+	set {_uid} to "%player's uuid%"
+	if {-gamecfggui::%{_uid}%} is not set:
+		stop
+	cancel the event
+	set {_ev} to event
+	set {_raw} to {_ev}.getRawSlot()
+	set {_raw} to "%{_raw}%" parsed as number
+	if {_raw} is not set:
+		stop
+	if {_raw} < 0:
+		stop
+	if {_raw} > 26:
+		stop
+	set {_p} to player
+	play sound "ui.button.click" to {_p}
+	if {_p} is not op:
+		stop
+	set {_right} to false
+	if {_ev}.isRightClick() is true:
+		set {_right} to true
+	set {_who} to name of {_p}
+	if {_raw} is 11:
+		set {_n} to gcTeams()
+		if {_right} is true:
+			if {_n} is 0:
+				set {_n} to gcTeamMax()
+			else if {_n} is 2:
+				set {_n} to 0
+			else:
+				set {_n} to {_n} - 1
+		else:
+			if {_n} is 0:
+				set {_n} to 2
+			else if {_n} >= gcTeamMax():
+				set {_n} to 0
+			else:
+				set {_n} to {_n} + 1
+		set {gamecfg::teams} to {_n}
+		gcAnnounce({_who}, "팀 수를 &e%gcTeamLabel({_n})% &7(으)로 바꿨어요.")
+		gcFill({_p}'s current inventory)
+	else if {_raw} is 13:
+		set {_ids::*} to gcModeIds()
+		set {_cur} to gcMode()
+		set {_idx} to 1
+		loop {_ids::*}:
+			if loop-value is {_cur}:
+				set {_idx} to loop-index parsed as number
+		set {_cnt} to size of {_ids::*}
+		if {_right} is true:
+			set {_idx} to {_idx} - 1
+			if {_idx} < 1:
+				set {_idx} to {_cnt}
+		else:
+			set {_idx} to {_idx} + 1
+			if {_idx} > {_cnt}:
+				set {_idx} to 1
+		set {gamecfg::mode} to {_ids::%{_idx}%}
+		gcAnnounce({_who}, "게임모드를 &e%gcModeName({_ids::%{_idx}%})% &7(으)로 바꿨어요.")
+		gcFill({_p}'s current inventory)
+	else if {_raw} is 15:
+		if gcRandom() is true:
+			set {gamecfg::random} to false
+			gcAnnounce({_who}, "랜덤 아이템으로 플레이를 &cOFF &7로 바꿨어요.")
+		else:
+			set {gamecfg::random} to true
+			gcAnnounce({_who}, "랜덤 아이템으로 플레이를 &aON &7으로 바꿨어요.")
+		gcFill({_p}'s current inventory)
+	else if {_raw} is 22:
+		adminOpen({_p})
+
+on inventory drag:
+	if {-gamecfggui::%player's uuid%} is set:
+		cancel the event
+
+on inventory close:
+	delete {-gamecfggui::%player's uuid%}
+
+on quit:
+	delete {-gamecfggui::%player's uuid%}

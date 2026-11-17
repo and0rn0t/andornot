@@ -57,6 +57,7 @@
 #   {-pickexp::uuid}         곡괭이 중첩 만료 시각(타격마다 +3초)       main(접속 시 삭제)
 #   {-atkcd::uuid}           공격 쿨다운 충전도 0~1(매 틱 기록)        main(기록/접속 시 삭제), cooldownScale 이 읽음
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
+#   {gamecfg::teams|mode|random} 게임 사전 설정(저장 변수, 대시 없음. 팀 수 0=개인전)  gamesetup
 #   {-ingame}                게임 진행 여부(true 면 무기고 해제). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
 #   {itemorder::*}           아이템 GUI 표시 순서(저장 변수, 대시 없음)           items
 #   {loadout::uuid::1~5}     플레이어별 아이템 구성 id(저장 변수, 대시 없음)       items
@@ -115,6 +116,7 @@
 #   - jump.sk       : 점프 두 번(비행 전환 이벤트) 대시 스킬
 #   - crossbow.sk   : 석궁 스킬
 #   - fishing.sk    : 낚싯대 스킬
+#   - gamesetup.sk  : 게임 사전 설정 GUI(팀 수/게임모드/랜덤 아이템, 변경 시 전체 알림). 게임 시스템은 gcTeams()/gcMode()/gcRandom() 로 읽는다
 #   - admin.sk      : /admin 관리자 메뉴(6줄 GUI, op 전용). 앞으로 관리자 전용 기능은 이 메뉴에 버튼으로 추가한다(추가법은 admin.sk 맨 위)
 #   - team.sk       : /team 명령으로 {-team} 설정(op 전용, 테스트용)
 #   - tnt.sk        : TNT 스킬(투척, 33틱 뒤 기절 폭발)

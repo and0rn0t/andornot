@@ -10,9 +10,13 @@
 # 미검증 문법: 6줄 GUI 와 클릭 처리는 items.sk 와 같은 방식(event.getRawSlot() 등).
 
 function adminButtonIds() :: texts:
-	return "itemorder" and "team"
+	return "gamesetup", "itemorder" and "team"
 
 function adminButtonItem(id: text) :: itemtype:
+	if {_id} is "gamesetup":
+		set {_i} to command block named "&f게임 설정"
+		set lore of {_i} to "&7팀 수, 게임모드, 랜덤 아이템을", "&7게임 시작 전에 설정해요", "", "&e▶ 클릭해서 열기"
+		return {_i}
 	if {_id} is "itemorder":
 		set {_i} to writable book named "&f아이템 순서 편집"
 		set lore of {_i} to "&7아이템 변경 GUI 에 나오는", "&7같은 분류 안의 순서를 바꿔요", "", "&e▶ 클릭해서 열기"
@@ -25,7 +29,9 @@ function adminButtonItem(id: text) :: itemtype:
 	return {_i}
 
 function adminAction(p: player, id: text):
-	if {_id} is "itemorder":
+	if {_id} is "gamesetup":
+		gameSetupOpen({_p})
+	else if {_id} is "itemorder":
 		itemGuiOpen({_p}, "order")
 	else if {_id} is "team":
 		close {_p}'s inventory
