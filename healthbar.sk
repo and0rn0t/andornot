@@ -29,6 +29,14 @@ function hpbar_show(e: living entity):
 	set {_key} to "%{_hp}%/%{_max}%"
 	set {_id} to "%uuid of {_e}%"
 
+	# 투명 포션 효과 중인 플레이어는 체력바를 숨긴다(효과가 끝나면 다음 갱신에서 다시 생김). {-invis} 는 potions.sk 가 관리.
+	if {_e} is a player:
+		if {-invis::%{_id}%} is set:
+			if {-invis::%{_id}%} > now:
+				if {-hpbar_d::%{_id}%} is set:
+					hpbar_remove({_id})
+				stop
+
 	# 몹은 체력이 가득 차 있으면 바를 숨김
 	if {_e} is not a player:
 		if "{@mob-hide-full}" is "true":
