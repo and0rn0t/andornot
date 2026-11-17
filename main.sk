@@ -161,6 +161,12 @@ on quit:
 	delete {-sbar::%player's uuid%::*}
 
 on damage:
+	# 불사의 토템(totem.sk) 무적 중에는 모든 피해를 취소한다(전투 중 카운터도 올리지 않음)
+	if victim is player:
+		if {-totemend::%victim's uuid%} is set:
+			if {-totemend::%victim's uuid%} > now:
+				cancel event
+				stop
 	# 기절 중인 공격자는 데미지를 줄 수 없음
 	if attacker is set:
 		if isStunned(attacker) is true:
@@ -244,6 +250,10 @@ on damage:
 				else:
 					# 그 외 근접(검, 맨손, 삼지창, 몹 등): 전체 데미지 배율만 적용
 					set damage to damage * dmgMul()
+	# 모루(anvil.sk) 버프: 내가 가하는 모든 피해 10% 증가(근접/투사체/스킬 공통, 위 무기 보정이 끝난 뒤 마지막에 곱함)
+	if attacker is set:
+		if {-anvil::%attacker's uuid%} is set:
+			set damage to damage * 1.1
 	if attacker is player:
 		add 8 to {-oc::%attacker's uuid%}
 		loop 8 times:
