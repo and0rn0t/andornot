@@ -1,0 +1,286 @@
+# [items.sk] 아이템 시스템: 카탈로그(이름/재료/설명 lore), 아이템 변경 GUI(앉기+버리기), 관리자용 순서 편집 GUI(/itemorder)
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-ingame}(게임 진행 여부, 지금은 아무도 안 켬. 게임 설계 때 true/false 로 사용), {-itemgui::uuid}(열린 GUI 종류 select/order),
+#   {-itemguislot::uuid}(변경 대상 핫바 슬롯 0~4), {-itemguimap::uuid::슬롯}(GUI 슬롯 -> 아이템 id), {-itemguipick::uuid}(순서 편집에서 고른 슬롯),
+#   {itemorder::*}(GUI 표시 순서. 앞에 대시가 없어서 재시작해도 유지됨)
+#
+# ===== 사용법 =====
+#   - 게임 중이 아닐 때({-ingame} 가 true 가 아닐 때) 핫바 1~5번 슬롯을 든 채 앉기+버리기(Q) 하면 4줄 GUI 가 열린다.
+#   - GUI 에서 아이템을 클릭하면 들고 있던 칸의 아이템이 그 아이템으로 교체된다. 핫바 1~5번 안에 이미 있는 아이템은 중복이라 못 고른다.
+#   - 위 3줄(27칸)은 아이템, 맨 아래 1줄은 나중에 페이지 넘기기 자리(지금은 비어서 회색 유리판). 빈 칸은 모두 회색 색유리판(이름 공백)이고 클릭해도 아무 일도 안 일어난다.
+#   - 아이템이 27개를 넘으면 페이지 기능을 추가해야 한다(지금은 27개까지만 표시).
+#   - /itemorder (op 전용): GUI 에 나오는 순서를 바꾸는 편집 GUI. 아이템을 클릭 -> 바꿀 다른 아이템 클릭 하면 두 아이템의 자리가 서로 바뀌고 저장된다.
+#
+# ===== 직접 고치는 곳 =====
+#   - 아이템 목록/이름/재료: itemIds(), itemName(), itemBase() 에 아이템 한 종류당 한 줄씩. 새 아이템은 세 곳에 id 를 똑같이 추가.
+#   - 설명(lore): itemLoreLines(id) 의 텍스트를 직접 고치면 된다. 색 코드(&7 등) 사용 가능, 줄마다 따로 적는다.
+#   - 표시 순서: /itemorder GUI (목록에 새로 추가된 아이템은 맨 뒤에 붙고, 삭제된 아이템은 순서에서 빠진다).
+#   - 금속 재료 도구/무기는 모두 철 도구/무기로 통일한다(철 도끼/곡괭이/괭이/창). 철퇴(mace)는 원래 금속 등급이 없다.
+#
+# 미검증 문법: 아이템 이름 비교(name of), lore 리스트 설정, 아이템 플래그(with item flags), iron spear/ominous bottle/potion of ~ 별칭,
+#   event.getRawSlot()/getHeldItemSlot() (skript-reflect), chest inventory with 4 rows named, 클릭/드래그 취소. 오류가 나면 콘솔 로그를 보내줘.
+#   아이템을 만드는 기능에서 문제가 생기면 itemBuild() 를 먼저 의심할 것.
+# 같은 아이템인지는 이름으로 구분한다(itemIdAt). 이름 앞에 색 코드를 붙여도 itemName() 이 같은 값을 쓰므로 일치한다.
+
+# 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
+function itemIds() :: texts:
+	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina" and "potion_invis"
+
+# 아이템 이름
+function itemName(id: text) :: text:
+	if {_id} is "crossbow":
+		return "&f석궁"
+	if {_id} is "fishing_rod":
+		return "&f낚싯대"
+	if {_id} is "iron_axe":
+		return "&f철 도끼"
+	if {_id} is "iron_pickaxe":
+		return "&f철 곡괭이"
+	if {_id} is "iron_hoe":
+		return "&f철 괭이"
+	if {_id} is "mace":
+		return "&f철퇴"
+	if {_id} is "iron_spear":
+		return "&f철 창"
+	if {_id} is "tnt":
+		return "&cTNT"
+	if {_id} is "nether_star":
+		return "&f네더의 별"
+	if {_id} is "ominous_bottle":
+		return "&5불길한 병"
+	if {_id} is "potion_heal":
+		return "&c체력 포션"
+	if {_id} is "potion_stamina":
+		return "&a스태미너 포션"
+	if {_id} is "potion_invis":
+		return "&b투명 포션"
+	return "&f%{_id}%"
+
+# 아이템 재료(포션은 바닐라 포션 종류가 스킬 판정에 쓰이므로 종류를 바꾸지 말 것: skill_core.sk 의 potionKind)
+function itemBase(id: text) :: itemtype:
+	if {_id} is "crossbow":
+		return crossbow
+	if {_id} is "fishing_rod":
+		return fishing rod
+	if {_id} is "iron_axe":
+		return iron axe
+	if {_id} is "iron_pickaxe":
+		return iron pickaxe
+	if {_id} is "iron_hoe":
+		return iron hoe
+	if {_id} is "mace":
+		return mace
+	if {_id} is "iron_spear":
+		return iron spear
+	if {_id} is "tnt":
+		return tnt
+	if {_id} is "nether_star":
+		return nether star
+	if {_id} is "ominous_bottle":
+		return ominous bottle
+	if {_id} is "potion_heal":
+		return potion of healing
+	if {_id} is "potion_stamina":
+		return potion of leaping
+	if {_id} is "potion_invis":
+		return potion of invisibility
+	return stone
+
+# 아이템 설명(lore). 여기를 직접 고치면 된다. 수치는 현재 코드 기준(2026-11): 체력 숫자는 하트가 아니라 기획서의 실제 체력.
+function itemLoreLines(id: text) :: texts:
+	if {_id} is "crossbow":
+		return "&7[우클릭] 화살을 발사해요", "&7쿨타임 0.8초"
+	if {_id} is "fishing_rod":
+		return "&7[우클릭] 낚싯바늘을 던져요", "&7맞은 적을 3초간 구속하고 끌어당겨요", "&7피해 4"
+	if {_id} is "iron_axe":
+		return "&7대상의 체력이 80% 이상이면", "&7피해가 1.5배가 돼요", "&7기본 피해 5"
+	if {_id} is "iron_pickaxe":
+		return "&7타격할 때마다 '채굴' 중첩이 쌓여요", "&7중첩마다 피해가 늘어나요", "&7기본 피해 2"
+	if {_id} is "iron_hoe":
+		return "&7대상의 체력이 50% 이하면", "&7피해가 2배가 돼요", "&7기본 피해 2"
+	if {_id} is "mace":
+		return "&7피해가 낮은 대신 묵직하게 때려요", "&7(바닐라 피해의 30%)"
+	if {_id} is "iron_spear":
+		return "&7[우클릭] 도약해요", "&7피해는 최대 5까지 들어가요"
+	if {_id} is "tnt":
+		return "&7[우클릭] TNT 를 던져요", "&7폭발에 맞은 적은 2초간 기절하고 피해 2를 입어요", "&7쿨타임 12초"
+	if {_id} is "nether_star":
+		return "&7[우클릭] 6초간 저항, 힘, 재생, 신속 1", "&7쿨타임 45초"
+	if {_id} is "ominous_bottle":
+		return "&7[우클릭] 7초간 강화돼요", "&7효과가 끝나면 탈진해요", "&7쿨타임 30초"
+	if {_id} is "potion_heal":
+		return "&7[우클릭] 체력 5 회복", "&7쿨타임 7초"
+	if {_id} is "potion_stamina":
+		return "&7[우클릭] 스태미너 50 회복", "&7쿨타임 7초"
+	if {_id} is "potion_invis":
+		return "&7[우클릭] 4초간 투명해져요", "&7피해를 입거나 입히면 풀려요", "&7쿨타임 18초"
+	return "&7설명 없음"
+
+# 아이템 생성. extra 가 비어 있지 않으면 설명 맨 아래에 한 줄 덧붙인다(편집 GUI 의 '선택됨' 표시용).
+# 바닐라 설명(공격력/공격속도 등 속성, 포션 효과 설명)은 아이템 플래그로 숨긴다.
+function itemBuild(id: text, extra: text = "") :: itemtype:
+	set {_i} to itemBase({_id})
+	set {_l::*} to itemLoreLines({_id})
+	if {_extra} is not "":
+		add {_extra} to {_l::*}
+	set {_i} to {_i} named itemName({_id})
+	set lore of {_i} to {_l::*}
+	set {_i} to {_i} with item flags hide attributes and hide additional tooltip
+	return {_i}
+
+# 플레이어 인벤토리 s 번 칸(0부터)의 아이템이 카탈로그의 어떤 아이템인지. 아니면 "".
+function itemIdAt(p: player, s: number) :: text:
+	set {_n} to name of slot {_s} of {_p}'s inventory
+	if {_n} is not set:
+		return ""
+	loop itemIds():
+		set {_v} to itemName(loop-value)
+		if {_n} is {_v}:
+			return loop-value
+	return ""
+
+# GUI 표시 순서. 저장된 순서에서 없어진 id 는 빼고, 새 id 는 뒤에 붙여서 저장 후 돌려준다.
+function itemOrder() :: texts:
+	set {_ids::*} to itemIds()
+	loop {itemorder::*}:
+		if {_ids::*} contains loop-value:
+			if {_o::*} does not contain loop-value:
+				add loop-value to {_o::*}
+	loop {_ids::*}:
+		if {_o::*} does not contain loop-value:
+			add loop-value to {_o::*}
+	delete {itemorder::*}
+	set {itemorder::*} to {_o::*}
+	return {_o::*}
+
+# 순서 편집: a 번째와 b 번째(1부터) 아이템의 자리를 바꾼다.
+function itemOrderSwap(a: number, b: number):
+	set {_o::*} to itemOrder()
+	set {_t} to {_o::%{_a}%}
+	set {_o::%{_a}%} to {_o::%{_b}%}
+	set {_o::%{_b}%} to {_t}
+	delete {itemorder::*}
+	set {itemorder::*} to {_o::*}
+
+# GUI 를 채운다. 아이템/빈칸 모두 36칸을 한 번에 다시 그린다. 아이템이 들어가지 않는 칸은 전부 회색 색유리판(이름 공백).
+# 아래 1줄(27~35번 칸)은 나중에 페이지 넘기기 버튼 자리라서 지금은 회색 유리판.
+function itemGuiFill(p: player, inv: inventory, mode: text):
+	set {_uid} to "%{_p}'s uuid%"
+	delete {-itemguimap::%{_uid}%::*}
+	loop 36 times:
+		set {_s} to loop-value - 1
+		set slot {_s} of {_inv} to gray stained glass pane named " "
+	set {_o::*} to itemOrder()
+	set {_n} to size of {_o::*}
+	if {_n} > 27:
+		set {_n} to 27
+	loop integers from 1 to {_n}:
+		set {_k} to loop-value
+		set {_s} to {_k} - 1
+		set {_id} to {_o::%{_k}%}
+		set {_x} to ""
+		if {_mode} is "order":
+			if {-itemguipick::%{_uid}%} is {_s}:
+				set {_x} to "&e▶ 자리를 바꿀 아이템이에요"
+		set slot {_s} of {_inv} to itemBuild({_id}, {_x})
+		set {-itemguimap::%{_uid}%::%{_s}%} to {_id}
+
+# GUI 열기. mode: select(아이템 변경) / order(순서 편집). 상태 변수는 inventory 를 연 다음에 둔다(이전 GUI 가 닫히며 지우는 것을 피하려고).
+function itemGuiOpen(p: player, mode: text, slot: number = 0):
+	set {_uid} to "%{_p}'s uuid%"
+	delete {-itemguipick::%{_uid}%}
+	set {_t} to "아이템 변경"
+	if {_mode} is "order":
+		set {_t} to "아이템 순서 편집 (관리자)"
+	set {_inv} to chest inventory with 4 rows named {_t}
+	itemGuiFill({_p}, {_inv}, {_mode})
+	open {_inv} to {_p}
+	set {-itemgui::%{_uid}%} to {_mode}
+	set {-itemguislot::%{_uid}%} to {_slot}
+
+# 앉기 + 버리기: 게임 중이 아닐 때 핫바 1~5번 슬롯에서 변경 GUI 를 연다. 이 버리기는 취소(아이템은 안 버려짐).
+# 게임 중이면 이 기능은 아무것도 하지 않는다(일반 버리기 동작 그대로).
+on drop:
+	if player is not sneaking:
+		stop
+	if {-ingame} is true:
+		stop
+	if isStunned(player) is true:
+		stop
+	set {_p} to player
+	set {_hs} to "%{_p}.getInventory().getHeldItemSlot()%" parsed as number
+	if {_hs} is not set:
+		stop
+	if {_hs} > 4:
+		stop
+	cancel the event
+	itemGuiOpen({_p}, "select", {_hs})
+
+command /itemorder:
+	description: 아이템 변경 GUI 의 표시 순서를 편집해요 (op 전용)
+	executable by: players
+	trigger:
+		if player is not op:
+			send "&c권한이 없어요."
+			stop
+		itemGuiOpen(player, "order")
+
+on inventory click:
+	set {_uid} to "%player's uuid%"
+	set {_m} to {-itemgui::%{_uid}%}
+	if {_m} is not set:
+		stop
+	# GUI 가 열려 있는 동안은 모든 클릭(쉬프트 클릭, 숫자키 교체 등 포함)을 막는다.
+	cancel the event
+	set {_raw} to "%event.getRawSlot()%" parsed as number
+	if {_raw} is not set:
+		stop
+	if {_raw} < 0:
+		stop
+	if {_raw} > 26:
+		stop
+	# 회색 유리판(맵에 없는 칸)은 아무 일도 안 일어남
+	set {_id} to {-itemguimap::%{_uid}%::%{_raw}%}
+	if {_id} is not set:
+		stop
+	set {_p} to player
+	if {_m} is "select":
+		set {_hs} to {-itemguislot::%{_uid}%}
+		if itemIdAt({_p}, {_hs}) is {_id}:
+			stop
+		loop integers from 0 to 4:
+			set {_c} to loop-value
+			if {_c} is not {_hs}:
+				if itemIdAt({_p}, {_c}) is {_id}:
+					send "&c이미 가지고 있는 아이템이에요." to {_p}
+					play sound "entity.villager.no" with volume 0.5 to {_p}
+					stop
+		set slot {_hs} of {_p}'s inventory to itemBuild({_id})
+		play sound "entity.item.pickup" with volume 0.6 to {_p}
+		close {_p}'s inventory
+	else if {_m} is "order":
+		set {_pick} to {-itemguipick::%{_uid}%}
+		if {_pick} is not set:
+			set {-itemguipick::%{_uid}%} to {_raw}
+		else if {_pick} is {_raw}:
+			delete {-itemguipick::%{_uid}%}
+		else:
+			itemOrderSwap({_pick} + 1, {_raw} + 1)
+			delete {-itemguipick::%{_uid}%}
+		itemGuiFill({_p}, {_p}'s current inventory, "order")
+
+on inventory drag:
+	if {-itemgui::%player's uuid%} is set:
+		cancel the event
+
+on inventory close:
+	delete {-itemgui::%player's uuid%}
+	delete {-itemguislot::%player's uuid%}
+	delete {-itemguipick::%player's uuid%}
+	delete {-itemguimap::%player's uuid%::*}
+
+on quit:
+	delete {-itemgui::%player's uuid%}
+	delete {-itemguislot::%player's uuid%}
+	delete {-itemguipick::%player's uuid%}
+	delete {-itemguimap::%player's uuid%::*}
