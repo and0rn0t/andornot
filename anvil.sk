@@ -20,12 +20,12 @@ on rightclick:
 		if {-ancd::%player's uuid%} > now:
 			stop
 	if {-anvil::%player's uuid%} is set:
-		send "&7이미 모루 효과가 적용 중이에요."
+		send "&7이미 모루 효과가 적용 중이에요." to player
 		stop
 	set {-ancd::%player's uuid%} to now + 90 seconds
 	set item cooldown of anvil for player to 90 seconds
 	set {-anvil::%player's uuid%} to true
-	send "&6모루: &f이번 게임 동안 가하는 피해가 10% 증가해요."
+	send "&6모루: &f이번 게임 동안 가하는 피해가 10%% 증가해요." to player
 	play sound "block.anvil.use" with volume 1 and pitch 1 at player
 	play sound "entity.player.levelup" with volume 1 and pitch 0.6 to player
 	set {_c} to player's location ~ vector(0, 1, 0)
