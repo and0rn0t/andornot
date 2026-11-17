@@ -174,7 +174,7 @@ on damage:
 				# 힘 효과(네더의 별 등): 도끼/곡괭이/괭이는 데미지를 고정값으로 덮어써서 바닐라 힘 보너스가 사라지므로 직접 더한다(실 체력 +3, 바닐라 힘 I 과 같은 값).
 				set {_sb} to 0
 				set {_la} to attacker
-				if {_la} has strength:
+				if {_la} has potion effect strength:
 					set {_sb} to hp(3)
 				# 공격 쿨다운 배율 + 크리티컬(바닐라 판정, 1.5배). 덮어쓰는 무기(도끼/곡괭이/괭이)에만 쓴다.
 				set {_cm} to cooldownScale(attacker)

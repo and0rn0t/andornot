@@ -5,8 +5,8 @@
 #   {itemorder::*}(GUI 표시 순서. 앞에 대시가 없어서 재시작해도 유지됨)
 #
 # ===== 사용법 =====
-#   - 게임 중이 아닐 때({-ingame} 가 true 가 아닐 때) 핫바 1~5번 슬롯을 든 채 앉기+버리기(Q) 하면 4줄 GUI 가 열린다.
-#   - GUI 에서 아이템을 클릭하면 들고 있던 칸의 아이템이 그 아이템으로 교체된다. 핫바 1~5번 안에 이미 있는 아이템은 중복이라 못 고른다.
+#   - 게임 중이 아닐 때({-ingame} 가 true 가 아닐 때) 핫바 아무 슬롯이나 든 채 앉기+버리기(Q) 하면 4줄 GUI 가 열린다.
+#   - GUI 에서 아이템을 클릭하면 들고 있던 칸의 아이템이 그 아이템으로 교체된다. 핫바 안에 이미 있는 아이템은 중복이라 못 고른다.
 #   - 위 3줄(27칸)은 아이템, 맨 아래 1줄은 나중에 페이지 넘기기 자리(지금은 비어서 회색 유리판). 빈 칸은 모두 회색 색유리판(이름 공백)이고 클릭해도 아무 일도 안 일어난다.
 #   - 아이템이 27개를 넘으면 페이지 기능을 추가해야 한다(지금은 27개까지만 표시).
 #   - /itemorder (op 전용): GUI 에 나오는 순서를 바꾸는 편집 GUI. 아이템을 클릭 -> 바꿀 다른 아이템 클릭 하면 두 아이템의 자리가 서로 바뀌고 저장된다.
@@ -93,13 +93,13 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "fishing_rod":
 		return "&7[우클릭] 낚싯바늘을 던져요", "&7맞은 적을 3초간 구속하고 끌어당겨요", "&7피해 4"
 	if {_id} is "iron_axe":
-		return "&7대상의 체력이 80% 이상이면", "&7피해가 1.5배가 돼요", "&7기본 피해 5"
+		return "&7대상의 체력이 80%% 이상이면", "&7피해가 1.5배가 돼요", "&7기본 피해 5"
 	if {_id} is "iron_pickaxe":
 		return "&7타격할 때마다 '채굴' 중첩이 쌓여요", "&7중첩마다 피해가 늘어나요", "&7기본 피해 2"
 	if {_id} is "iron_hoe":
-		return "&7대상의 체력이 50% 이하면", "&7피해가 2배가 돼요", "&7기본 피해 2"
+		return "&7대상의 체력이 50%% 이하면", "&7피해가 2배가 돼요", "&7기본 피해 2"
 	if {_id} is "mace":
-		return "&7피해가 낮은 대신 묵직하게 때려요", "&7(바닐라 피해의 30%)"
+		return "&7피해가 낮은 대신 묵직하게 때려요", "&7(바닐라 피해의 30%%)"
 	if {_id} is "iron_spear":
 		return "&7[우클릭] 도약해요", "&7피해는 최대 5까지 들어가요"
 	if {_id} is "tnt":
@@ -198,7 +198,7 @@ function itemGuiOpen(p: player, mode: text, slot: number = 0):
 	set {-itemgui::%{_uid}%} to {_mode}
 	set {-itemguislot::%{_uid}%} to {_slot}
 
-# 앉기 + 버리기: 게임 중이 아닐 때 핫바 1~5번 슬롯에서 변경 GUI 를 연다. 이 버리기는 취소(아이템은 안 버려짐).
+# 앉기 + 버리기: 게임 중이 아닐 때 핫바 어느 슬롯에서든 변경 GUI 를 연다. 이 버리기는 취소(아이템은 안 버려짐).
 # 게임 중이면 이 기능은 아무것도 하지 않는다(일반 버리기 동작 그대로).
 on drop:
 	if player is not sneaking:
@@ -210,8 +210,6 @@ on drop:
 	set {_p} to player
 	set {_hs} to "%{_p}.getInventory().getHeldItemSlot()%" parsed as number
 	if {_hs} is not set:
-		stop
-	if {_hs} > 4:
 		stop
 	cancel the event
 	itemGuiOpen({_p}, "select", {_hs})
@@ -248,7 +246,7 @@ on inventory click:
 		set {_hs} to {-itemguislot::%{_uid}%}
 		if itemIdAt({_p}, {_hs}) is {_id}:
 			stop
-		loop integers from 0 to 4:
+		loop integers from 0 to 8:
 			set {_c} to loop-value
 			if {_c} is not {_hs}:
 				if itemIdAt({_p}, {_c}) is {_id}:
