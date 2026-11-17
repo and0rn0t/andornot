@@ -2,7 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-ancd}(쿨타임 종료 시각), {-anvil}(모루 중첩 수. main.sk 의 첫 on damage 끝에서 x(1 + 0.1 x 중첩)), {-skillitems::anvil}
 # "이번 게임 동안"이라 시간 제한이 없다. 게임이 끝나거나 다시 시작할 때 anvilClear(p) 로 꺼야 한다(게임 설계 확정 시 연결). 지금은 접속/종료/사망 시 꺼진다.
-# 중첩은 사망하면 사라진다(접속/종료로는 안 사라짐). 게임이 끝나면 anvilClear(p) 로 꺼야 한다.
+# 중첩 수는 보스바에 "모루 x3" 으로 표시한다(안내 메시지는 없음). 중첩은 사망하면 사라진다(접속/종료로는 안 사라짐). 게임이 끝나면 anvilClear(p) 로 꺼야 한다.
 # 우클릭하면 모루가 설치되지 않도록 이벤트를 취소한다(설치 이벤트도 취소).
 # 피해 증가는 모든 가한 피해(근접/투사체/스킬)에 곱해진다. 소수점은 반올림하지 않는다(10% 단위라 불가피).
 
@@ -11,6 +11,7 @@ on load:
 
 function anvilClear(p: player):
 	delete {-anvil::%{_p}'s uuid%}
+	clearStatus({_p}, "anvil")
 
 on rightclick:
 	if skillHand(player, anvil) is false:
@@ -26,8 +27,8 @@ on rightclick:
 		set {_n} to 0
 	set {_n} to {_n} + 1
 	set {-anvil::%player's uuid%} to {_n}
-	set {_pct} to {_n} * 10
-	send "&6모루 x%{_n}%: &f이번 게임 동안 가하는 피해가 +%{_pct}%%% 증가해요." to player
+	# 보스바에 모루 중첩 표시(이로운 효과). 지속시간이 없는 버프라 24시간으로 걸어 막대는 거의 가득 찬 채 유지되고, 사용할 때마다 " x중첩" 이 갱신된다. 사망/anvilClear 때 지운다.
+	setStatus(player, "anvil", "모루", 24 hours, "good", " x%{_n}%")
 	play sound "block.anvil.use" with volume 1 and pitch 1 at player
 	play sound "entity.player.levelup" with volume 1 and pitch 0.6 to player
 	set {_c} to player's location ~ vector(0, 1, 0)
