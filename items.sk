@@ -23,9 +23,9 @@
 #   - 아이템 목록/이름/재료: itemIds(), itemName(), itemBase() 에 아이템 한 종류당 한 줄씩. 새 아이템은 세 곳에 id 를 똑같이 추가.
 #   - 설명(lore): itemLoreLines(id) 의 텍스트를 직접 고치면 된다. 색 코드(&7 등) 사용 가능, 줄마다 따로 적는다.
 #   - 탭 아이콘 모양: itemSprite(id)(스프라이트 이름은 미검증, 틀리면 보라/검정 체크무늬). 표시 순서: /itemorder GUI (목록에 새로 추가된 아이템은 맨 뒤에 붙고, 삭제된 아이템은 순서에서 빠진다).
-#   - 금속 재료 도구/무기는 모두 철 도구/무기로 통일하되 이름에는 '철'을 붙이지 않는다(도끼/곡괭이/괭이/창). 철퇴(mace)는 원래 금속 등급이 없다.
+#   - 금속 재료 도구/무기는 모두 다이아몬드 도구/무기로 통일하되(재료만 다이아몬드, id 는 저장된 구성 호환을 위해 iron_ 그대로) 이름에는 '철'을 붙이지 않는다(도끼/곡괭이/괭이/창). 철퇴(mace)는 원래 금속 등급이 없다.
 #
-# 미검증 문법: 무기고 클릭 방어(reflect), skull owner, playerListName(reflect), 아이콘 스프라이트 이름(특히 포션은 색이 안 나옴), 아이템 이름 비교(name of), lore 리스트 설정, 아이템 플래그(with item flags), iron spear/ominous bottle/potion of ~ 별칭,
+# 미검증 문법: 무기고 클릭 방어(reflect), skull owner, playerListName(reflect), 아이콘 스프라이트 이름(특히 포션은 색이 안 나옴), 아이템 이름 비교(name of), lore 리스트 설정, 아이템 플래그(with item flags), diamond spear/ominous bottle/potion of ~ 별칭,
 #   event.getRawSlot()/getHeldItemSlot() (skript-reflect), chest inventory with 4 rows named, 클릭/드래그 취소. 오류가 나면 콘솔 로그를 보내줘.
 #   아이템을 만드는 기능에서 문제가 생기면 itemBuild() 를 먼저 의심할 것.
 # 같은 아이템인지는 이름으로 구분한다(itemIdAt). 이름 앞에 색 코드를 붙여도 itemName() 이 같은 값을 쓰므로 일치한다.
@@ -82,17 +82,17 @@ function itemBase(id: text) :: itemtype:
 	if {_id} is "fishing_rod":
 		return fishing rod
 	if {_id} is "iron_axe":
-		return iron axe
+		return diamond axe
 	if {_id} is "iron_pickaxe":
-		return iron pickaxe
+		return diamond pickaxe
 	if {_id} is "iron_hoe":
-		return iron hoe
+		return diamond hoe
 	if {_id} is "mace":
 		return mace
 	if {_id} is "iron_spear":
-		return iron spear
+		return diamond spear
 	if {_id} is "iron_sword":
-		return iron sword
+		return diamond sword
 	if {_id} is "tnt":
 		return tnt
 	if {_id} is "nether_star":
@@ -262,17 +262,17 @@ function itemSprite(id: text) :: text:
 	if {_id} is "fishing_rod":
 		return "fishing_rod"
 	if {_id} is "iron_axe":
-		return "iron_axe"
+		return "diamond_axe"
 	if {_id} is "iron_pickaxe":
-		return "iron_pickaxe"
+		return "diamond_pickaxe"
 	if {_id} is "iron_hoe":
-		return "iron_hoe"
+		return "diamond_hoe"
 	if {_id} is "mace":
 		return "mace"
 	if {_id} is "iron_spear":
-		return "iron_spear"
+		return "diamond_spear"
 	if {_id} is "iron_sword":
-		return "iron_sword"
+		return "diamond_sword"
 	if {_id} is "tnt":
 		return "block/tnt_side"
 	if {_id} is "nether_star":
