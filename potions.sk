@@ -33,9 +33,6 @@ function potionVisual(p: player, kind: text, secs: number):
 		{_p}.getInventory().setItemInOffHand({_it})
 	set {_ticks} to {_secs} * 20
 	{_p}.setCooldown({_it}, {_ticks})
-	# 임시 디버그: 컴포넌트가 실제로 붙었는지 확인(해결되면 지울 것)
-	set {_has} to {_it}.hasData(DataComponentTypes.USE_COOLDOWN)
-	send "&7[포션 쿨타임] 컴포넌트 적용=%{_has}% 손=%{_main}% 종류=%{_kind}%" to {_p}
 
 # 이번 우클릭에서 발동할 포션 종류("" 이면 없음). 메인핸드 포션 우선, 메인핸드 포션이 쿨타임이면 오프핸드로 양보.
 # 메인핸드가 다른 스킬 아이템이면(쿨타임이 아닐 때) 그 스킬이 우선이라 발동하지 않는다. 메인핸드에 창이 있으면 창이 우클릭을 쓴다.
