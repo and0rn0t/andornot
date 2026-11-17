@@ -217,6 +217,14 @@ on damage:
 						set {_d} to {_d} * 2
 					set {_d} to {_d} + {_sb}
 					set damage to {_d} * {_cm}
+				else if {_w} is "sword":
+					# 검: 효과 없음, 기본 체력 5(고정). 휩쓸기(범위) 피해는 덮어쓰지 않고 바닐라 값에 전체 배율만 적용한다.
+					set {_cause} to {_ev}.getCause().name()
+					if {_cause} is "ENTITY_SWEEP_ATTACK":
+						set damage to damage * dmgMul()
+					else:
+						set {_d} to hp(5) + {_sb}
+						set damage to {_d} * {_cm}
 				else if {_w} is "pickaxe":
 					# 곡괭이: 기본 체력 2 + 중첩 수. 타격마다 중첩 +1, 마지막 타격 후 3초 안에 못 때리면 전부 소멸.
 					# 이번 타격은 기존 중첩만 적용하고, 타격 후 중첩을 늘린다.

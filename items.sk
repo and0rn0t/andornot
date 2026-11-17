@@ -36,7 +36,7 @@ import:
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
 function itemIds() :: texts:
-	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina" and "potion_invis"
+	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina" and "potion_invis"
 
 # 아이템 이름
 function itemName(id: text) :: text:
@@ -54,6 +54,8 @@ function itemName(id: text) :: text:
 		return "&f철퇴"
 	if {_id} is "iron_spear":
 		return "&f창"
+	if {_id} is "iron_sword":
+		return "&f검"
 	if {_id} is "tnt":
 		return "&cTNT"
 	if {_id} is "nether_star":
@@ -84,6 +86,8 @@ function itemBase(id: text) :: itemtype:
 		return mace
 	if {_id} is "iron_spear":
 		return iron spear
+	if {_id} is "iron_sword":
+		return iron sword
 	if {_id} is "tnt":
 		return tnt
 	if {_id} is "nether_star":
@@ -114,6 +118,8 @@ function itemLoreLines(id: text) :: texts:
 		return "&7피해가 낮은 대신 묵직하게 때려요", "&7(바닐라 피해의 30%%)"
 	if {_id} is "iron_spear":
 		return "&7[우클릭] 도약해요", "&7피해는 최대 5까지 들어가요"
+	if {_id} is "iron_sword":
+		return "&7기본 피해 5"
 	if {_id} is "tnt":
 		return "&7[우클릭] TNT 를 던져요", "&7폭발에 맞은 적은 2초간 기절하고 피해 2를 입어요", "&7쿨타임 12초"
 	if {_id} is "nether_star":
@@ -170,6 +176,8 @@ function itemCategory(id: text) :: number:
 	if {_id} is "iron_spear":
 		return 1
 	if {_id} is "mace":
+		return 1
+	if {_id} is "iron_sword":
 		return 1
 	if {_id} is "crossbow":
 		return 2
@@ -241,6 +249,8 @@ function itemSprite(id: text) :: text:
 		return "mace"
 	if {_id} is "iron_spear":
 		return "iron_spear"
+	if {_id} is "iron_sword":
+		return "iron_sword"
 	if {_id} is "tnt":
 		return "block/tnt_side"
 	if {_id} is "nether_star":

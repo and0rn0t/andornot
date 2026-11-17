@@ -277,6 +277,8 @@ function weaponKind(e: entity) :: text:
 		return "axe"
 	if {_main} ends with "_HOE":
 		return "hoe"
+	if {_main} ends with "_SWORD":
+		return "sword"
 	return ""
 
 # 상태이상 표시 등록/해제. 표시와 만료 처리는 main.sk 에서 한다. (사용법은 위 5번 참고)
