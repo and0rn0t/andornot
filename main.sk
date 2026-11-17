@@ -288,7 +288,7 @@ on damage:
 		loop 10 times:
 			if {-oc::%victim's uuid%} = 0:
 				heal victim by 1
-				wait 1 seconds
+				wait 0.75 seconds
 
 on heal:
 	# 불길한 병의 회복({-healok})과 네더의 별 효과 중의 재생은 전투 중 회복 차단을 통과한다.
