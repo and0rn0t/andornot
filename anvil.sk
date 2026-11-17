@@ -8,6 +8,8 @@
 
 on load:
 	set {-skillitems::anvil} to anvil
+	# 리로드 후 남은 옛 형식(true) 값 정리
+	delete {-anvil::*}
 
 function anvilClear(p: player):
 	delete {-anvil::%{_p}'s uuid%}
@@ -23,7 +25,8 @@ on rightclick:
 	set {-ancd::%player's uuid%} to now + 90 seconds
 	set item cooldown of anvil for player to 90 seconds
 	set {_n} to {-anvil::%player's uuid%}
-	if {_n} is not set:
+	# 이전 버전(true 로 저장)의 값이 남아 있어도 안전하게 숫자가 아니면 0 부터 시작한다.
+	if {_n} is not a number:
 		set {_n} to 0
 	set {_n} to {_n} + 1
 	set {-anvil::%player's uuid%} to {_n}
