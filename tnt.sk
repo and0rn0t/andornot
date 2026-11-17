@@ -8,9 +8,6 @@
 # 던지는 순간에는 entity.tnt.primed 소리가 난다. 퓨즈를 바꾸면(setFuseTicks 값) 경고음 타이밍(wait 값)도 같이 맞출 것.
 # 폭발 이펙트: 폭발 범위 안쪽을 large explosion 으로 2칸 간격으로 채운다(범위 끝에서 파티클 크기만큼 닿도록 반경-1 까지만 배치).
 
-import:
-	org.bukkit.Bukkit
-
 on load:
 	set {-skillitems::tnt} to tnt
 
@@ -18,8 +15,8 @@ on load:
 function tntRadius() :: number:
 	return 4
 
-# owner: 던진 사람 이름(텍스트). 던진 사람 본인도 범위 안이면 피해/기절을 받는다.
-# 아군(던진 사람과 같은 스코어보드 팀, 본인 제외)은 피해/기절을 받지 않는다. 던진 사람이 팀이 없으면 아군도 없다.
+# owner: 던진 사람 uuid(텍스트). 던진 사람 본인도 범위 안이면 피해/기절을 받는다.
+# 아군(skill_core.sk 의 isAlly: {-team} 변수가 같은 다른 대상)은 피해/기절을 받지 않는다. 팀이 없으면 아군도 없다.
 function tntBlast(owner: text, loc: location):
 	set {_r} to tntRadius()
 	play sound "entity.generic.explode" with volume 1 and pitch 1.2 at {_loc}
@@ -36,26 +33,12 @@ function tntBlast(owner: text, loc: location):
 			set {_p} to {_loc} ~ vector({_x}, {_y}, {_z})
 			play 1 large explosion at {_p} in radius of 100
 	# 범위 안의 모든 생명체(던진 사람 포함, 갑옷 거치대 제외)에게 고정 피해 실 체력 2. 플레이어는 추가로 기절.
-	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
-	set {_ot} to {_sb}.getEntryTeam({_owner})
 	loop all living entities in radius {_r} around {_loc}:
 		set {_e} to loop-entity
 		if {_e} is not an armor stand:
-			# 아군 판정: 던진 사람이 팀에 있고, 맞은 대상(본인 제외)이 같은 팀이면 아군. 엔트리 이름은 플레이어=이름, 그 외=uuid.
-			set {_ally} to false
-			if {_ot} is set:
-				if {_e} is a player:
-					set {_en} to "%{_e}'s name%"
-				else:
-					set {_en} to "%uuid of {_e}%"
-				if {_en} is not {_owner}:
-					set {_vt} to {_sb}.getEntryTeam({_en})
-					if {_vt} is set:
-						set {_oname} to {_ot}.getName()
-						set {_vname} to {_vt}.getName()
-						if {_oname} is {_vname}:
-							set {_ally} to true
-			if {_ally} is false:
+			# 아군(같은 팀 변수 {-team}, 본인 제외)은 피해/기절을 받지 않는다.
+			set {_vid} to "%uuid of {_e}%"
+			if isAlly({_owner}, {_vid}) is false:
 				damage {_e} by hp(2) hearts
 				if {_e} is a player:
 					stun({_e}, "tnt_%{_owner}%", 2 seconds)
@@ -78,7 +61,7 @@ on rightclick:
 		set {_t} to event-entity
 		set velocity of event-entity to {_vel}
 		# 던진 사람을 기록해 두고 on explosion 에서 읽는다. 퓨즈 33틱 뒤 바닐라가 직접 폭발시킴(setFuseTicks 값).
-		set {-tntowner::%uuid of event-entity%} to "%{_p}'s name%"
+		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
 		{_t}.setFuseTicks(33)
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
 	wait 13 ticks
