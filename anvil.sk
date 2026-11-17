@@ -1,10 +1,10 @@
-# [anvil.sk] 모루 스킬(우클릭, 쿨 90초): 이번 게임 동안 내가 가하는 피해 10% 증가. 메인핸드 우선, 오프핸드도 작동
+# [anvil.sk] 모루 스킬(우클릭, 쿨 90초): 이번 게임 동안 내가 가하는 피해 +10%, 쓸 때마다 무한 중첩(합연산: 3번이면 +30%, 곱하기 1.3). 메인핸드 우선, 오프핸드도 작동
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수: {-ancd}(쿨타임 종료 시각), {-anvil}(피해 증가 버프, 있으면 켜진 것. main.sk 의 첫 on damage 끝에서 x1.1), {-skillitems::anvil}
+# 이 파일이 쓰는 변수: {-ancd}(쿨타임 종료 시각), {-anvil}(모루 중첩 수. main.sk 의 첫 on damage 끝에서 x(1 + 0.1 x 중첩)), {-skillitems::anvil}
 # "이번 게임 동안"이라 시간 제한이 없다. 게임이 끝나거나 다시 시작할 때 anvilClear(p) 로 꺼야 한다(게임 설계 확정 시 연결). 지금은 접속/종료/사망 시 꺼진다.
-# 이미 버프가 켜져 있으면 다시 써도 소용없어서 쿨타임을 쓰지 않고 안내만 한다.
+# 중첩은 사망하면 사라진다(접속/종료로는 안 사라짐). 게임이 끝나면 anvilClear(p) 로 꺼야 한다.
 # 우클릭하면 모루가 설치되지 않도록 이벤트를 취소한다(설치 이벤트도 취소).
-# 피해 증가는 모든 가한 피해(근접/투사체/스킬)에 곱해진다. 소수점은 반올림하지 않는다(10% 라 불가피).
+# 피해 증가는 모든 가한 피해(근접/투사체/스킬)에 곱해진다. 소수점은 반올림하지 않는다(10% 단위라 불가피).
 
 on load:
 	set {-skillitems::anvil} to anvil
@@ -19,13 +19,15 @@ on rightclick:
 	if {-ancd::%player's uuid%} is set:
 		if {-ancd::%player's uuid%} > now:
 			stop
-	if {-anvil::%player's uuid%} is set:
-		send "&7이미 모루 효과가 적용 중이에요." to player
-		stop
 	set {-ancd::%player's uuid%} to now + 90 seconds
 	set item cooldown of anvil for player to 90 seconds
-	set {-anvil::%player's uuid%} to true
-	send "&6모루: &f이번 게임 동안 가하는 피해가 10%% 증가해요." to player
+	set {_n} to {-anvil::%player's uuid%}
+	if {_n} is not set:
+		set {_n} to 0
+	set {_n} to {_n} + 1
+	set {-anvil::%player's uuid%} to {_n}
+	set {_pct} to {_n} * 10
+	send "&6모루 x%{_n}%: &f이번 게임 동안 가하는 피해가 +%{_pct}%%% 증가해요." to player
 	play sound "block.anvil.use" with volume 1 and pitch 1 at player
 	play sound "entity.player.levelup" with volume 1 and pitch 0.6 to player
 	set {_c} to player's location ~ vector(0, 1, 0)
@@ -45,7 +47,3 @@ on death of player:
 
 on join:
 	delete {-ancd::%player's uuid%}
-	anvilClear(player)
-
-on quit:
-	anvilClear(player)

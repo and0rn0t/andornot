@@ -2,8 +2,15 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-totemcd}(쿨타임 종료 시각), {-totemend}(무적 종료 시각, main.sk 의 on damage 가 읽어서 피해를 취소), {-skillitems::totem},
 #   {-jumplock::uuid::totem}(무적 동안만), 상태이상 출처 키 totem(보스바에 이로운 효과 "불사의 토템")
+# 이펙트: 사용 시 노란 flash 3번(2틱 간격) + 5초 동안 노란 발광(팀 totemyellow 외곽선 + glowing). 불길한 병/네더의 별과 같은 방식.
 # 무적은 main.sk 의 첫 on damage 맨 위에서 피해를 취소하는 방식이다(모든 피해 원인 공통, 전투 중 회복 차단 카운터도 올리지 않음).
 # 진짜 토템 아이템이라 손에 들고 죽으면 바닐라가 부활시키고 아이템을 소모한다. 이를 막으려고 items.sk 의 itemBuild 가 death_protection 컴포넌트를 지운다(미검증).
+
+import:
+	org.bukkit.Bukkit
+	org.bukkit.ChatColor
+	org.bukkit.Color
+	org.bukkit.Particle
 
 on load:
 	set {-skillitems::totem} to totem of undying
@@ -23,10 +30,25 @@ on rightclick:
 	set {-jumplock::%{_id}%::totem} to true
 	setStatus({_p}, "totem", "불사의 토템", 5 seconds, "good")
 	play sound "item.totem.use" with volume 1 and pitch 1 at {_p}
+	# 노란 발광: 발광 외곽선 색은 팀 색이라 노랑 팀 totemyellow 에 5초 동안 넣는다(불길한 병의 obred 와 같은 방식, 스코어보드 API 로 직접 처리).
+	set {_n} to {_p}'s name
+	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+	set {_team} to {_sb}.getTeam("totemyellow")
+	if {_team} is not set:
+		set {_team} to {_sb}.registerNewTeam("totemyellow")
+	{_team}.setColor(ChatColor.YELLOW)
+	set {_old} to {_sb}.getEntryTeam({_n})
+	{_team}.addEntry({_n})
+	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 5 seconds replacing the existing effect
+	# 노란 flash 를 2틱 간격으로 3번(색 지정은 불길한 병과 같은 reflect 호출, 1.21.9 이상)
 	set {_c} to {_p}'s location ~ vector(0, 1, 0)
-	play 30 crit with offset of 0.5, 0.8, 0.5 and speed 0.4 at {_c} in radius of 100
-	play 1 flash at {_c} in radius of 100
-	wait 100 ticks
+	loop 3 times:
+		{_c}.getWorld().spawnParticle(Particle.FLASH, {_c}, 1, Color.fromRGB(255, 220, 0))
+		wait 2 ticks
+	wait 94 ticks
+	{_team}.removeEntry({_n})
+	if {_old} is set:
+		{_old}.addEntry({_n})
 	delete {-totemend::%{_id}%}
 	delete {-jumplock::%{_id}%::totem}
 	if {_p} is online:
