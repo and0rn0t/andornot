@@ -15,7 +15,8 @@
 #   - 구성 1~5번 아이템은 실제 인벤토리에도 지급된다(loadoutGive). 입장, 리스폰, 구성 변경 때만 확인해서 없는 아이템을 채우고, 핫바 어느 칸에 두든 자유다.
 #     처음 넣는 칸은 loadoutSlot() 의 선호 칸이 비었으면 거기, 아니면 빈 칸. 게임 중이 아닐 때는 구성 아이템을 버릴 수 없다(잃어버려도 다시 확인하지 않아서).
 #   - 구성 1~5번 아이템은 탭리스트의 플레이어 이름 옆에 아이콘으로 표시된다(킬로그와 같은 방식).
-#   - /itemorder (op 전용): GUI 에 나오는 순서를 바꾸는 편집 GUI. 아이템을 클릭 -> 바꿀 다른 아이템 클릭 하면 두 아이템의 자리가 서로 바뀌고 저장된다.
+#   - 정렬 기준: GUI 와 탭 아이콘은 분류 순서(금속 -> 나무 -> cc기 -> 포션류, itemCategory)로 정렬된다. 새 아이템이 이 분류에 안 맞으면 사용자에게 정렬 기준을 물어볼 것.
+#   - /itemorder (op 전용): 같은 분류 안에서 GUI 에 나오는 순서를 바꾸는 편집 GUI(분류가 다른 아이템끼리는 못 바꿈). 아이템을 클릭 -> 바꿀 다른 아이템 클릭 하면 두 아이템의 자리가 서로 바뀌고 저장된다.
 #
 # ===== 직접 고치는 곳 =====
 #   - 아이템 목록/이름/재료: itemIds(), itemName(), itemBase() 에 아이템 한 종류당 한 줄씩. 새 아이템은 세 곳에 id 를 똑같이 추가.
@@ -157,6 +158,44 @@ function itemIdAt(p: player, s: number) :: text:
 			return loop-value
 	return ""
 
+# 아이템 분류 번호. GUI 와 탭리스트 정렬 기준이다: 1 금속 무기/도구 -> 2 나무 무기/도구 -> 3 cc기 -> 4 포션류(버프 아이템 포함) -> 0 미분류(맨 뒤).
+# 새 아이템이 이 분류에 해당하지 않으면 임의로 정하지 말고 사용자에게 정렬 기준을 먼저 물어볼 것.
+function itemCategory(id: text) :: number:
+	if {_id} is "iron_axe":
+		return 1
+	if {_id} is "iron_pickaxe":
+		return 1
+	if {_id} is "iron_hoe":
+		return 1
+	if {_id} is "iron_spear":
+		return 1
+	if {_id} is "mace":
+		return 1
+	if {_id} is "crossbow":
+		return 2
+	if {_id} is "fishing_rod":
+		return 2
+	if {_id} is "tnt":
+		return 3
+	if {_id} is "nether_star":
+		return 4
+	if {_id} is "ominous_bottle":
+		return 4
+	if {_id} is "potion_heal":
+		return 4
+	if {_id} is "potion_stamina":
+		return 4
+	if {_id} is "potion_invis":
+		return 4
+	return 0
+
+# ids 중 분류가 c 인 것만 순서 그대로 돌려준다.
+function itemCatPick(ids: texts, c: number) :: texts:
+	loop {_ids::*}:
+		if itemCategory(loop-value) is {_c}:
+			add loop-value to {_r::*}
+	return {_r::*}
+
 # GUI 표시 순서. 저장된 순서에서 없어진 id 는 빼고, 새 id 는 뒤에 붙여서 저장 후 돌려준다.
 function itemOrder() :: texts:
 	set {_ids::*} to itemIds()
@@ -167,9 +206,15 @@ function itemOrder() :: texts:
 	loop {_ids::*}:
 		if {_o::*} does not contain loop-value:
 			add loop-value to {_o::*}
+	# 분류 순서(1 금속, 2 나무, 3 cc기, 4 포션류, 0 미분류)로 안정 정렬한다. 같은 분류 안에서는 저장된 순서를 유지.
+	set {_r::*} to itemCatPick({_o::*}, 1)
+	add itemCatPick({_o::*}, 2) to {_r::*}
+	add itemCatPick({_o::*}, 3) to {_r::*}
+	add itemCatPick({_o::*}, 4) to {_r::*}
+	add itemCatPick({_o::*}, 0) to {_r::*}
 	delete {itemorder::*}
-	set {itemorder::*} to {_o::*}
-	return {_o::*}
+	set {itemorder::*} to {_r::*}
+	return {_r::*}
 
 # 순서 편집: a 번째와 b 번째(1부터) 아이템의 자리를 바꾼다.
 function itemOrderSwap(a: number, b: number):
@@ -308,10 +353,13 @@ function tabUpdate(p: player):
 	set {_gap} to "{""text"":"" ""}"
 	set {_nm} to name of {_p}
 	set {_ex} to "{""text"":""%{_nm}%""}"
+	# 아이콘 순서는 구성 번호와 상관없이 GUI 정렬 순서(itemOrder: 금속 -> 나무 -> cc기 -> 포션류)를 따른다.
 	loop integers from 1 to 5:
-		set {_k} to loop-value
-		set {_ic} to itemIcon(loadoutGet({_p}, {_k}))
-		set {_ex} to "%{_ex}%,%{_gap}%,%{_ic}%"
+		add loadoutGet({_p}, loop-value) to {_ld::*}
+	loop itemOrder():
+		if {_ld::*} contains loop-value:
+			set {_ic} to itemIcon(loop-value)
+			set {_ex} to "%{_ex}%,%{_gap}%,%{_ic}%"
 	set {_json} to "{""text"":"""",""extra"":[%{_ex}%]}"
 	{_p}.playerListName(GsonComponentSerializer.gson().deserialize({_json}))
 
@@ -539,6 +587,11 @@ on inventory click:
 		if {_pick} is not set:
 			set {-itemguipick::%{_uid}%} to {_raw}
 		else if {_pick} is {_raw}:
+			delete {-itemguipick::%{_uid}%}
+		else if itemCategory({-itemguimap::%{_uid}%::%{_pick}%}) is not itemCategory({_id}):
+			# 분류가 다르면 자리를 못 바꾼다(분류 순서가 우선)
+			send "&c분류가 다른 아이템끼리는 자리를 바꿀 수 없어요." to {_p}
+			play sound "entity.villager.no" with volume 0.5 to {_p}
 			delete {-itemguipick::%{_uid}%}
 		else:
 			itemOrderSwap({_pick} + 1, {_raw} + 1)
