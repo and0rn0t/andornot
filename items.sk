@@ -12,6 +12,7 @@
 #   - 선택 GUI: 위 3줄(27칸)은 아이템, 맨 아래 1줄은 나중에 페이지 넘기기 자리(지금은 회색 유리판). 빈 칸은 전부 회색 색유리판(이름 공백)이고 클릭해도 아무 일도 안 일어난다.
 #   - 아이템이 27개를 넘으면 페이지 기능을 추가해야 한다(지금은 27개까지만 표시).
 #   - 모든 GUI 칸 클릭에 UI 버튼 소리가 난다.
+#   - op 는 핫바 8번 슬롯에 관리자 메뉴 아이템이 고정된다(우클릭하면 /admin 메뉴). 무기고와 같은 조건(게임 중이 아닐 때)이고, 게임이 시작되면 무기고와 함께 사라진다(armoryClear).
 #   - 구성 1~5번 아이템은 실제 인벤토리에도 지급된다(loadoutGive). 입장, 리스폰, 구성 변경 때만 확인해서 없는 아이템을 채우고, 핫바 어느 칸에 두든 자유다.
 #     처음 넣는 칸은 loadoutSlot() 의 선호 칸이 비었으면 거기, 아니면 빈 칸. 게임 중이 아닐 때는 구성 아이템을 버릴 수 없다(잃어버려도 다시 확인하지 않아서).
 #   - 구성 1~5번 아이템은 탭리스트의 플레이어 이름 옆에 아이콘으로 표시된다(킬로그와 같은 방식).
@@ -397,6 +398,39 @@ function armoryEnsure(p: player):
 		if {_o} is armoryName():
 			clear slot 40 of {_p}'s inventory
 
+# op 는 8번 슬롯(인덱스 7)에 관리자 메뉴 아이템을 고정한다(게임 중이 아닐 때). op 가 아니면 그 칸의 관리자 아이템을 치운다.
+function adminItemEnsure(p: player):
+	set {_n} to name of slot 7 of {_p}'s inventory
+	set {_has} to false
+	if {_n} is set:
+		if {_n} is adminItemName():
+			set {_has} to true
+	if {_p} is op:
+		if {_has} is false:
+			set slot 7 of {_p}'s inventory to adminItem()
+	else:
+		if {_has} is true:
+			clear slot 7 of {_p}'s inventory
+	set {_o} to name of slot 40 of {_p}'s inventory
+	if {_o} is set:
+		if {_o} is adminItemName():
+			clear slot 40 of {_p}'s inventory
+
+# 게임이 시작되면 무기고/관리자 메뉴 아이템을 치운다(고정 칸과 왼손).
+function armoryClear(p: player):
+	loop 3 times:
+		set {_s} to 7
+		if loop-value is 2:
+			set {_s} to 8
+		if loop-value is 3:
+			set {_s} to 40
+		set {_n} to name of slot {_s} of {_p}'s inventory
+		if {_n} is set:
+			if {_n} is armoryName():
+				clear slot {_s} of {_p}'s inventory
+			else if {_n} is adminItemName():
+				clear slot {_s} of {_p}'s inventory
+
 # GUI 를 채운다(선택/순서 편집용). 36칸을 한 번에 다시 그린다. 아이템이 들어가지 않는 칸은 전부 회색 색유리판(이름 공백).
 # 아래 1줄(27~35번 칸)은 나중에 페이지 넘기기 버튼 자리라서 지금은 회색 유리판.
 function itemGuiFill(p: player, inv: inventory, mode: text):
@@ -475,11 +509,14 @@ on load:
 # 게임 중이 아닐 때 1초마다 무기고 고정 상태를 확인한다(리스폰, 인벤토리 초기화 등 모든 경우를 이걸로 복구).
 every second:
 	if {-ingame} is true:
+		loop all players:
+			armoryClear(loop-player)
 		stop
 	loop all players:
 		armoryEnsure(loop-player)
+		adminItemEnsure(loop-player)
 
-# 무기고 우클릭: 배치를 막고 GUI 를 연다(상자 여는 소리)
+# 무기고 우클릭: 배치를 막고 GUI 를 연다(상자 여는 소리). op 의 관리자 메뉴 아이템 우클릭도 여기서 처리한다.
 on right click:
 	if {-ingame} is true:
 		stop
@@ -494,7 +531,17 @@ on right click:
 		stop
 	if {_h}.name() is not "HAND":
 		stop
-	if name of player's tool is not armoryName():
+	set {_tn} to name of player's tool
+	if {_tn} is not set:
+		stop
+	# 관리자 메뉴 아이템(op 전용): 우클릭하면 /admin 과 같은 메뉴가 열린다.
+	if {_tn} is adminItemName():
+		cancel the event
+		if player is op:
+			play sound "block.chest.open" to player
+			adminOpen(player)
+		stop
+	if {_tn} is not armoryName():
 		stop
 	cancel the event
 	if isStunned(player) is true:
@@ -510,6 +557,9 @@ on drop:
 	if {_dn} is not set:
 		stop
 	if {_dn} is armoryName():
+		cancel the event
+		stop
+	if {_dn} is adminItemName():
 		cancel the event
 		stop
 	loop itemIds():
@@ -544,12 +594,19 @@ on inventory click:
 			if {_sl} is 8:
 				cancel the event
 				stop
+			if {_sl} is 7:
+				if player is op:
+					cancel the event
+					stop
 		set {_ck} to {_ev}.getClick().name()
 		if {_ck} is "NUMBER_KEY":
 			set {_hb} to {_ev}.getHotbarButton()
 			set {_hb} to "%{_hb}%" parsed as number
 			if {_hb} is 8:
 				cancel the event
+			if {_hb} is 7:
+				if player is op:
+					cancel the event
 		stop
 	# GUI 가 열려 있는 동안은 모든 클릭(쉬프트 클릭, 숫자키 교체 등 포함)을 막는다.
 	cancel the event

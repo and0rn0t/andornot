@@ -9,6 +9,15 @@
 # 빈 칸은 전부 회색 색유리판(이름 공백)이고 클릭해도 아무 일도 안 일어난다. GUI 칸 클릭에는 UI 버튼 소리가 난다.
 # 미검증 문법: 6줄 GUI 와 클릭 처리는 items.sk 와 같은 방식(event.getRawSlot() 등).
 
+# 8번 슬롯에 고정되는 관리자 메뉴 아이템(op 전용, 고정/제거는 items.sk)
+function adminItemName() :: text:
+	return "&c관리자 메뉴"
+
+function adminItem() :: itemtype:
+	set {_i} to command block named adminItemName()
+	set lore of {_i} to "&7[우클릭] 관리자 메뉴를 열어요"
+	return {_i}
+
 function adminButtonIds() :: texts:
 	return "gamesetup", "itemorder" and "team"
 

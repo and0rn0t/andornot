@@ -383,6 +383,8 @@ function armoryHeld(p: player) :: boolean:
 		return false
 	if {_n} is armoryName():
 		return true
+	if {_n} is adminItemName():
+		return true
 	return false
 
 function skillHand(p: player, t: itemtype) :: boolean:
