@@ -39,6 +39,9 @@ function potionVisual(p: player, kind: text, secs: number):
 function potionToUse(p: player) :: text:
 	if isStunned({_p}) is true:
 		return ""
+	# 메인핸드에 무기고를 들고 있으면 오프핸드 포션도 쓰지 않는다.
+	if armoryHeld({_p}) is true:
+		return ""
 	set {_mk} to potionKind({_p}, "main")
 	set {_ok} to potionKind({_p}, "off")
 	if {_mk} is not "":

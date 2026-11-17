@@ -368,8 +368,22 @@ function potionReady(p: player, kind: text) :: boolean:
 # 메인핸드 우선: 메인핸드 아이템이 이 스킬이면 true
 # 오프핸드 아이템이 이 스킬이면, 메인핸드가 (쿨타임이 아닌 다른 스킬 아이템)도 창(SPEAR)도 아닐 때만 true.
 # 메인핸드 스킬이 쿨타임이면 오프핸드 스킬이 발동한다(메인핸드 스킬은 양보). 쿨타임은 아이템 쿨타임(set item cooldown)으로 판단.
+# 메인핸드에 무기고를 들고 있는지(게임 중이 아닐 때만). 무기고를 열 때 오프핸드 스킬이 같이 발동하지 않게 하는 데 쓴다.
+function armoryHeld(p: player) :: boolean:
+	if {-ingame} is true:
+		return false
+	set {_n} to name of {_p}'s tool
+	if {_n} is not set:
+		return false
+	if {_n} is armoryName():
+		return true
+	return false
+
 function skillHand(p: player, t: itemtype) :: boolean:
 	if isStunned({_p}) is true:
+		return false
+	# 메인핸드에 무기고(items.sk)를 들고 있으면(게임 중 아님) 오프핸드를 포함해 어떤 스킬도 발동하지 않는다.
+	if armoryHeld({_p}) is true:
 		return false
 	if {_p}'s tool is {_t}:
 		# 메인핸드 스킬이 쿨타임이고 오프핸드에 다른 스킬 아이템이 있으면 오프핸드 스킬에 양보한다.

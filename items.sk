@@ -429,6 +429,11 @@ on right click:
 	set {_h} to {_ev}.getHand()
 	if {_h} is not set:
 		stop
+	# 메인핸드에 무기고를 들고 있을 때는 오프핸드 우클릭 이벤트도 취소한다(오프핸드 낚싯대/창 등 바닐라 동작 방지).
+	if {_h}.name() is "OFF_HAND":
+		if armoryHeld(player) is true:
+			cancel the event
+		stop
 	if {_h}.name() is not "HAND":
 		stop
 	if name of player's tool is not armoryName():
