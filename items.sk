@@ -171,7 +171,7 @@ function itemOrderSwap(a: number, b: number):
 	delete {itemorder::*}
 	set {itemorder::*} to {_o::*}
 
-# 탭리스트/아이콘용 스프라이트 이름(killIcon 에 넘김. "block/" 로 시작하면 블럭 텍스처). 미검증: 이름이 틀리면 체크무늬가 뜬다. 포션은 액체 색이 안 입혀져 셋이 똑같이 보인다.
+# 탭리스트/아이콘용 스프라이트 이름(killIcon 에 넘김. "block/" 로 시작하면 블럭 텍스처). 미검증: 이름이 틀리면 체크무늬가 뜬다. 포션은 병 스프라이트에 itemTint() 색을 입힌다(미검증).
 function itemSprite(id: text) :: text:
 	if {_id} is "crossbow":
 		return "crossbow_standby"
@@ -222,6 +222,25 @@ function loadoutInit(p: player):
 		if {loadout::%{_p}'s uuid%::%{_k}%} is not set:
 			set {loadout::%{_p}'s uuid%::%{_k}%} to loadoutGet({_p}, {_k})
 
+# 탭 아이콘 색(텍스트 색으로 스프라이트를 물들임, 미검증: 색이 안 입혀지면 itemSprite 에서 포션마다 다른 아이템 스프라이트를 쓰는 방법으로 바꿀 것).
+# 색을 안 입힐 아이템은 "" 를 돌려준다. 색은 #RRGGBB.
+function itemTint(id: text) :: text:
+	if {_id} is "potion_heal":
+		return "#ff5555"
+	if {_id} is "potion_stamina":
+		return "#55ff55"
+	if {_id} is "potion_invis":
+		return "#55ffff"
+	return ""
+
+# 탭 아이콘 컴포넌트 JSON 한 조각(킬로그 killIcon 에 색만 덧붙임)
+function itemIcon(id: text) :: text:
+	set {_j} to killIcon(itemSprite({_id}))
+	set {_c} to itemTint({_id})
+	if {_c} is not "":
+		replace "}" in {_j} with ",""color"":""%{_c}%""}"
+	return {_j}
+
 # 구성 k 번(1~5)이 들어갈 핫바 번호(1~9). 여기를 고치면 된다. 9번은 무기고 자리라 쓰지 말 것. 서로 겹치면 안 된다.
 function loadoutSlot(k: number) :: number:
 	if {_k} is 1:
@@ -268,7 +287,7 @@ function tabUpdate(p: player):
 	set {_ex} to "{""text"":""%{_nm}%""}"
 	loop integers from 1 to 5:
 		set {_k} to loop-value
-		set {_ic} to killIcon(itemSprite(loadoutGet({_p}, {_k})))
+		set {_ic} to itemIcon(loadoutGet({_p}, {_k}))
 		set {_ex} to "%{_ex}%,%{_gap}%,%{_ic}%"
 	set {_json} to "{""text"":"""",""extra"":[%{_ex}%]}"
 	{_p}.playerListName(GsonComponentSerializer.gson().deserialize({_json}))
