@@ -13,14 +13,18 @@ import:
 	net.kyori.adventure.key.Key
 
 # 화면 쿨타임 게이지(쿨타임 그룹). secs 초 동안 이 포션 종류의 그룹에만 쿨타임을 건다.
+# 주의: getEquipment() 는 아이템의 복사본을 줘서 컴포넌트를 달아도 실제 아이템에 안 붙는다(게이지가 안 나왔던 원인으로 추정).
+# 실제 아이템을 바로 바꾸는 getInventory() 의 손 아이템을 써야 한다.
 function potionVisual(p: player, kind: text, secs: number):
 	if potionKind({_p}, "main") is {_kind}:
-		set {_it} to {_p}.getEquipment().getItemInMainHand()
+		set {_it} to {_p}.getInventory().getItemInMainHand()
 	else:
-		set {_it} to {_p}.getEquipment().getItemInOffHand()
+		set {_it} to {_p}.getInventory().getItemInOffHand()
 	set {_key} to Key.key("andornot", "potion_%{_kind}%")
 	set {_cd} to UseCooldown.useCooldown({_secs}).cooldownGroup({_key}).build()
 	{_it}.setData(DataComponentTypes.USE_COOLDOWN, {_cd})
+	# 클라이언트가 아이템의 쿨타임 그룹을 알도록 인벤토리를 다시 보낸다
+	{_p}.updateInventory()
 	set {_ticks} to {_secs} * 20
 	{_p}.setCooldown({_it}, {_ticks})
 
