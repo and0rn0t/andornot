@@ -65,7 +65,25 @@ function kcClearState(v: player):
 	delete {-jumplock::%{_id}%::*}
 	set {-oc::%{_id}%} to 0
 	set {-stcap::%{_id}%} to 0
+	# 검 패시브(sword.sk): 쿨타임 초기화(변수 + 아이템 쿨타임 표시)
+	delete {-swcd::%{_id}%}
+	set item cooldown of netherite sword for {_v} to 0 seconds
+	# 활(bow.sk): 당기던 충전 기록 정리(충전 보스바 루프는 기록이 지워지면 스스로 끝난다)
+	delete {-bowstart::%{_id}%}
+	# 곡괭이 중첩(main.sk), 블레이즈 막대기 사용 횟수(blazerod.sk), 낚싯대에 걸린 상태(fishing.sk)
+	delete {-pickstack::%{_id}%}
+	delete {-pickexp::%{_id}%}
+	delete {-brcount::%{_id}%}
+	delete {-brlast::%{_id}%}
+	delete {-hooked::%{_id}%}
+	# 불붙은 상태, 흡수 체력, 모든 포션 효과(기절/구속의 느림, 네더의 별 버프, 발광 등)
+	{_v}.setFireTicks(0)
+	{_v}.setAbsorptionAmount(0)
 	{_v}.clearActivePotionEffects()
+
+# 진짜 사망(킬 연출을 못 거친 사망: /kill 등)에서도 cc/버프/상태를 전부 지운다(각 파일의 on death 와 겹쳐도 같은 정리를 반복할 뿐이라 안전).
+on death of player:
+	kcClearState(victim)
 
 # 치명타 피해를 가로채서 킬 연출을 한다. 다른 스크립트의 피해 보정(main.sk)이 전부 끝난 뒤의 최종 피해로 판단해야 해서 우선순위를 가장 늦게 둔다.
 on damage with priority highest:

@@ -136,7 +136,6 @@ function itemBase(id: text) :: itemtype:
 #   설명은 합니다체. 색은 itemBuild 가 짙은 회색으로 입히므로 여기엔 색 코드를 쓰지 않는다. 줄마다 따로 적는다(퍼센트는 %% 로).
 #   데미지/쿨타임 수치는 현재 코드 기준(2026-11): 체력 숫자는 하트가 아니라 기획서의 실제 체력.
 function itemLoreLines(id: text) :: texts:
-	if {_id} is "crossbow":
 	if {_id} is "fishing_rod":
 		return "찌를 던져 맞은 적을 5초간 구속합니다.", "구속이 종료되면 <dmg>의 피해를 입힙니다."
 	if {_id} is "iron_axe":
