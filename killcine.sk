@@ -4,8 +4,9 @@
 # 순서(시각은 연출 시작 기준):
 #   0틱   치명타 피해 취소 -> 킬 처리(킬 점수 자리 killScoreHook, 킬로그 killLogShow) -> 죽을 때 지워지던 상태 정리(kcClearState)
 #         -> 죽은 자리에 피격자와 똑같이 생긴 마네킹(스킨/장비/방향) 세움 -> 피격자는 관전 모드, 시체 정면에 둔 카메라에 시점 고정
-#   50틱  마네킹 자리에 폭발 이펙트 + 소리, 마네킹 제거(엔티티 제거라 사망 메시지 없음). 이때부터 6초 실명 + 타이틀로 리스폰 대기 안내(5 -> 1 초)
-#   150틱 리스폰: 어드벤처 모드로 되돌림, 리스폰 위치로 이동, 체력/스태미너 회복. 실명은 1초 남은 상태라 바닐라가 서서히 풀어 준다(미검증).
+#   35틱  마네킹 자리에 콰직 소리 + 붉은 파티클, 마네킹 제거(엔티티 제거라 사망 메시지 없음). 이때부터 6초 실명 + 타이틀 "리스폰" / 서브타이틀 숫자(5 -> 1)
+#         연출 화면으로 전환되는 순간 iron_golem.repair 소리(피격자에게만)
+#   135틱 리스폰: 어드벤처 모드로 되돌림, 리스폰 위치로 이동, 체력/스태미너 회복. 실명은 1초 남은 상태라 바닐라가 서서히 풀어 준다(미검증).
 # 이동 막기: 관전 상태에서는 카메라 엔티티에 붙어 있어서 못 움직인다. 시점 해제(Shift)나 다른 대상 관전을 하면 매 틱 다시 붙인다.
 # 시간/거리는 아래 kc 함수의 값 하나씩만 바꾸면 된다. 연출을 끄려면 kcEnabled() 가 false 를 돌려주게 하면 바닐라 사망으로 돌아간다.
 # 이 파일은 게임 진행 틀(킬 점수, 라운드, 로비)이 아직 없어서 리스폰 위치는 월드 스폰(kcRespawnLoc)이고, 킬 점수는 killScoreHook(빈 함수)에 연결 자리만 있다.
@@ -17,6 +18,8 @@ import:
 	org.bukkit.entity.EntityType
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	org.bukkit.Bukkit
+	org.bukkit.Particle
 
 # 킬 연출 사용 여부
 function kcEnabled() :: boolean:
@@ -137,9 +140,10 @@ on damage with priority highest:
 	teleport {_v} to {_cl}
 	wait 1 tick
 	{_v}.setSpectatorTarget({_cam})
-	# 5) 50틱 동안 시체를 보여준다(매 틱 시점이 풀렸으면 다시 붙임)
+	play sound "entity.iron_golem.repair" with volume 2 and pitch 1 to {_v}
+	# 5) 35틱 동안 시체를 보여준다(매 틱 시점이 풀렸으면 다시 붙임)
 	set {_t} to 0
-	while {_t} < 50:
+	while {_t} < 35:
 		if {_v} is not online:
 			{_m}.remove()
 			{_cam}.remove()
@@ -150,10 +154,11 @@ on damage with priority highest:
 			{_v}.setSpectatorTarget({_cam})
 		add 1 to {_t}
 		wait 1 tick
-	# 6) 폭발 이펙트 + 소리, 마네킹 제거
-	play 1 explosion emitter at {_bl} in radius of 100
-	play 12 large explosion with offset of 0.6, 0.6, 0.6 and speed 0 at {_bl} in radius of 100
-	play sound "entity.generic.explode" with volume 2 and pitch 0.9 at {_bl}
+	# 6) 콰직! 소리 + 붉은 조각이 튀는 파티클(레드스톤 블록 조각, reflect 로 직접 호출, 미검증), 마네킹 제거
+	play sound "entity.player.attack.crit" with volume 2 and pitch 0.6 at {_bl}
+	play sound "block.bone_block.break" with volume 2 and pitch 0.5 at {_bl}
+	play sound "entity.zombie.break_wooden_door" with volume 1.5 and pitch 0.6 at {_bl}
+	{_w}.spawnParticle(Particle.BLOCK, {_bl}, 60, 0.3, 0.5, 0.3, 0.25, Bukkit.createBlockData("minecraft:redstone_block"))
 	{_m}.remove()
 	# 7) 리스폰 대기: 6초 실명 + 타이틀 카운트다운(5초). 이 동안도 시점 고정.
 	apply blindness potion without any particles whilst hiding the potion icon to {_v} for 6 seconds replacing the existing effect
@@ -168,7 +173,7 @@ on damage with priority highest:
 			{_v}.setSpectatorTarget({_cam})
 		if mod({_t}, 20) is 0:
 			set {_sec} to 5 - floor({_t} / 20)
-			send title "&c리스폰 대기" with subtitle "&f%{_sec}%초 후 되살아나요" to {_v} for 25 ticks with fadein 0 ticks and fade out 0 ticks
+			send title "&c리스폰" with subtitle "&f%{_sec}%" to {_v} for 25 ticks with fadein 0 ticks and fade out 0 ticks
 		add 1 to {_t}
 		wait 1 tick
 	# 8) 리스폰: 어드벤처로 되돌리고 리스폰 위치로 이동, 체력/스태미너 회복
