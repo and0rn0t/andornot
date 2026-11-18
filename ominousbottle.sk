@@ -1,4 +1,4 @@
-# [ominousbottle.sk] 불길한 병 스킬(우클릭, 쿨 30초): 7초간 가한 피해의 30% 회복 + 스태미너 초당 20 추가 재생. 끝나면 탈진(스태미너 0 + 3초간 회복 차단, 보스바 "탈진")
+# [ominousbottle.sk] 불길한 병 스킬(우클릭, 쿨 30초): 7초간 가한 피해의 30% 회복 + 스태미너 초당 20 추가 재생. 끝나면 탈진(스태미너 0 + 5초간 회복 차단, 보스바 "탈진")
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-obcd}(쿨타임 종료 시각), {-bottle}(효과 종료 시각, 있고 지금보다 뒤면 효과 중), {-exhaust}(탈진 종료 시각, 탈진 중 stcap +1), {-healok}(회복이 전투 중 차단을 통과하는 표시, main.sk 가 읽음),
 #   {-skillitems::ominous_bottle}, 상태이상 출처 키 ominousbottle(보스바 이로운 효과 "불길한 병")
@@ -70,10 +70,10 @@ on every 1 ticks:
 				set {-st::%{_id}%} to 0
 				set level progress of loop-player to 0
 				play sound "entity.player.breath" with volume 1 and pitch 0.8 to loop-player
-				# 탈진: 3초 동안 스태미너 회복 차단(stcap +1) + 보스바에 "탈진"(해로운 효과)
+				# 탈진: 5초 동안 스태미너 회복 차단(stcap +1) + 보스바에 "탈진"(해로운 효과)
 				add 1 to {-stcap::%{_id}%}
-				set {-exhaust::%{_id}%} to now + 3 seconds
-				setStatus(loop-player, "ominousbottle_exhaust", "탈진", 3 seconds)
+				set {-exhaust::%{_id}%} to now + 5 seconds
+				setStatus(loop-player, "ominousbottle_exhaust", "탈진", 5 seconds)
 		if {-exhaust::%{_id}%} is set:
 			if {-exhaust::%{_id}%} <= now:
 				delete {-exhaust::%{_id}%}

@@ -52,6 +52,9 @@ function killCauseSprite(v: player, a: entity) :: text:
 		return "ender_pearl"
 	# TNT 스킬 킬: 피해 종류가 player_explosion 이면 TNT 블럭 아이콘(TNT 는 아이템 텍스처가 없어 블럭 텍스처 tnt_side 를 쓴다, 스프라이트 이름은 미검증)
 	if {_c} is "ENTITY_EXPLOSION":
+		# 블레이즈 막대기 화염구 폭발 킬: 화염구(fire_charge) 아이콘
+		if {-fbhit::%uuid of {_v}%} is set:
+			return "fire_charge"
 		set {_dt} to {_ldc}.getDamageSource().getDamageType().getKey().getKey()
 		if {_dt} is "player_explosion":
 			return "block/tnt_side"

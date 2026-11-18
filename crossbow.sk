@@ -24,13 +24,12 @@ on damage:
 	else:
 		set {_p} to attacker
 	if {_p} is an arrow:
-		# 활(bow.sk)로 쏜 화살은 충전도에 따른 데미지가 따로 있다(석궁과 분리). 없으면 석궁 화살 hp(3).
-		set {_bd} to {-bowdmg::%uuid of {_p}%}
-		if {_bd} is a number:
-			set damage to {_bd}
-			delete {-bowdmg::%uuid of {_p}%}
-		else:
-			set damage to hp(3)
+		# 화살은 활/석궁 공통으로 기본 피해 실 체력 4. 활(bow.sk)은 충전도에 따른 추가 피해({-bowextra::화살uuid}, 0~6)를 여기에 더한다(최종 4~10).
+		set damage to hp(4)
+		set {_ex} to {-bowextra::%uuid of {_p}%}
+		if {_ex} is a number:
+			set damage to hp(4) + {_ex}
+			delete {-bowextra::%uuid of {_p}%}
 
 # 석궁 화살이 어딘가에 맞으면(땅/벽/엔티티) 화살 엔티티를 제거한다. 다른 화살(스켈레톤 등)은 건드리지 않는다.
 # 추가 - 화살이 벽에 5초간 유지되도록 한 후 지운다. 화살이 유지되는 동안은 플레이어가 주울 수 없게 한다.

@@ -136,7 +136,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "crossbow":
 		return "&7[우클릭] 화살을 발사해요", "&7쿨타임 0.8초"
 	if {_id} is "fishing_rod":
-		return "&7[우클릭] 낚싯바늘을 던져요", "&7맞은 적을 3초간 구속하고 끌어당겨요", "&7피해 4"
+		return "&7[우클릭] 낚싯바늘을 던져요", "&7맞은 적을 5초간 구속하고 끌어당겨요", "&7피해 4"
 	if {_id} is "iron_axe":
 		return "&7대상의 체력이 80%% 이상이면", "&7피해가 1.5배가 돼요", "&7기본 피해 5"
 	if {_id} is "iron_pickaxe":
@@ -154,7 +154,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "nether_star":
 		return "&7[우클릭] 6초간 저항, 힘, 재생, 신속 1", "&7쿨타임 45초"
 	if {_id} is "ominous_bottle":
-		return "&7[우클릭] 7초간 강화돼요", "&7효과가 끝나면 탈진해요", "&7쿨타임 30초"
+		return "&7[우클릭] 7초간 강화돼요", "&7효과가 끝나면 5초간 탈진해요", "&7쿨타임 30초"
 	if {_id} is "potion_heal":
 		return "&7[우클릭] 체력 5 회복", "&7쿨타임 7초"
 	if {_id} is "potion_stamina":
@@ -164,7 +164,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "bow":
 		return "&7[당겼다 놓기] 최대 3초까지 충전해요", "&7충전할수록 피해(4~10)와 화살 속도가 늘어요", "&7최대 충전 시 소닉붐", "&7발사 후 쿨타임 2초"
 	if {_id} is "blaze_rod":
-		return "&7[우클릭] 0.5초 뒤 화염구를 발사해요", "&7피해 5", "&73번째 사용은 머리 위에서 화염구 3개", "&7쿨타임 4초"
+		return "&7[우클릭] 0.2초 뒤 화염구를 발사해요", "&7맞으면 폭발해서 범위 피해 5", "&73번째 사용은 바라보는 곳 위에서 화염구 3개가 떨어져요", "&7쿨타임 4초"
 	if {_id} is "wind_charge":
 		return "&7[우클릭] 던진 자리에 10초간 연막(반경 11칸)", "&7연막이 시야를 가려요", "&7쿨타임 30초"
 	if {_id} is "flint_steel":

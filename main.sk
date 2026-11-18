@@ -176,6 +176,11 @@ on damage:
 				if {_cz} is "FIRE_TICK" or "FIRE":
 					cancel event
 					stop
+	# 블레이즈 막대기(blazerod.sk) 화염구가 직접 맞은 바닐라 피해는 취소한다(피해는 폭발 처리에서 한 번만 줌)
+	if projectile is set:
+		if {-fb::%uuid of projectile%} is set:
+			cancel event
+			stop
 	# 기절 중인 공격자는 데미지를 줄 수 없음
 	if attacker is set:
 		if isStunned(attacker) is true:
@@ -259,10 +264,6 @@ on damage:
 				else:
 					# 그 외 근접(검, 맨손, 삼지창, 몹 등): 전체 데미지 배율만 적용
 					set damage to damage * dmgMul()
-	# 블레이즈 막대기(blazerod.sk) 화염구: 데미지 실 체력 5 고정(밸런스 반영값)
-	if projectile is set:
-		if {-fb::%uuid of projectile%} is set:
-			set damage to hp(5)
 	# 모루(anvil.sk) 버프: 내가 가하는 모든 피해 +10% x 중첩(합연산)(근접/투사체/스킬 공통, 위 무기 보정이 끝난 뒤 마지막에 곱함)
 	if attacker is set:
 		if {-anvil::%attacker's uuid%} is a number:

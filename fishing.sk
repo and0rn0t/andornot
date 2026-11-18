@@ -1,4 +1,4 @@
-# [fishing.sk] 낚싯대 스킬(찌 속도 증가, 후한 판정(플레이어만), 엔티티에 걸리면 3초 걸림, 당길 때 피해, 쿨타임, 효과음, 상태이상 표시)
+# [fishing.sk] 낚싯대 스킬(찌 속도 증가, 후한 판정(플레이어만), 엔티티에 걸리면 5초 걸림, 당길 때 피해, 쿨타임, 효과음, 상태이상 표시)
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-hook}, {-hooked}, {-hookcd}, {-hookcdset}, {-hookdmg}, {-skilldmg}(스킬 데미지 표시, main.sk 보정 제외용), {-jumplock}(걸린 대상의 도약 잠금, 키 fishing_낚시꾼uuid), {-status}/{-statusname}(걸린 대상의 구속 표시, 출처 fishing_낚시꾼uuid), {-skillitems::fishing_rod}
 # 효과음을 바꾸고 싶으면 아래 hookCatchSound / hookWarnSound / hookReleaseSound 함수의 소리 이름만 바꾸면 된다.
@@ -98,18 +98,18 @@ on fishing line cast:
 				set {_t} to {_h}.getHookedEntity()
 		if {_t} is set:
 			if {-hooked::%{_id}%} is not set:
-				# 엔티티에 처음 걸린 순간: 3초 걸림 시작
+				# 엔티티에 처음 걸린 순간: 5초 걸림 시작
 				set {-hooked::%{_id}%} to {_t}
-				set {_until} to now + 3 seconds
+				set {_until} to now + 5 seconds
 				set {_warn1} to now + 2 seconds
 				set {_warn2} to now + 2.5 seconds
 				if {_t} is a player:
 					# 플레이어면 구속(도약 불가) + 보스바 표시
 					set {-jumplock::%{_t}'s uuid%::fishing_%{_id}%} to true
-					setStatus({_t}, "fishing_%{_id}%", "구속", 3 seconds)
+					setStatus({_t}, "fishing_%{_id}%", "구속", 5 seconds)
 				hookCatchSound({_p}, {_t})
 			else if now >= {_until}:
-				# 3초가 지나 자동으로 풀림(당기는 것과 같은 효과): 피해 + 풀림 처리/소리 + 쿨타임 + 찌 회수
+				# 5초가 지나 자동으로 풀림(당기는 것과 같은 효과): 피해 + 풀림 처리/소리 + 쿨타임 + 찌 회수
 				set {_victim} to {-hooked::%{_id}%}
 				delete {-hooked::%{_id}%}
 				hookDamage({_p}, {_victim})
