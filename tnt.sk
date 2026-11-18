@@ -1,4 +1,4 @@
-# [tnt.sk] TNT 스킬(우클릭 투척, 33틱(약 1.65초) 뒤 폭발, 블럭 피해 없음, 폭발 범위 안의 모두(던진 사람 포함)에게 피해 2(하트 1칸)와 플레이어는 2초 기절). 쿨타임 12초
+# [tnt.sk] TNT 스킬(우클릭 투척, 33틱(약 1.65초) 뒤 폭발, 블럭 피해 없음, 폭발 범위 안의 적(던진 사람과 아군 제외)에게 피해 2(하트 1칸)와 플레이어는 2초 기절). 쿨타임 12초
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-tntcd}, {-tntowner}, {-tntownerp}(던진 플레이어), {-skilldmg}(피해를 주는 동안만), {-skillitems::tnt} (기절은 skill_core.sk 의 stun() 함수와 {-stunend} 가 처리)
 # 바닐라 폭발 피해는 on damage 에서 "skilltnt" 태그로 막는다(아래).
@@ -18,8 +18,8 @@ on load:
 function tntRadius() :: number:
 	return 4
 
-# owner: 던진 사람 uuid(텍스트), ownerp: 던진 사람(플레이어, 피해 출처용. 접속 종료면 출처 없이 피해만 준다). 던진 사람 본인도 범위 안이면 피해/기절을 받는다.
-# 아군(skill_core.sk 의 isAlly: {-team} 변수가 같은 다른 대상)은 피해/기절을 받지 않는다. 팀이 없으면 아군도 없다.
+# owner: 던진 사람 uuid(텍스트), ownerp: 던진 사람(플레이어, 피해 출처용. 접속 종료면 출처 없이 피해만 준다).
+# 던진 본인과 아군(skill_core.sk 의 isAlly: {-team} 변수가 같은 다른 대상)은 피해/기절을 받지 않는다. 팀이 없으면 아군은 없다(본인은 항상 제외).
 function tntBlast(owner: text, ownerp: player, loc: location):
 	set {_r} to tntRadius()
 	play sound "entity.generic.explode" with volume 1 and pitch 1.2 at {_loc}
@@ -35,9 +35,9 @@ function tntBlast(owner: text, ownerp: player, loc: location):
 		if ({_x} * {_x} + {_y} * {_y} + {_z} * {_z}) <= (({_r} - 1) * ({_r} - 1)):
 			set {_p} to {_loc} ~ vector({_x}, {_y}, {_z})
 			play 1 large explosion at {_p} in radius of 100
-	# 범위 안의 모든 생명체(던진 사람 포함, 갑옷 거치대 제외)에게 고정 피해 실 체력 2. 플레이어는 이어서 기절.
+	# 범위 안의 생명체(던진 사람/아군/갑옷 거치대 제외)에게 고정 피해 실 체력 2. 플레이어는 이어서 기절.
 	# 피해 출처를 던진 사람으로 지정해서(낚싯대 hookDamage 와 같은 방식) 킬로그/킬 판정이 던진 사람의 킬로 잡히게 한다.
-	# 기절은 피해를 다 준 뒤에 건다(던진 사람 본인이 먼저 기절하면 main.sk 의 "기절한 공격자는 데미지 불가"에 나머지 피해가 막히기 때문).
+	# 기절은 피해를 다 준 뒤에 건다(던진 사람이 먼저 기절하면 main.sk 의 "기절한 공격자는 데미지 불가"에 나머지 피해가 막히기 때문. 지금은 본인이 기절하지 않지만 순서는 그대로 둔다).
 	delete {_stunl::*}
 	set {_hasp} to false
 	if {_ownerp} is online:
@@ -54,7 +54,12 @@ function tntBlast(owner: text, ownerp: player, loc: location):
 		if {_e} is not an armor stand:
 			# 아군(같은 팀 변수 {-team}, 본인 제외)은 피해/기절을 받지 않는다.
 			set {_vid} to "%uuid of {_e}%"
-			if isAlly({_owner}, {_vid}) is false:
+			set {_hit} to true
+			if {_vid} is {_owner}:
+				set {_hit} to false
+			if isAlly({_owner}, {_vid}) is true:
+				set {_hit} to false
+			if {_hit} is true:
 				if {_hasp} is true:
 					damage {_e} by hp(2) hearts using {_src}
 				else:
@@ -117,7 +122,7 @@ on rightclick:
 
 # 던진 TNT 가 바닐라 폭발로 주는 피해는 전부 막는다(피아 구분 없이 바닐라 피해로 들어오던 문제).
 # 폭발 이벤트(on explosion)를 취소해도 엔티티 피해는 따로 들어올 수 있어서, 피해 이벤트에서 직접 출처가 우리 TNT 인 것을 취소한다.
-# 실제 피해는 tntBlast 가 적(아군 제외)에게만 고정 hp(2)로 준다. 그 피해의 직접 출처는 던진 플레이어라서 여기에 걸리지 않는다.
+# 실제 피해는 tntBlast 가 적(던진 본인/아군 제외)에게만 고정 hp(2)로 준다. 그 피해의 직접 출처는 던진 플레이어라서 여기에 걸리지 않는다.
 # 미검증: getDamageSource().getDirectEntity() (Paper DamageSource, skript-reflect)
 on damage with priority lowest:
 	set {_de} to event.getDamageSource().getDirectEntity()
