@@ -122,7 +122,7 @@ every {@check-interval}:
 			set {_e} to loop-entity-2
 			if {_e} is not a player:
 				if {_e} is not an armor stand:
-					# 킬 연출용 마네킹(killcine.sk)에는 체력바를 달지 않는다
+					# 킬 연출용 마네킹(killcine.sk, 지금은 스켈레톤을 쓰며 체력이 가득이라 몹 규칙으로 숨겨짐)에는 체력바를 달지 않는다
 					if {_e}.getType().name() is not "MANNEQUIN":
 						hpbar_show({_e})
 
