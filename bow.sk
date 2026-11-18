@@ -131,13 +131,25 @@ on shoot:
 	set {-bowextra::%uuid of {_pr}%} to bowExtra({_f})
 	set {-bowcd::%{_id}%} to now + 2 seconds
 	set item cooldown of bow for {_p} to 2 seconds
-	# 최대 충전: 소닉붐 이펙트 + 사운드
+	# 최대 충전: 사운드 + 화살 궤도를 따라 소닉붐 이펙트
+	#   속도 999 라 화살이 한 틱에 맞는 곳까지 날아가므로, 1틱 뒤 화살이 멈춘(맞은) 위치까지 눈 앞에서부터 3칸 간격으로 소닉붐을 늘어놓는다(최대 120칸).
+	#   화살이 맞은 직후 제거돼도 위치는 {_pr}.getLocation() 으로 읽는다(미검증).
+	set {_eye} to {_p}.getEyeLocation()
+	set {_nd} to normalized {_v}
+	set {_s0} to {_eye} ~ ({_nd} * 1.5)
 	if {_f} >= 1:
-		set {_eye} to {_p}.getEyeLocation()
-		set {_dir} to {_eye}.getDirection()
-		set {_fx} to {_eye} ~ ({_dir} * 1.5)
-		{_fx}.getWorld().spawnParticle(Particle.SONIC_BOOM, {_fx}, 1)
 		play sound "entity.warden.sonic_boom" with volume 0.7 and pitch 1.4 at {_p}
-	# 발사로 소모된 화살을 바로 다시 지급(다음 당기기 전에 클라이언트에 반영되게)
 	wait 1 tick
 	bowArrow({_p})
+	if {_f} >= 1:
+		set {_len} to 120
+		set {_e0} to {_pr}.getLocation()
+		if {_e0} is set:
+			set {_dd} to distance between {_s0} and {_e0}
+			if {_dd} < {_len}:
+				set {_len} to {_dd}
+		set {_d} to 0
+		while {_d} <= {_len}:
+			set {_fx} to {_s0} ~ ({_nd} * {_d})
+			{_fx}.getWorld().spawnParticle(Particle.SONIC_BOOM, {_fx}, 1, 0, 0, 0, 0, null, true)
+			add 3 to {_d}
