@@ -249,6 +249,8 @@ function itemCategory(id: text) :: number:
 		return 3
 	if {_id} is "bow":
 		return 2
+	if {_id} is "blaze_rod":
+		return 2
 	if {_id} is "wind_charge":
 		return 3
 	if {_id} is "flint_steel":
@@ -269,7 +271,7 @@ function itemCategory(id: text) :: number:
 		return 4
 	return 0
 
-# 주의: blaze_rod(블레이즈 막대기)는 어느 분류인지 사용자 확인 전이라 일부러 미분류(0, 맨 뒤)로 둔다.
+# blaze_rod(블레이즈 막대기)는 사용자 지정으로 활/쇠뇌류와 같은 분류(2)다.
 # ids 중 분류가 c 인 것만 순서 그대로 돌려준다.
 function itemCatPick(ids: texts, c: number) :: texts:
 	loop {_ids::*}:
@@ -287,7 +289,7 @@ function itemOrder() :: texts:
 	loop {_ids::*}:
 		if {_o::*} does not contain loop-value:
 			add loop-value to {_o::*}
-	# 분류 순서(1 금속, 2 나무, 3 cc기, 4 포션류, 0 미분류)로 안정 정렬한다. 같은 분류 안에서는 저장된 순서를 유지.
+	# 분류 순서(1 금속, 2 나무(활/쇠뇌류 포함), 3 cc기, 4 포션류, 0 미분류)로 안정 정렬한다. 같은 분류 안에서는 저장된 순서를 유지.
 	set {_r::*} to itemCatPick({_o::*}, 1)
 	add itemCatPick({_o::*}, 2) to {_r::*}
 	add itemCatPick({_o::*}, 3) to {_r::*}
