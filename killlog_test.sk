@@ -11,6 +11,9 @@ import:
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 
 function ktIcon(s: text) :: text:
+	# "block/" 로 시작하는 이름은 블럭 텍스처(blocks 아틀라스)(killlog.sk 의 killIcon 과 같은 규칙)
+	if {_s} starts with "block/":
+		return "{""object"":""atlas"",""atlas"":""minecraft:blocks"",""sprite"":""minecraft:%{_s}%""}"
 	return "{""object"":""atlas"",""atlas"":""minecraft:items"",""sprite"":""minecraft:item/%{_s}%""}"
 
 function ktFace(n: text) :: text:
@@ -51,6 +54,12 @@ function ktCause(v: entity, a: entity) :: text:
 	if {_c} is "PROJECTILE":
 		return "arrow"
 	if {_c} is "ENTITY_EXPLOSION":
+		# 블레이즈 막대기 화염구 폭발 킬: 화염구(fire_charge) 아이콘(killlog.sk 와 같은 규칙)
+		if {-fbhit::%uuid of {_v}%} is set:
+			return "fire_charge"
+		set {_dt} to {_ldc}.getDamageSource().getDamageType().getKey().getKey()
+		if {_dt} is "player_explosion":
+			return "block/tnt_side"
 		return "gunpowder"
 	if {_c} is "BLOCK_EXPLOSION":
 		return "gunpowder"
