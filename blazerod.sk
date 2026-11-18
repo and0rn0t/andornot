@@ -5,7 +5,7 @@
 # 쿨 4초는 발사 딜레이(0.2초)를 뺀 값이라 사용 시점부터 4.2초로 건다. 3번째 사용 때 화염구 5개를 5틱 간격으로 떨어뜨리고 횟수는 0 으로 돌아간다.
 # 횟수는 마지막 사용 후 brReset() 초 동안 안 쓰면 0 으로 돌아간다(기획에 없어서 내가 정한 값, 확인 필요).
 # 화염구: 큰 화염구(fireball) 엔티티(작은 화염구보다 큼). 바닐라 폭발은 위력 0(setYield(0)) + 점화 끔(setIsIncendiary(false))이라 블럭/불 피해가 없고,
-#   맞는 순간(on projectile hit) 같은 자리에서 폭발 이펙트와 범위(brRadius) 안 모두에게 고정 피해 실 체력 5 를 우리가 직접 준다(TNT 의 tntBlast 와 같은 방식, 피해 출처는 쏜 사람).
+#   바닐라 폭발은 on explosion 에서 취소하고, 맞는 순간(on projectile hit) 같은 자리에서 폭발 이펙트와 범위(brRadius) 안 모두에게 고정 피해 실 체력 5 를 우리가 직접 준다(TNT 의 tntBlast 와 같은 방식, 피해 출처는 쏜 사람).
 #   쏜 사람 본인과 아군({-team} isAlly)은 피해를 안 받고 갑옷 거치대는 제외한다. 직접 맞은 바닐라 피해는 main.sk 에서 취소한다(이중 피해 방지).
 # 3번째 사용: 바라보는 지점(블럭이면 그 블럭 윗면, 아니면 30칸 앞) 반경 3칸 안 무작위 지점이 낙하 목표. 목표 위 10칸, 플레이어 쪽으로 5칸 물러난 곳에서 사선으로 날아간다.
 # 미검증: fireball 스폰/setShooter/setDirection/setYield/setIsIncendiary, getTargetBlockExact, 파티클 FLAME, projectile hit 에서 shooter 읽기.
@@ -70,13 +70,14 @@ function brFire(p: player, from: location, to: location):
 	set {_vel} to (normalized {_d}) * brSpeed()
 	spawn a fireball at {_from}:
 		set {_f} to event-entity
+		# 표시를 먼저 한다(아래 reflect 호출이 오류로 중간에 멈춰도 on explosion 이 바닐라 폭발을 취소할 수 있게)
+		set {-fb::%uuid of event-entity%} to true
+		set {-fbowner::%uuid of event-entity%} to {_p}
 		{_f}.setShooter({_p})
 		{_f}.setIsIncendiary(false)
 		{_f}.setYield(0)
 		{_f}.setDirection({_vel})
 		set velocity of event-entity to {_vel}
-		set {-fb::%uuid of event-entity%} to true
-		set {-fbowner::%uuid of event-entity%} to {_p}
 	set {_fid} to uuid of {_f}
 	play sound "entity.blaze.shoot" with volume 1 and pitch 1 at {_from}
 	loop 80 times:
@@ -89,15 +90,21 @@ function brFire(p: player, from: location, to: location):
 	delete {-fb::%{_fid}%}
 	delete {-fbowner::%{_fid}%}
 
+# 우리 화염구의 바닐라 폭발(블럭 피해/바닐라 피해)을 취소한다. 피해와 이펙트는 아래 맞는 순간 처리(brBlast)가 한다.
+on explosion:
+	set {_e} to event-entity
+	if {_e} is a fireball:
+		if {-fb::%uuid of {_e}%} is set:
+			cancel event
+
 # 우리 화염구가 어딘가에 맞으면 그 자리에서 폭발시킨다
 on projectile hit:
 	if {-fb::%uuid of projectile%} is set:
 		set {_fid} to uuid of projectile
 		set {_o} to {-fbowner::%{_fid}%}
 		set {_l} to location of projectile
-		delete {-fb::%{_fid}%}
-		delete {-fbowner::%{_fid}%}
-		delete projectile
+		# 표시를 지우지 않고 화염구도 지우지 않는다: 이 이벤트 뒤에 바닐라가 같은 틱에 폭발시키는데, 그 폭발을 아래 on explosion 이 취소해야 한다.
+		# (엔티티를 여기서 지워도 바닐라 폭발은 그대로 일어나서 블럭/피해가 생기고 킬로그가 건파우더로 나왔다.) 표시는 brFire 의 궤적 루프가 끝나면 지운다.
 		if {_o} is a player:
 			brBlast({_o}, {_l})
 		else:
