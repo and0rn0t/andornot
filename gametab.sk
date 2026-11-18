@@ -159,8 +159,13 @@ function gtHeader() :: text:
 	set {_l4} to gtT("A%{_pa}%", "gray")
 	set {_pm} to gtPad(gtDmgW(), "DMG")
 	set {_l5} to gtT("DMG%{_pm}%", "gray")
-	set {_pi} to gtPad(gtItemW(), "ITEM")
-	set {_l6} to gtT("ITEM%{_pi}%", "gray")
+	# ITEM 글자는 아이템 5칸 폭의 가운데쯤 오도록 앞에 공백을 둔다
+	set {_ln} to floor((gtItemW() - gtPx("ITEM")) / 8)
+	set {_lead} to ""
+	while {_ln} > 0:
+		set {_lead} to "%{_lead}% "
+		remove 1 from {_ln}
+	set {_l6} to gtT("%{_lead}%ITEM", "gray")
 	if {_ex} is "":
 		set {_ex} to "%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%"
 	else:
