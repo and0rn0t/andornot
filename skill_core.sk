@@ -317,6 +317,9 @@ function weaponKind(e: entity) :: text:
 # 일부 행동만 막는 cc(구속 등)는 "bad" 로 보스바에 표시하고, 막힌 행동을 시도할 때 ccDeny() 로 틱 소리를 낸다.
 # label: 이름 뒤에 붙는 가변 표시(예: " x2" 중첩). 보스바는 이름 기준으로 하나를 유지하므로, 중첩 수처럼 바뀌는 값은 이름이 아니라 label 로 넘긴다.
 function setStatus(p: player, src: text, n: text, d: timespan, type: text = "bad", label: text = ""):
+	# 킬 연출 중({-kc})에는 상태이상을 새로 걸지 않는다(stun() 과 같은 이유).
+	if {-kc::%{_p}'s uuid%} is set:
+		stop
 	set {-status::%{_p}'s uuid%::%{_src}%} to now + {_d}
 	set {-statusname::%{_p}'s uuid%::%{_src}%} to {_n}
 	set {-statustype::%{_p}'s uuid%::%{_src}%} to {_type}
@@ -358,6 +361,10 @@ function isStunned(e: entity) :: boolean:
 # 기절 걸기(src: 출처 키, 예 "tnt_시전자uuid"). 타이틀에 "기절" 표시 + 이동/점프 불가 포션(숨김) + 실명(기절 시간만큼).
 # 이미 더 오래 기절 중이면 덮어쓰지 않는다. 행동 차단은 stun.sk 와 isStunned 를 확인하는 각 스킬 파일에서 한다.
 function stun(p: player, src: text, d: timespan):
+	# 킬 연출 중(killcine.sk, {-kc})인 플레이어에게는 걸지 않는다. TNT 처럼 피해를 준 뒤에 기절을 거는 스킬은 피해로 연출이 시작된 다음에 이 함수가 불려서,
+	# 기절 표시(타이틀/효과)가 연출로 딸려오곤 했다.
+	if {-kc::%{_p}'s uuid%} is set:
+		stop
 	set {_end} to now + {_d}
 	if {-stunend::%{_p}'s uuid%} is set:
 		if {-stunend::%{_p}'s uuid%} > {_end}:
