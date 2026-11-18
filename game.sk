@@ -20,6 +20,7 @@
 # 킬 처리 연결: killcine.sk 의 killScoreHook() 가 gameOnKill() 을 부르고, 치명타 피해량은 gameDamageRecord() 로 넘긴다. 치명타가 아닌 피해는 아래 on damage 가 센다.
 import:
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	org.bukkit.event.player.PlayerMoveEvent
 
 # 미검증: attacker 가 투사체/커스텀 피해 출처의 주인으로 잡히는지, shuffled/sorted 문법, text display 승차(statustag.sk 와 같은 방식).
 
@@ -425,19 +426,20 @@ function gameWin(key: text):
 
 # 게임 중 관전 상태(죽은 사람, 종료 연출 중)인 참가자는 제자리에서 못 움직이게 한다. 시선 회전은 허용.
 # 카메라를 따라가는 관전(setSpectatorTarget)은 건드리지 않는다. 미검증: 관전자의 PlayerMoveEvent 취소가 서버에서 제자리로 되돌리는지.
-on move:
+on PlayerMoveEvent:
 	if {-ingame} is not true:
 		stop
-	if gamemode of player is not spectator:
+	set {_p} to event.getPlayer()
+	if gamemode of {_p} is not spectator:
 		stop
-	if {-gplist::*} does not contain player:
+	if {-gplist::*} does not contain {_p}:
 		stop
-	if player.getSpectatorTarget() is set:
+	if {_p}.getSpectatorTarget() is set:
 		stop
 	set {_f} to event.getFrom()
 	set {_t} to event.getTo()
 	if distance between {_f} and {_t} > 0.0001:
-		cancel event
+		event.setCancelled(true)
 
 on quit:
 	if {-ingame} is true:
