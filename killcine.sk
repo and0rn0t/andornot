@@ -194,6 +194,10 @@ on damage with priority highest:
 	{_cam}.setGravity(false)
 	{_cam}.setInvulnerable(true)
 	{_cam}.setSilent(true)
+	# 게임을 끝내는 마지막 킬이면(game.sk 의 {-gover}) 모든 참가자가 이 연출을 같이 본다(관전 상태로). 연출이 끝나면 gameFinale()(gameend.sk).
+	set {_fin} to false
+	if {-gover} is true:
+		set {_fin} to true
 	# 4) 피격자를 관전 모드로 바꾸고 카메라에 시점을 붙인다
 	set {_bl} to {_loc} ~ vector(0, 1, 0)
 	set gamemode of {_v} to spectator
@@ -201,6 +205,13 @@ on damage with priority highest:
 	wait 1 tick
 	{_v}.setSpectatorTarget({_cam})
 	play sound "entity.iron_golem.repair" with volume 2 and pitch 1 to {_v}
+	if {_fin} is true:
+		loop {-gplist::*}:
+			set {_o} to loop-value
+			if {_o} is online:
+				if {_o} is not {_v}:
+					set gamemode of {_o} to spectator
+					teleport {_o} to {_cl}
 	# 5) 35틱 동안 시체를 보여준다(매 틱 시점이 풀렸으면 다시 붙임)
 	set {_t} to 0
 	while {_t} < 35:
@@ -208,11 +219,20 @@ on damage with priority highest:
 			{_m}.remove()
 			{_cam}.remove()
 			delete {-kc::%{_vid}%}
+			if {_fin} is true:
+				gameFinale()
 			stop
 		{_m}.setFireTicks(0)
 		set {_cur} to {_v}.getSpectatorTarget()
 		if {_cur} is not {_cam}:
 			{_v}.setSpectatorTarget({_cam})
+		if {_fin} is true:
+			loop {-gplist::*}:
+				set {_o} to loop-value
+				if {_o} is online:
+					set {_cur2} to {_o}.getSpectatorTarget()
+					if {_cur2} is not {_cam}:
+						{_o}.setSpectatorTarget({_cam})
 		add 1 to {_t}
 		wait 1 tick
 	# 6) 콰직! 소리 + 붉은 조각이 튀는 파티클(레드스톤 블록 조각, reflect 로 직접 호출, 미검증), 스켈레톤 제거
@@ -221,6 +241,13 @@ on damage with priority highest:
 	play sound "entity.zombie.break_wooden_door" with volume 1.5 and pitch 0.6 at {_bl}
 	{_w}.spawnParticle(Particle.BLOCK, {_bl}, 60, 0.3, 0.5, 0.3, 0.25, Bukkit.createBlockData("minecraft:redstone_block"))
 	{_m}.remove()
+	# 게임을 끝내는 킬이면 여기서 연출을 마치고 종료 연출로 넘어간다(리스폰 없이 모두 관전 상태 유지)
+	if {_fin} is true:
+		wait 25 ticks
+		{_cam}.remove()
+		delete {-kc::%{_vid}%}
+		gameFinale()
+		stop
 	# 7) 리스폰 대기: 6초 실명 + 타이틀 카운트다운(5초). 이 동안도 시점 고정.
 	apply blindness potion without any particles whilst hiding the potion icon to {_v} for 6 seconds replacing the existing effect
 	set {_t} to 0

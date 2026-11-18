@@ -1,0 +1,290 @@
+# [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 투표 -> 15초 뒤 정리하고 로비로.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
+# 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gpin}(결과 채팅 고정 중),
+#   {-gchat::번호}/{-gchatn}(고정 중 올라온 채팅 기록), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구)
+# 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
+#   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
+#   0초   게임 종료 + 승리 팀 타이틀/소리(3초)
+#   3초   승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고, 모두 그 앞(관전)으로 모은 뒤 결과를 채팅에 발표. 투표 시작
+#   15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
+# 결과 채팅: 팀 점수, 플레이어별 K/D/A, 가한 피해, 사용한 아이템(구성 아이콘), 투표 화살표(▲, 본인 줄에는 없음, 클릭하면 /potm 이름).
+#   "상단 고정": 투표 중에는 일반 채팅을 막고(취소), 채팅이 올라올 때마다 빈 줄로 화면을 밀어낸 뒤 결과 블록 -> 최근 채팅 4줄 순으로 다시 보낸다.
+# 맵 설정이 없어서 무대/로비 위치는 아래 두 함수(gameStageLoc, gameLobby)로 비워 뒀다. 지금은 월드 스폰을 쓴다.
+# 미검증: Adventure ClickEvent/HoverEvent 를 skript-reflect 로 호출, 마네킹 소환/스킨(ResolvableProfile, SPIGOT-8084 보고 있음), command /potm, on chat 취소 후 재전송, last N 채팅 정리.
+
+import:
+	net.kyori.adventure.text.Component
+	net.kyori.adventure.text.event.ClickEvent
+	net.kyori.adventure.text.event.HoverEvent
+	net.kyori.adventure.text.format.NamedTextColor
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	org.bukkit.entity.EntityType
+	io.papermc.paper.datacomponent.item.ResolvableProfile
+
+# ===== 맵 연결 자리 =====
+# 더미를 세울 무대 위치(더미들의 가운데). 맵 설정이 생기면 여기서 돌려준다.
+function gameStageLoc() :: location:
+	loop all players:
+		return loop-player.getWorld().getSpawnLocation()
+	return {-gplist::1}.getWorld().getSpawnLocation()
+
+# 게임이 완전히 끝났을 때 보낼 로비 위치
+function gameLobby(p: player):
+	teleport {_p} to {_p}.getWorld().getSpawnLocation()
+
+# ===== 결과 문구 만들기 =====
+function gfVotes(tid: text) :: number:
+	set {_c} to 0
+	loop {-gpotm::*}:
+		if loop-value is {_tid}:
+			add 1 to {_c}
+	return {_c}
+
+# 플레이어 한 명의 결과 줄(JSON): 이름(팀 색)  K / D / A  피해  사용한 아이템 아이콘. gametab.sk 의 gtT/gtColorJ 를 쓴다.
+function gfLineJson(t: player) :: text:
+	set {_id} to "%uuid of {_t}%"
+	set {_ci} to gTeamIndex(gTeamOf({_t}))
+	set {_k} to gtNum({-gk::%{_id}%})
+	set {_d} to gtNum({-gd::%{_id}%})
+	set {_a} to gtNum({-ga::%{_id}%})
+	set {_dm} to {-gdmg::%{_id}%}
+	if {_dm} is not a number:
+		set {_dm} to 0
+	set {_nm} to name of {_t}
+	set {_cn} to gtColorJ({_ci})
+	set {_c1} to gtT({_nm}, {_cn})
+	set {_s2} to "  %{_k}% / %{_d}% / %{_a}%"
+	set {_c2} to gtT({_s2}, "white")
+	set {_s3} to "  피해 %round({_dm})%"
+	set {_c3} to gtT({_s3}, "red")
+	set {_ex} to "%{_c1}%,%{_c2}%,%{_c3}%"
+	# 사용한 아이템: 구성 1~5번 아이템 아이콘(탭리스트와 같은 정렬 순서)
+	delete {_ld::*}
+	loop integers from 1 to 5:
+		add loadoutGet({_t}, loop-value) to {_ld::*}
+	set {_gap} to "{""text"":"" ""}"
+	loop itemOrder():
+		if {_ld::*} contains loop-value:
+			set {_ic} to itemIcon(loop-value)
+			set {_ex} to "%{_ex}%,%{_gap}%,%{_ic}%"
+	return "{""text"":"""",""extra"":[%{_ex}%]}"
+
+# 투표 화살표 컴포넌트(클릭하면 /potm 이름). 본인 줄에는 안 붙인다.
+function gfArrow(t: player) :: object:
+	set {_nm} to name of {_t}
+	set {_n} to gfVotes("%uuid of {_t}%")
+	set {_ar} to Component.text(" ▲ %{_n}%표")
+	set {_ar} to {_ar}.color(NamedTextColor.YELLOW)
+	set {_ar} to {_ar}.clickEvent(ClickEvent.runCommand("/potm %{_nm}%"))
+	set {_ar} to {_ar}.hoverEvent(HoverEvent.showText(Component.text("클릭해서 %{_nm}%님에게 투표")))
+	return {_ar}
+
+# 한 팀의 플레이어 결과 줄들을 viewer 에게 보낸다(중첩 loop 를 피하려고 따로 뺌)
+function gfTeamLines(v: player, tk: text):
+	loop {-gplist::*}:
+		set {_t} to loop-value
+		if gTeamOf({_t}) is {_tk}:
+			set {_c} to GsonComponentSerializer.gson().deserialize(gfLineJson({_t}))
+			if {-gvote} is true:
+				if {_t} is not {_v}:
+					if {-gplist::*} contains {_v}:
+						set {_c} to {_c}.append(gfArrow({_t}))
+			{_v}.sendMessage({_c})
+
+# 결과 블록 + 최근 채팅을 viewer 에게 다시 보낸다(앞쪽 30줄은 빈 줄로 이전 채팅을 밀어냄).
+function gfRender(v: player):
+	loop 30 times:
+		send " " to {_v}
+	send "&6&l▬▬▬▬▬▬▬▬▬▬ 게임 결과 ▬▬▬▬▬▬▬▬▬▬" to {_v}
+	send colored "&e%gcModeName({-gmode})% &7· 승리 &f%gTeamLabel({-gwinner})%" to {_v}
+	if {-gteams} > 0:
+		set {_line} to ""
+		loop {-gteamlist::*}:
+			set {_k2} to loop-value
+			set {_part} to "%gTeamLabel({_k2})% &f%{-gscore::%{_k2}%}%"
+			if {_line} is "":
+				set {_line} to {_part}
+			else:
+				set {_line} to "%{_line}% &8| %{_part}%"
+		send colored {_line} to {_v}
+	send "&8플레이어    K / D / A    가한 피해    사용한 아이템" to {_v}
+	loop {-gteamlist::*}:
+		gfTeamLines({_v}, loop-value)
+	if {-gpotmres} is set:
+		send colored "&6★ Player Of The Match: &f%{-gpotmres}%" to {_v}
+	else if {-gvote} is true:
+		send "&7(▲ 를 눌러 Player Of The Match 에 투표해요. 본인은 제외)" to {_v}
+	# 최근 채팅 4줄
+	set {_i} to {-gchatn} - 3
+	if {_i} < 1:
+		set {_i} to 1
+	while {_i} <= {-gchatn}:
+		if {-gchat::%{_i}%} is set:
+			send colored {-gchat::%{_i}%} to {_v}
+		add 1 to {_i}
+
+function gfRenderAll():
+	loop all players:
+		gfRender(loop-player)
+
+# 고정 중에는 일반 채팅을 막고 기록한 뒤 결과 블록을 다시 그린다(아래 몇 줄은 평소처럼 채팅이 올라온다)
+on chat:
+	if {-gpin} is not true:
+		stop
+	cancel event
+	set {_m} to "&f%player's name%&7: &f%message%"
+	add 1 to {-gchatn}
+	set {-gchat::%{-gchatn}%} to {_m}
+	delete {-gchat::%{-gchatn} - 4%}
+	wait 1 tick
+	gfRenderAll()
+
+# 투표: 결과 줄의 ▲ 를 누르면 실행된다. 참가자만 투표할 수 있고 본인에게는 못 한다. 마감 전에는 바꿀 수 있다.
+command /potm <text>:
+	description: Player Of The Match 투표 (결과 화면의 화살표를 누르면 실행돼요)
+	executable by: players
+	trigger:
+		if {-gvote} is not true:
+			send "&c지금은 투표할 수 없어요."
+			stop
+		if {-gplist::*} does not contain player:
+			send "&c이번 게임 참가자만 투표할 수 있어요."
+			stop
+		set {_tp} to arg-1 parsed as player
+		if {_tp} is not set:
+			send "&c그 플레이어를 찾을 수 없어요."
+			stop
+		if {-gplist::*} does not contain {_tp}:
+			send "&c이번 게임 참가자가 아니에요."
+			stop
+		if {_tp} is player:
+			send "&c본인에게는 투표할 수 없어요."
+			stop
+		set {-gpotm::%uuid of player%} to "%uuid of {_tp}%"
+		play sound "ui.button.click" to player
+		send "&6[투표] &f%name of {_tp}% &7님에게 투표했어요. (마감 전까지 바꿀 수 있어요)"
+		gfRenderAll()
+
+# ===== 더미 =====
+# 승리 팀 플레이어 한 명과 똑같이 생긴(스킨/장비) 더미를 loc 에 세운다(바라보는 방향 yaw 180 = 남쪽에서 북쪽을 봄).
+function gfDummy(p: player, loc: location):
+	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
+	{_m}.setProfile(ResolvableProfile.resolvableProfile({_p}.getPlayerProfile()))
+	{_m}.setImmovable(true)
+	{_m}.setInvulnerable(true)
+	{_m}.setSilent(true)
+	{_m}.setDescription(GsonComponentSerializer.gson().deserialize("{""text"":""""}"))
+	{_m}.setRotation(180, 0)
+	{_m}.addScoreboardTag("gdummy")
+	set {_inv} to {_p}.getInventory()
+	set {_meq} to {_m}.getEquipment()
+	{_meq}.setHelmet({_inv}.getHelmet())
+	{_meq}.setChestplate({_inv}.getChestplate())
+	{_meq}.setLeggings({_inv}.getLeggings())
+	{_meq}.setBoots({_inv}.getBoots())
+	add {_m} to {-gdummies::*}
+
+function gfClearDummies():
+	loop {-gdummies::*}:
+		loop-value.remove()
+	delete {-gdummies::*}
+
+# ===== 종료 연출 =====
+# 승리 팀 키는 {-gwinner}. 킬 연출(killcine.sk)이 끝난 뒤, 또는 킬 연출 없는 승리에서 바로 불린다.
+function gameFinale():
+	if {-gfinale} is true:
+		stop
+	set {-gfinale} to true
+	set {_wl} to gTeamLabel({-gwinner})
+	# 1) 게임 종료 + 승리 팀 알림(참가자는 관전 상태를 유지)
+	loop {-gplist::*}:
+		if loop-value is online:
+			set gamemode of loop-value to spectator
+	loop all players:
+		send title "&e게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+		play sound "ui.toast.challenge_complete" with volume 0.8 to loop-player
+	wait 3 seconds
+	# 2) 무대: 승리 팀 플레이어(접속 중인 사람)와 똑같이 생긴 더미를 가로로 일렬로 세우고, 모두 그 앞으로 모은다
+	set {_stage} to gameStageLoc()
+	delete {_win::*}
+	loop {-gplist::*}:
+		if gTeamOf(loop-value) is {-gwinner}:
+			if loop-value is online:
+				add loop-value to {_win::*}
+	set {_cnt} to size of {_win::*}
+	set {_i} to 1
+	while {_i} <= {_cnt}:
+		set {_off} to ({_i} - 1 - ({_cnt} - 1) / 2) * 1.6
+		set {_dl} to {_stage} ~ vector({_off}, 0, 0)
+		gfDummy({_win::%{_i}%}, {_dl})
+		add 1 to {_i}
+	set {_view} to {_stage} ~ vector(0, 1.6, -7)
+	{_view}.setYaw(0)
+	{_view}.setPitch(5)
+	loop {-gplist::*}:
+		if loop-value is online:
+			teleport loop-value to {_view}
+	# 3) 결과 발표 + 투표 시작, 채팅 고정
+	delete {-gpotm::*}
+	delete {-gchat::*}
+	delete {-gpotmres}
+	set {-gchatn} to 0
+	set {-gvote} to true
+	set {-gpin} to true
+	gfRenderAll()
+	play sound "block.note_block.chime" with volume 0.7 to all players
+	# 4) 투표 시간(마지막 3초 전까지)
+	wait 12 seconds
+	set {-gvote} to false
+	gfPotmAnnounce()
+	wait 3 seconds
+	# 5) 정리: 더미 제거, 채팅 고정 해제, 게임 정리, 로비로
+	gfClearDummies()
+	delete {-gpin}
+	delete {-gvote}
+	delete {-gpotm::*}
+	delete {-gpotmres}
+	delete {-gchat::*}
+	delete {-gchatn}
+	set {_pl::*} to {-gplist::*}
+	gameCleanup()
+	loop {_pl::*}:
+		if loop-value is online:
+			gameLobby(loop-value)
+	delete {-gfinale}
+	delete {-gwinner}
+	loop all players:
+		send "&6[게임] &7게임이 끝났어요. 로비로 이동했어요." to loop-player
+
+# 투표 마감: 표가 가장 많은 플레이어(동률이면 모두)를 발표한다. 표가 없으면 없음.
+function gfPotmAnnounce():
+	set {_best} to 0
+	loop {-gplist::*}:
+		set {_n} to gfVotes("%uuid of loop-value%")
+		if {_n} > {_best}:
+			set {_best} to {_n}
+	if {_best} is 0:
+		set {-gpotmres} to "&7투표 없음"
+	else:
+		set {_names} to ""
+		loop {-gplist::*}:
+			if gfVotes("%uuid of loop-value%") is {_best}:
+				if {_names} is "":
+					set {_names} to name of loop-value
+				else:
+					set {_names} to "%{_names}%, %name of loop-value%"
+		set {-gpotmres} to "%{_names}% &7(%{_best}%표)"
+	loop all players:
+		send title "&6Player Of The Match" with subtitle colored "&f%{-gpotmres}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+		play sound "entity.player.levelup" with volume 0.8 to loop-player
+	gfRenderAll()
+
+on load:
+	delete {-gfinale}
+	delete {-gvote}
+	delete {-gpin}
+	loop all entities:
+		set {_e} to loop-entity
+		if {_e}.getScoreboardTags().contains("gdummy") is true:
+			{_e}.remove()
+	delete {-gdummies::*}

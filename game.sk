@@ -348,7 +348,7 @@ function gBountyKill(v: player, a: entity, kill: boolean):
 	set {-gstar::%{_aid}%} to {_cur} + 1
 	gStarSync({_ap})
 	loop all players:
-		send "&6[바운티] &f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했어요! &e+%{_stars}%점 &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
+		send colored "&6[바운티] &f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했어요! &e+%{_stars}%점 &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
 	if {-gscore::%{_tk}%} >= {-gtarget}:
 		gameWin({_tk})
 
@@ -380,7 +380,7 @@ function gRoundEnd(w: text):
 	else:
 		add 1 to {-gscore::%{_w}%}
 		loop all players:
-			send "&6[섬멸전] %gTeamLabel({_w})% &7(이)가 라운드를 이겼어요! &e승점 %{-gscore::%{_w}%}%&7/%{-gtarget}%" to loop-player
+			send colored "&6[섬멸전] %gTeamLabel({_w})% &7(이)가 라운드를 이겼어요! &e승점 %{-gscore::%{_w}%}%&7/%{-gtarget}%" to loop-player
 			play sound "entity.player.levelup" with volume 0.7 and pitch 1 to loop-player
 		if {-gscore::%{_w}%} >= {-gtarget}:
 			gameWin({_w})
@@ -410,19 +410,16 @@ function gKeepDead(v: player) :: boolean:
 	return false
 
 # ===== 승리 =====
-# 한 팀이 목표를 채웠다. 종료 연출(gameend.sk)이 생기기 전까지는 결과만 알리고 정리한다.
+# 한 팀이 목표를 채웠다. 종료 연출은 gameend.sk(gameFinale).
 function gameWin(key: text):
 	if {-gover} is true:
 		stop
 	set {-gover} to true
 	set {-gwinner} to {_key}
-	gameEnd({_key})
-
-function gameEnd(key: text):
-	loop all players:
-		send "&6[게임] %gTeamLabel({_key})% &e승리!" to loop-player
-	wait 5 seconds
-	gameCleanup()
+	# 킬 연출이 진행 중이면(killcine.sk 가 {-kc} 를 켜 둠) 그 연출을 모두가 본 뒤 killcine.sk 가 gameFinale() 을 부른다.
+	# 킬 연출 없이 승리가 정해진 경우(접속 종료로 섬멸전이 끝남 등)는 바로 종료 연출(gameend.sk)을 시작한다.
+	if size of {-kc::*} is 0:
+		gameFinale()
 
 on quit:
 	if {-ingame} is true:
