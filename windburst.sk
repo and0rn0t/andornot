@@ -18,6 +18,10 @@ on load:
 	# 반경을 바꾼 뒤 리로드하면 격자를 다시 만든다
 	delete {-smokelat::*}
 
+# 수직 범위 배율(가로 반지름 대비). 0.7 이면 위아래 높이가 가로의 70%라 납작한 구(타원체)가 된다.
+function smokeYScale() :: number:
+	return 0.7
+
 function smokeRadius() :: number:
 	return 11
 
@@ -33,7 +37,7 @@ function smokeDensity() :: number:
 	return 18
 
 # 구형 배치용 격자 점(중심 기준 벡터)을 한 번만 만들어 {-smokelat::*} 에 둔다. 간격 4칸, 반지름 11.5칸 안의 점만 쓴다.
-# 점마다 작은 가우시안(표준편차 1.6)으로 구름을 뿌리면 전체가 반지름 11칸 구 모양으로 고르게 채워진다.
+# 위아래(y)는 smokeYScale() 배율(0.7)로 눌러서 점 위치와 퍼짐을 모두 줄인다. 점마다 작은 가우시안(가로 표준편차 1.6)으로 구름을 뿌리면 전체가 반지름 11칸 구 모양으로 고르게 채워진다.
 function smokeLattice():
 	if {-smokelat::*} is set:
 		stop
@@ -50,7 +54,8 @@ function smokeLattice():
 				set {_z} to {_iz} - 3
 				set {_z} to {_z} * 4
 				if ({_x} * {_x} + {_y} * {_y} + {_z} * {_z}) <= 132:
-					add vector({_x}, {_y}, {_z}) to {-smokelat::*}
+					set {_yy} to {_y} * smokeYScale()
+					add vector({_x}, {_yy}, {_z}) to {-smokelat::*}
 				add 1 to {_iz}
 			add 1 to {_iy}
 		add 1 to {_ix}
@@ -63,10 +68,11 @@ function smokeStep(center: location, f: number):
 	set {_n} to floor(smokeDensity() * {_f})
 	if {_n} < 1:
 		stop
+	set {_sy} to 1.6 * smokeYScale()
 	loop {-smokelat::*}:
 		set {_v} to loop-value
 		set {_l} to {_center} ~ {_v}
-		{_w}.spawnParticle(Particle.CLOUD, {_l}, {_n}, 1.6, 1.6, 1.6, 0, null, true)
+		{_w}.spawnParticle(Particle.CLOUD, {_l}, {_n}, 1.6, {_sy}, 1.6, 0, null, true)
 
 # 연막 안 플레이어 눈 주변(1.3칸)에 구름을 촘촘히 뿌려 화면을 가린다
 function smokeAround(p: player, f: number):
