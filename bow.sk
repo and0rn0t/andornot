@@ -33,7 +33,7 @@ function bowSpeed(f: number) :: number:
 function bowExtra(f: number) :: number:
 	return hp(8 * {_f})
 
-# 활을 메인/오프핸드에 들고 있는데 인벤토리에 화살이 없으면 1개 지급
+# 활을 메인/오프핸드에 들고 있는데 인벤토리에 화살이 없으면 인벤토리 안쪽 칸에 1개 지급(핫바는 쓰지 않음, 핫바에 있는 화살은 치움)
 function bowArrow(p: player):
 	set {_h} to {_p}.getInventory().getItemInMainHand().getType().name()
 	set {_o} to {_p}.getInventory().getItemInOffHand().getType().name()
@@ -44,8 +44,23 @@ function bowArrow(p: player):
 		set {_has} to true
 	if {_has} is false:
 		stop
-	if {_p}.getInventory().contains(Material.ARROW) is false:
-		{_p}.getInventory().addItem(new ItemStack(Material.ARROW))
+	# 핫바(0~8번 칸)에 남아 있는 화살은 치운다(화살은 핫바가 아니라 인벤토리 안쪽 9~35번 칸에 둔다)
+	set {_i} to 0
+	while {_i} <= 8:
+		if {_p}.getInventory().getItem({_i}) is set:
+			if {_p}.getInventory().getItem({_i}).getType().name() is "ARROW":
+				set slot {_i} of {_p}'s inventory to air
+		add 1 to {_i}
+	if {_p}.getInventory().contains(Material.ARROW) is true:
+		stop
+	# 인벤토리 안쪽(9~35번 칸)의 첫 빈 칸에 화살 1개. 빈 칸이 없으면 기본 지급(addItem).
+	set {_j} to 9
+	while {_j} <= 35:
+		if {_p}.getInventory().getItem({_j}) is not set:
+			set slot {_j} of {_p}'s inventory to 1 arrow
+			stop
+		add 1 to {_j}
+	{_p}.getInventory().addItem(new ItemStack(Material.ARROW))
 
 every 5 ticks:
 	loop all players:
