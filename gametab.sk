@@ -19,7 +19,7 @@ function gtKdaW() :: number:
 	return 20
 
 function gtDmgW() :: number:
-	return 36
+	return 24
 
 # ITEM 칸: 구성 아이템 아이콘 최대 5개. 아이콘 하나 = 공백 1칸(4픽셀) + 아이콘 gtIconPx() 픽셀
 function gtIconPx() :: number:

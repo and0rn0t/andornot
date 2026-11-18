@@ -423,6 +423,22 @@ function gameWin(key: text):
 	if size of {-kc::*} is 0:
 		gameFinale()
 
+# 게임 중 관전 상태(죽은 사람, 종료 연출 중)인 참가자는 제자리에서 못 움직이게 한다. 시선 회전은 허용.
+# 카메라를 따라가는 관전(setSpectatorTarget)은 건드리지 않는다. 미검증: 관전자의 PlayerMoveEvent 취소가 서버에서 제자리로 되돌리는지.
+on move:
+	if {-ingame} is not true:
+		stop
+	if gamemode of player is not spectator:
+		stop
+	if {-gplist::*} does not contain player:
+		stop
+	if player.getSpectatorTarget() is set:
+		stop
+	set {_f} to event.getFrom()
+	set {_t} to event.getTo()
+	if distance between {_f} and {_t} > 0.0001:
+		cancel event
+
 on quit:
 	if {-ingame} is true:
 		if {-gplist::*} contains player:
