@@ -10,6 +10,7 @@
 #   얼굴:   {"object":"player","player":{"name":"플레이어이름"}} (미검증. 안 보이면 이 형태를 /tellraw 로 먼저 시험)
 #   컴포넌트는 skript-reflect 로 Adventure 의 GsonComponentSerializer 에 JSON 을 넣어 만들고 sendMessage 로 보낸다(미검증).
 # 사망 원인 아이콘은 아래 killCauseSprite 한 곳에서 정한다. 스프라이트 이름이 틀리거나 item/ 에 텍스처가 없으면 보라/검정 체크무늬가 뜬다.
+# 킬로그는 killLogShow(피격자, 공격자, 원인, 피해종류) 함수 하나로 보낸다. 진짜 사망(on death)과 킬 연출(killcine.sk)이 같이 쓴다.
 # 한계: TNT 처럼 공격자 정보 없이 주는 스킬 데미지는 공격자 없음 + 원인 barrier 로 나온다. 낚싯대 데미지는 플레이어 공격으로 잡혀 낚싯대 아이콘이 나온다.
 
 import:
@@ -28,12 +29,10 @@ function killFace(n: text) :: text:
 	return "{""object"":""player"",""player"":{""name"":""%{_n}%""}}"
 
 # 사망 원인에 맞는 아이콘 스프라이트 이름을 돌려준다. a 는 공격자(없으면 피격자 본인을 넘긴다).
+# c: 피해 원인 이름(EntityDamageEvent.DamageCause 의 name, 예 ENTITY_ATTACK), dt: 피해 종류 키(damage type, 예 player_explosion).
+#   진짜 사망(on death)에서는 마지막 피해에서, 킬 연출(killcine.sk)에서는 취소한 치명타 피해 이벤트에서 읽어 넘긴다.
 # 근접(ENTITY_ATTACK/ENTITY_SWEEP_ATTACK)은 공격자가 메인핸드에 든 아이템 이름을 그대로 쓰고(예: diamond_sword), 맨손이면 stick.
-function killCauseSprite(v: player, a: entity) :: text:
-	set {_ldc} to {_v}.getLastDamageCause()
-	if {_ldc} is not set:
-		return "barrier"
-	set {_c} to {_ldc}.getCause().name()
+function killCauseSprite(v: player, a: entity, c: text, dt: text) :: text:
 	if {_c} is "ENTITY_ATTACK":
 		return killWeaponSprite({_a})
 	if {_c} is "ENTITY_SWEEP_ATTACK":
@@ -50,12 +49,10 @@ function killCauseSprite(v: player, a: entity) :: text:
 		return "lava_bucket"
 	if {_c} is "VOID":
 		return "ender_pearl"
-	# TNT 스킬 킬: 피해 종류가 player_explosion 이면 TNT 블럭 아이콘(TNT 는 아이템 텍스처가 없어 블럭 텍스처 tnt_side 를 쓴다, 스프라이트 이름은 미검증)
+	# 폭발: 블레이즈 막대기 화염구 킬이면 화염구(fire_charge), TNT 스킬 킬(피해 종류 player_explosion)이면 TNT 블럭 아이콘(tnt_side, 미검증), 그 외 gunpowder
 	if {_c} is "ENTITY_EXPLOSION":
-		# 블레이즈 막대기 화염구 폭발 킬: 화염구(fire_charge) 아이콘
 		if {-fbhit::%uuid of {_v}%} is set:
 			return "fire_charge"
-		set {_dt} to {_ldc}.getDamageSource().getDamageType().getKey().getKey()
 		if {_dt} is "player_explosion":
 			return "block/tnt_side"
 		return "gunpowder"
@@ -90,15 +87,10 @@ function killWeaponSprite(a: entity) :: text:
 		return "iron_spear"
 	return {_n}.toLowerCase()
 
-on death of player:
-	set the death message to ""
-	set {_v} to victim
+# 킬로그 한 줄을 접속자 모두에게 보낸다. v: 피격자, ae: 공격자(없으면 피격자 본인), c/dt: 피해 원인 이름/피해 종류 키.
+function killLogShow(v: player, ae: entity, c: text, dt: text):
 	set {_vn} to "%{_v}'s name%"
-	# 공격자가 없으면 함수에 빈 값을 넘길 수 없어서 피격자 본인을 대신 넘긴다(근접 원인이 아니라 무기 아이콘은 안 쓰인다).
-	set {_ae} to {_v}
-	if attacker is set:
-		set {_ae} to attacker
-	set {_ci} to killIcon(killCauseSprite({_v}, {_ae}))
+	set {_ci} to killIcon(killCauseSprite({_v}, {_ae}, {_c}, {_dt}))
 	set {_vf} to killFace({_vn})
 	set {_gap} to "{""text"":"" ""}"
 	set {_vnj} to "{""text"":""%{_vn}%""}"
@@ -135,3 +127,18 @@ on death of player:
 			{_vw}.sendMessage({_ca})
 		else:
 			{_vw}.sendMessage({_ce})
+
+# 진짜 사망(킬 연출을 못 거친 사망: /kill, 연출 중 사망 등)의 킬로그. 연출이 켜져 있으면 치명타를 취소하고 연출이 대신 killLogShow 를 부른다(killcine.sk).
+on death of player:
+	set the death message to ""
+	set {_v} to victim
+	set {_ae} to {_v}
+	if attacker is set:
+		set {_ae} to attacker
+	set {_c} to "CUSTOM"
+	set {_dt} to ""
+	set {_ldc} to {_v}.getLastDamageCause()
+	if {_ldc} is set:
+		set {_c} to {_ldc}.getCause().name()
+		set {_dt} to {_ldc}.getDamageSource().getDamageType().getKey().getKey()
+	killLogShow({_v}, {_ae}, {_c}, {_dt})

@@ -1,0 +1,195 @@
+# [killcine.sk] 킬 연출: HP 가 다 닳는 피해를 취소하고 직접 처리한다. 진짜로 죽지 않으므로 바닐라 사망 화면/메시지/아이템 드롭이 없다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-kc::uuid}(킬 연출 중 표시. 연출이 끝나면 지움, 접속/퇴장 때도 정리)
+# 순서(시각은 연출 시작 기준):
+#   0틱   치명타 피해 취소 -> 킬 처리(킬 점수 자리 killScoreHook, 킬로그 killLogShow) -> 죽을 때 지워지던 상태 정리(kcClearState)
+#         -> 죽은 자리에 피격자와 똑같이 생긴 마네킹(스킨/장비/방향) 세움 -> 피격자는 관전 모드, 시체 정면에 둔 카메라에 시점 고정
+#   50틱  마네킹 자리에 폭발 이펙트 + 소리, 마네킹 제거(엔티티 제거라 사망 메시지 없음). 이때부터 6초 실명 + 타이틀로 리스폰 대기 안내(5 -> 1 초)
+#   150틱 리스폰: 어드벤처 모드로 되돌림, 리스폰 위치로 이동, 체력/스태미너 회복. 실명은 1초 남은 상태라 바닐라가 서서히 풀어 준다(미검증).
+# 이동 막기: 관전 상태에서는 카메라 엔티티에 붙어 있어서 못 움직인다. 시점 해제(Shift)나 다른 대상 관전을 하면 매 틱 다시 붙인다.
+# 시간/거리는 아래 kc 함수의 값 하나씩만 바꾸면 된다. 연출을 끄려면 kcEnabled() 가 false 를 돌려주게 하면 바닐라 사망으로 돌아간다.
+# 이 파일은 게임 진행 틀(킬 점수, 라운드, 로비)이 아직 없어서 리스폰 위치는 월드 스폰(kcRespawnLoc)이고, 킬 점수는 killScoreHook(빈 함수)에 연결 자리만 있다.
+# 유지보수: 새 스킬이 죽을 때 정리할 상태(on death)를 만들면 kcClearState 에도 같은 정리를 추가해야 한다(연출은 진짜 사망 이벤트를 내지 않는다).
+# 미검증 문법: on damage with priority highest, 마네킹 소환/프로필/장비(skript-reflect + Paper API), setSpectatorTarget, getFinalDamage 비교, ResolvableProfile.
+#   마네킹 스킨 복사는 Spigot 에서 안 된다는 보고가 있다(SPIGOT-8084). Paper 의 ResolvableProfile 로 호출했지만 실제 서버에서 확인 필요.
+
+import:
+	org.bukkit.entity.EntityType
+	io.papermc.paper.datacomponent.item.ResolvableProfile
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+# 킬 연출 사용 여부
+function kcEnabled() :: boolean:
+	return true
+
+# 리스폰 위치(게임 진행 틀이 생기기 전까지는 피격자가 있는 월드의 스폰)
+function kcRespawnLoc(v: player) :: location:
+	return {_v}.getWorld().getSpawnLocation()
+
+# 킬 점수를 올리는 자리(게임 진행 틀이 생기면 여기서 팀 점수/KDA 를 올린다). 지금은 아무 일도 안 한다.
+function killScoreHook(v: player, a: entity):
+	stop
+
+# 진짜 사망(on death)에서 지워지던 상태를 직접 정리한다. 각 파일의 on death 와 같은 내용(그 파일을 고치면 여기도 고칠 것).
+function kcClearState(v: player):
+	set {_id} to "%{_v}'s uuid%"
+	# anvil.sk
+	anvilClear({_v})
+	# flintsteel.sk
+	delete {-vuln::%{_id}%}
+	delete {-noburn::%{_id}%}
+	clearStatus({_v}, "flint")
+	# totem.sk
+	delete {-totemend::%{_id}%}
+	delete {-jumplock::%{_id}%::totem}
+	clearStatus({_v}, "totem")
+	# ominousbottle.sk
+	delete {-bottle::%{_id}%}
+	delete {-exhaust::%{_id}%}
+	clearStatus({_v}, "ominousbottle_exhaust")
+	# potions.sk
+	delete {-invis::%{_id}%}
+	# statustag.sk, healthbar.sk
+	stagRemove({_id})
+	hpbar_remove({_id})
+	# 바닐라 사망이면 사라지는 것들: 남은 상태이상 표시, 기절, 도약 잠금, 전투 중 카운터, 스태미너 회복 차단
+	delete {-status::%{_id}%::*}
+	delete {-statusname::%{_id}%::*}
+	delete {-statusdur::%{_id}%::*}
+	delete {-statustype::%{_id}%::*}
+	delete {-statuslabel::%{_id}%::*}
+	delete {-stunend::%{_id}%}
+	delete {-jumplock::%{_id}%::*}
+	set {-oc::%{_id}%} to 0
+	set {-stcap::%{_id}%} to 0
+	{_v}.clearActivePotionEffects()
+
+# 치명타 피해를 가로채서 킬 연출을 한다. 다른 스크립트의 피해 보정(main.sk)이 전부 끝난 뒤의 최종 피해로 판단해야 해서 우선순위를 가장 늦게 둔다.
+on damage with priority highest:
+	if victim is not a player:
+		stop
+	if kcEnabled() is false:
+		stop
+	set {_v} to victim
+	set {_vid} to "%{_v}'s uuid%"
+	# 연출 중이면 어떤 피해도 받지 않는다
+	if {-kc::%{_vid}%} is set:
+		cancel event
+		stop
+	if gamemode of {_v} is not survival:
+		if gamemode of {_v} is not adventure:
+			stop
+	set {_ev} to event
+	set {_fd} to {_ev}.getFinalDamage()
+	set {_hpnow} to {_v}.getHealth()
+	set {_abs} to {_v}.getAbsorptionAmount()
+	set {_left} to {_hpnow} + {_abs}
+	if {_fd} < {_left}:
+		stop
+	# /kill 같은 명령과 서버가 직접 죽이는 경우(KILL)는 연출 없이 진짜로 죽게 둔다
+	set {_c} to {_ev}.getCause().name()
+	if {_c} is "KILL":
+		stop
+	# ---- 여기부터 치명타: 피해를 취소하고 직접 처리 ----
+	cancel event
+	set {-kc::%{_vid}%} to true
+	set {_ae} to {_v}
+	if attacker is set:
+		set {_ae} to attacker
+	set {_dt} to {_ev}.getDamageSource().getDamageType().getKey().getKey()
+	# 1) 킬 처리를 먼저: 킬 점수 -> 킬로그 -> 상태 정리
+	killScoreHook({_v}, {_ae})
+	killLogShow({_v}, {_ae}, {_c}, {_dt})
+	kcClearState({_v})
+	# 2) 죽은 자리에 똑같이 생긴 마네킹을 세운다(스킨/장비/바라보는 방향)
+	set {_loc} to {_v}.getLocation()
+	set {_w} to {_v}.getWorld()
+	set {_m} to {_w}.spawnEntity({_loc}, EntityType.MANNEQUIN)
+	{_m}.setProfile(ResolvableProfile.resolvableProfile({_v}.getPlayerProfile()))
+	{_m}.setImmovable(true)
+	{_m}.setInvulnerable(true)
+	{_m}.setSilent(true)
+	{_m}.setDescription(GsonComponentSerializer.gson().deserialize("{""text"":""""}"))
+	set {_inv} to {_v}.getInventory()
+	set {_meq} to {_m}.getEquipment()
+	{_meq}.setHelmet({_inv}.getHelmet())
+	{_meq}.setChestplate({_inv}.getChestplate())
+	{_meq}.setLeggings({_inv}.getLeggings())
+	{_meq}.setBoots({_inv}.getBoots())
+	{_meq}.setItemInMainHand({_inv}.getItemInMainHand().clone())
+	{_meq}.setItemInOffHand({_inv}.getItemInOffHand().clone())
+	# 3) 시체 정면 3.5칸, 높이 1.7칸에 보이지 않는 카메라(갑옷 거치대)를 두고 시체를 바라보게 한다
+	set {_yaw} to {_loc}.getYaw()
+	set {_fx} to 0 - sin({_yaw}) * 3.5
+	set {_fz} to cos({_yaw}) * 3.5
+	set {_cl} to {_loc} ~ vector({_fx}, 1.7, {_fz})
+	{_cl}.setYaw({_yaw} + 180)
+	{_cl}.setPitch(8)
+	set {_cam} to {_w}.spawnEntity({_cl}, EntityType.ARMOR_STAND)
+	{_cam}.setInvisible(true)
+	{_cam}.setGravity(false)
+	{_cam}.setMarker(true)
+	{_cam}.setInvulnerable(true)
+	{_cam}.setSilent(true)
+	# 4) 피격자를 관전 모드로 바꾸고 카메라에 시점을 붙인다
+	set {_bl} to {_loc} ~ vector(0, 1, 0)
+	set gamemode of {_v} to spectator
+	teleport {_v} to {_cl}
+	wait 1 tick
+	{_v}.setSpectatorTarget({_cam})
+	# 5) 50틱 동안 시체를 보여준다(매 틱 시점이 풀렸으면 다시 붙임)
+	set {_t} to 0
+	while {_t} < 50:
+		if {_v} is not online:
+			{_m}.remove()
+			{_cam}.remove()
+			delete {-kc::%{_vid}%}
+			stop
+		set {_cur} to {_v}.getSpectatorTarget()
+		if {_cur} is not {_cam}:
+			{_v}.setSpectatorTarget({_cam})
+		add 1 to {_t}
+		wait 1 tick
+	# 6) 폭발 이펙트 + 소리, 마네킹 제거
+	play 1 explosion emitter at {_bl} in radius of 100
+	play 12 large explosion with offset of 0.6, 0.6, 0.6 and speed 0 at {_bl} in radius of 100
+	play sound "entity.generic.explode" with volume 2 and pitch 0.9 at {_bl}
+	{_m}.remove()
+	# 7) 리스폰 대기: 6초 실명 + 타이틀 카운트다운(5초). 이 동안도 시점 고정.
+	apply blindness potion without any particles whilst hiding the potion icon to {_v} for 6 seconds replacing the existing effect
+	set {_t} to 0
+	while {_t} < 100:
+		if {_v} is not online:
+			{_cam}.remove()
+			delete {-kc::%{_vid}%}
+			stop
+		set {_cur} to {_v}.getSpectatorTarget()
+		if {_cur} is not {_cam}:
+			{_v}.setSpectatorTarget({_cam})
+		if mod({_t}, 20) is 0:
+			set {_sec} to 5 - floor({_t} / 20)
+			send title "&c리스폰 대기" with subtitle "&f%{_sec}%초 후 되살아나요" to {_v} for 25 ticks with fadein 0 ticks and fade out 0 ticks
+		add 1 to {_t}
+		wait 1 tick
+	# 8) 리스폰: 어드벤처로 되돌리고 리스폰 위치로 이동, 체력/스태미너 회복
+	{_cam}.remove()
+	set gamemode of {_v} to adventure
+	teleport {_v} to kcRespawnLoc({_v})
+	set {_mh} to {_v}'s max health
+	set {_v}'s health to {_mh}
+	set {-st::%{_vid}%} to 100
+	set level progress of {_v} to 0.999
+	{_v}.clearTitle()
+	delete {-kc::%{_vid}%}
+
+# 연출 도중 나가면 관전 모드로 남지 않게 되돌려 둔다(마네킹/카메라는 위 루프가 오프라인을 보고 지운다)
+on quit:
+	if {-kc::%player's uuid%} is set:
+		set gamemode of player to adventure
+		teleport player to kcRespawnLoc(player)
+		set {_mh} to player's max health
+		set player's health to {_mh}
+		delete {-kc::%player's uuid%}
+
+on join:
+	delete {-kc::%player's uuid%}

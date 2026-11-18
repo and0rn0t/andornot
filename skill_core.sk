@@ -59,6 +59,7 @@
 #   {-atkcd::uuid}           공격 쿨다운 충전도 0~1(매 틱 기록)        main(기록/접속 시 삭제), cooldownScale 이 읽음
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
 #   {gamecfg::teams|mode|random} 게임 사전 설정(저장 변수, 대시 없음. 팀 수 0=개인전)  gamesetup
+#   {-kc::uuid}              킬 연출 중 표시(연출 끝/접속 시 삭제)                killcine
 #   {-ingame}                게임 진행 여부(true 면 무기고 해제). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
 #   {itemorder::*}           아이템 GUI 표시 순서(저장 변수, 대시 없음)           items
 #   {loadout::uuid::1~5}     플레이어별 아이템 구성 id(저장 변수, 대시 없음)       items
@@ -119,6 +120,8 @@
 #   - fishing.sk    : 낚싯대 스킬
 #   - gamesetup.sk  : 게임 사전 설정 GUI(팀 수/게임모드/랜덤 아이템, 변경 시 전체 알림). 게임 시스템은 gcTeams()/gcMode()/gcRandom() 로 읽는다
 #   - admin.sk      : /admin 관리자 메뉴(6줄 GUI, op 전용). 앞으로 관리자 전용 기능은 이 메뉴에 버튼으로 추가한다(추가법은 admin.sk 맨 위)
+#   - killcine.sk   : 킬 연출(치명타 취소 -> 킬 처리 -> 마네킹+관전 카메라 -> 폭발 -> 5초 뒤 리스폰). 새 스킬에 on death 정리를 만들면 kcClearState 에도 추가
+#   - killlog.sk    : 킬로그(killLogShow 함수를 killcine 도 호출)
 #   - killlog_test.sk : 킬로그 테스트용(op 가 몹을 죽이면 킬로그 형식으로 표시). 테스트가 끝나면 지워도 됨
 #   - team.sk       : /team 명령으로 {-team} 설정(op 전용, 테스트용)
 #   - bow.sk        : 활 스킬(충전 데미지, 소닉붐)
