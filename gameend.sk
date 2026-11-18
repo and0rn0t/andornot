@@ -534,7 +534,7 @@ function gfTestCleanup():
 	delete {-gtarget}
 	delete {-gftest}
 
-# 관리자 전용: 종료 연출만 따로 본다. 실행자 + 가짜 팀원 3명(더미1~3)이 한 팀으로 바운티를 이겼다는 설정.
+# 관리자 전용: 종료 연출만 따로 본다. 3인 3팀(실행자 + 가짜 참가자 더미1, 더미2가 각자 한 팀)이고 실행자 팀이 바운티를 이겼다는 설정.
 # 실제 게임 변수를 빌려 쓰므로 게임/연출이 진행 중이면 거부하고, 끝나면 전부 되돌린다. 마지막 킬 연출은 포함하지 않는다.
 command /finaletest:
 	description: 게임 종료 연출만 테스트 (관리자 전용)
@@ -556,36 +556,36 @@ command /finaletest:
 		set {-team::%uuid of player%} to "1팀"
 		set {-gmode} to "bounty"
 		set {-gtarget} to 20
-		set {-gteams} to 1
+		set {-gteams} to 3
 		set {-gteamlist::1} to "1팀"
+		set {-gteamlist::2} to "2팀"
+		set {-gteamlist::3} to "3팀"
 		set {-gname::1팀} to "1팀"
+		set {-gname::2팀} to "2팀"
+		set {-gname::3팀} to "3팀"
 		set {-gscore::1팀} to 20
+		set {-gscore::2팀} to 13
+		set {-gscore::3팀} to 9
 		set {-gplist::1} to player
-		set {-gk::%uuid of player%} to 7
-		set {-gd::%uuid of player%} to 2
+		set {-gk::%uuid of player%} to 9
+		set {-gd::%uuid of player%} to 4
 		set {-ga::%uuid of player%} to 3
-		set {-gdmg::%uuid of player%} to 28
+		set {-gdmg::%uuid of player%} to 46
 		set {-gfake::fake1} to "더미1"
 		set {-gfake::fake2} to "더미2"
-		set {-gfake::fake3} to "더미3"
-		set {-gfteam::fake1} to "1팀"
-		set {-gfteam::fake2} to "1팀"
-		set {-gfteam::fake3} to "1팀"
-		set {-gk::fake1} to 5
-		set {-gd::fake1} to 3
-		set {-ga::fake1} to 4
-		set {-gdmg::fake1} to 21.5
+		set {-gfteam::fake1} to "2팀"
+		set {-gfteam::fake2} to "3팀"
+		set {-gk::fake1} to 6
+		set {-gd::fake1} to 7
+		set {-ga::fake1} to 2
+		set {-gdmg::fake1} to 31.5
 		set {-gk::fake2} to 4
-		set {-gd::fake2} to 4
+		set {-gd::fake2} to 8
 		set {-ga::fake2} to 1
-		set {-gdmg::fake2} to 15
-		set {-gk::fake3} to 4
-		set {-gd::fake3} to 1
-		set {-ga::fake3} to 5
-		set {-gdmg::fake3} to 18
+		set {-gdmg::fake2} to 22
 		set {-gwinner} to "1팀"
 		set {-gover} to true
-		send "&6[테스트] &7종료 연출을 시작합니다. 더미1~3 에게도 투표할 수 있습니다. 중단하려면 /gamestop 을 사용하십시오."
+		send "&6[테스트] &7종료 연출을 시작합니다. 더미1, 더미2 에게도 투표할 수 있습니다. 중단하려면 /gamestop 을 사용하십시오."
 		gameFinale()
 
 # 관리자 전용 게임 중단(진행 중인 게임, 종료 연출, 테스트 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
