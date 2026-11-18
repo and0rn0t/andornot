@@ -82,7 +82,7 @@ function itemName(id: text) :: text:
 	if {_id} is "blaze_rod":
 		return "&6블레이즈 막대기"
 	if {_id} is "wind_charge":
-		return "&b돌풍구"
+		return "&b연막탄"
 	if {_id} is "flint_steel":
 		return "&c부싯돌과 부시"
 	return "&f%{_id}%"
@@ -166,7 +166,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "blaze_rod":
 		return "&7[우클릭] 0.5초 뒤 화염구를 발사해요", "&7피해 5", "&73번째 사용은 머리 위에서 화염구 3개", "&7쿨타임 4초"
 	if {_id} is "wind_charge":
-		return "&7[우클릭] 던진 자리에 5초간 연막(반경 11칸)", "&7연막 안의 플레이어는 실명이에요", "&7쿨타임 18초"
+		return "&7[우클릭] 던진 자리에 10초간 연막(반경 11칸)", "&7연막이 시야를 가려요", "&7쿨타임 30초"
 	if {_id} is "flint_steel":
 		return "&7[우클릭] 주변 10칸 안의 적을", "&75초간 취약(받는 피해 1.2배)으로 만들고 불태워요", "&7쿨타임 20초"
 	if {_id} is "anvil":
