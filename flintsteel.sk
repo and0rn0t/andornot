@@ -5,7 +5,7 @@
 # 불태움은 화염 애니메이션만이고 불 피해(FIRE_TICK/FIRE)는 main.sk 에서 취소한다. 점화 동안 noburn 으로 막는다(불 5초 + 여유 3초).
 # 주의: 'flint and steel' 은 함수 인자에 쓰면 and 로 갈려서 '둘'로 읽히므로 {-skillitems::flint_steel} 변수로 넘긴다.
 # 우클릭이 블럭에 불을 붙이지 않도록 이벤트를 취소한다.
-# 이펙트: 사용 지점에서 반지름 1~10 칸까지 2틱마다 한 칸씩 커지는 불꽃 고리(FLAME). 미검증: 파티클 FLAME 고리, ignite 효과.
+# 이펙트: 사용 지점에서 반지름 1~10 칸까지 1틱마다 한 칸씩 커지는 불꽃 고리(총 10틱)(FLAME). 미검증: 파티클 FLAME 고리, ignite 효과.
 
 import:
 	org.bukkit.Particle
@@ -53,7 +53,7 @@ on rightclick:
 	# 불꽃이 사용 지점에서 범위 끝(10칸)까지 퍼져나간다
 	loop 10 times:
 		flintRing({_c}, loop-number)
-		wait 2 ticks
+		wait 1 tick
 
 on death of player:
 	delete {-vuln::%victim's uuid%}
