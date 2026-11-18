@@ -140,15 +140,11 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "fishing_rod":
 		return "찌를 던져 맞은 적을 5초간 구속합니다.", "구속이 종료되면 <dmg>의 피해를 입힙니다."
 	if {_id} is "iron_axe":
-		return "체력이 80% 이상인 적에게 1.5배의 피해를 입힙니다."
+		return "체력이 80%% 이상인 적에게 1.5배의 피해를 입힙니다."
 	if {_id} is "iron_pickaxe":
 		return "타격할 때마다 '채굴' 중첩이 쌓입니다.", "'채굴' 중첩만큼의 피해를 추가로 입힙니다."
 	if {_id} is "iron_hoe":
-		return "체력이 50% 이하인 적에게 2배의 피해를 입힙니다."
-	#if {_id} is "mace":
-		#return "피해가 낮은 대신 묵직하게 때립니다", "(바닐라 피해의 30%%)"
-	#if {_id} is "iron_spear":
-		#return "도약합니다", "피해는 최대 5까지 들어갑니다"
+		return "체력이 50%% 이하인 적에게 2배의 피해를 입힙니다."
 	if {_id} is "iron_sword":
 		return "들고 있으면 받는 피해를 한 번 막습니다."
 	if {_id} is "tnt":
@@ -156,7 +152,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "nether_star":
 		return "6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다."
 	if {_id} is "ominous_bottle":
-		return "7초간 가하는 피해의 30%를 흡혈하고, 스태미너가 초당 20 회복됩니다.", "지속 시간이 끝나면 탈진해 스태미너를 전부 소진하고, 5초간 자연 회복되지 않습니다."
+		return "7초간 가하는 피해의 30%%를 흡혈하고, 스태미너가 초당 20 회복됩니다.", "지속 시간이 끝나면 탈진해 스태미너를 전부 소진하고, 5초간 자연 회복되지 않습니다."
 	if {_id} is "potion_heal":
 		return "체력 5를 회복합니다."
 	if {_id} is "potion_stamina":
@@ -170,9 +166,9 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "wind_charge":
 		return "10초간 연막을 생성합니다."
 	if {_id} is "flint_steel":
-		return "주변 10칸 안의 적을 불태워 5초간 받는 피해가 20%% 증가시킵니다."
+		return "주변 10칸 안의 적을 불태워 5초간 받는 피해를 20%% 증가시킵니다."
 	if {_id} is "anvil":
-		return "사망 전까지 가하는 피해가 10% 증가합니다.", "무한히 중첩 가능합니다."
+		return "사망 전까지 가하는 피해가 10%% 증가합니다.", "무한히 중첩 가능합니다."
 	if {_id} is "potion_invis":
 		return "4초간 투명해집니다.", "피해를 입거나 입히면 해제됩니다."
 	return "설명 없음"
