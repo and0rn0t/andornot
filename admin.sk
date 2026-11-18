@@ -51,13 +51,13 @@ function adminAction(p: player, id: text):
 	else if {_id} is "gamestart":
 		close {_p}'s inventory
 		if {-ingame} is true:
-			send "&c이미 게임이 진행 중이에요." to {_p}
+			send "&c이미 게임이 진행 중입니다." to {_p}
 		else:
 			gameStart(name of {_p})
 	else if {_id} is "gamestop":
 		close {_p}'s inventory
 		if {-ingame} is not true:
-			send "&c진행 중인 게임이 없어요." to {_p}
+			send "&c진행 중인 게임이 없습니다." to {_p}
 		else:
 			gameForceStop(name of {_p})
 	else if {_id} is "itemorder":
@@ -92,7 +92,7 @@ command /admin:
 	executable by: players
 	trigger:
 		if player is not op:
-			send "&c권한이 없어요."
+			send "&c권한이 없습니다."
 			stop
 		play sound "block.chest.open" to player
 		adminOpen(player)
