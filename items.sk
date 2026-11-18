@@ -137,45 +137,44 @@ function itemBase(id: text) :: itemtype:
 #   데미지/쿨타임 수치는 현재 코드 기준(2026-11): 체력 숫자는 하트가 아니라 기획서의 실제 체력.
 function itemLoreLines(id: text) :: texts:
 	if {_id} is "crossbow":
-		return "화살을 발사합니다"
 	if {_id} is "fishing_rod":
-		return "낚싯바늘을 던집니다", "맞은 적을 5초간 구속하고 끌어당기고 <dmg> 피해를 줍니다"
+		return "찌를 던져 맞은 적을 5초간 구속합니다.", "구속이 종료되면 <dmg>의 피해를 입힙니다."
 	if {_id} is "iron_axe":
-		return "대상의 체력이 80%% 이상이면", "피해가 1.5배가 됩니다"
+		return "체력이 80% 이상인 적에게 1.5배의 피해를 입힙니다."
 	if {_id} is "iron_pickaxe":
-		return "타격할 때마다 '채굴' 중첩이 쌓입니다", "중첩마다 피해가 늘어납니다"
+		return "타격할 때마다 '채굴' 중첩이 쌓입니다.", "'채굴' 중첩만큼의 피해를 추가로 입힙니다."
 	if {_id} is "iron_hoe":
-		return "대상의 체력이 50%% 이하면", "피해가 2배가 됩니다"
-	if {_id} is "mace":
-		return "피해가 낮은 대신 묵직하게 때립니다", "(바닐라 피해의 30%%)"
-	if {_id} is "iron_spear":
-		return "도약합니다", "피해는 최대 5까지 들어갑니다"
+		return "체력이 50% 이하인 적에게 2배의 피해를 입힙니다."
+	#if {_id} is "mace":
+		#return "피해가 낮은 대신 묵직하게 때립니다", "(바닐라 피해의 30%%)"
+	#if {_id} is "iron_spear":
+		#return "도약합니다", "피해는 최대 5까지 들어갑니다"
 	if {_id} is "iron_sword":
-		return "들고 있으면 받는 피해를 한 번 막습니다"
+		return "들고 있으면 받는 피해를 한 번 막습니다."
 	if {_id} is "tnt":
-		return "TNT 를 던집니다", "폭발에 맞은 적은 2초간 기절하고 피해 2를 입습니다"
+		return "TNT 를 던집니다", "폭발에 맞은 적은 2초간 기절하고 피해 2를 입습니다."
 	if {_id} is "nether_star":
-		return "6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다"
+		return "6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다."
 	if {_id} is "ominous_bottle":
-		return "7초간 강화됩니다", "효과가 끝나면 5초간 탈진합니다"
+		return "7초간 가하는 피해의 30%를 흡혈하고, 스태미너가 초당 20 회복됩니다.", "지속 시간이 끝나면 탈진해 스태미너를 전부 소진하고, 5초간 자연 회복되지 않습니다."
 	if {_id} is "potion_heal":
-		return "체력 5를 회복합니다"
+		return "체력 5를 회복합니다."
 	if {_id} is "potion_stamina":
-		return "스태미너 50을 회복합니다"
+		return "스태미너 50을 회복합니다."
 	if {_id} is "totem":
-		return "5초간 무적이 됩니다", "무적 동안 도약을 쓸 수 없습니다"
+		return "5초간 피해를 받지 않습니다.", "지속시간동안 더블 점프를 사용할 수 없습니다."
 	if {_id} is "bow":
-		return "[당겼다 놓기] 최대 3초까지 충전합니다", "충전할수록 피해와 화살 속도가 늘어납니다", "최대 충전 시 소닉붐이 발사됩니다"
+		return "최대 3초까지 충전합니다", "충전할수록 피해량이 늘어납니다"
 	if {_id} is "blaze_rod":
-		return "0.2초 뒤 화염구를 발사합니다", "맞으면 폭발해서 범위 피해를 줍니다", "3번째 사용은 바라보는 곳 위에서 화염구 5개가 떨어집니다"
+		return "화염구를 발사해 범위 피해를 입힙니다.", "3번째로 사용하면 대상 지역에 화염구 폭격을 가합니다."
 	if {_id} is "wind_charge":
-		return "던진 자리에 10초간 연막(반경 11칸)을 만듭니다", "연막이 시야를 가립니다"
+		return "10초간 연막을 생성합니다."
 	if {_id} is "flint_steel":
-		return "주변 10칸 안의 적을", "5초간 취약(받는 피해 1.2배)으로 만들고 불태웁니다"
+		return "주변 10칸 안의 적을 불태워 5초간 받는 피해가 20%% 증가시킵니다."
 	if {_id} is "anvil":
-		return "이번 게임 동안", "가하는 피해가 10%% 증가합니다", "사용할 때마다 중첩됩니다(합연산)"
+		return "사망 전까지 가하는 피해가 10% 증가합니다.", "무한히 중첩 가능합니다."
 	if {_id} is "potion_invis":
-		return "4초간 투명해집니다", "피해를 입거나 입히면 풀립니다"
+		return "4초간 투명해집니다.", "피해를 입거나 입히면 해제됩니다."
 	return "설명 없음"
 
 # 1번째 줄에 붉은 칼 아이콘과 같이 보여줄 데미지 수치(무기만). 없으면 "". 수치만 적는다(범위는 4~12 처럼).
@@ -200,6 +199,8 @@ function itemDamageText(id: text) :: text:
 		return "4~12"
 	if {_id} is "blaze_rod":
 		return "5"
+	if {_id} is "mace":
+		return "4~"
 	return ""
 
 # 1번째 줄에 시계 아이콘과 같이 보여줄 쿨타임 수치(초 단위 숫자만). 없으면 "".
