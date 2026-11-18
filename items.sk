@@ -171,6 +171,10 @@ function itemLoreLines(id: text) :: texts:
 		return "사망 전까지 가하는 피해가 10%% 증가합니다.", "무한히 중첩 가능합니다."
 	if {_id} is "potion_invis":
 		return "4초간 투명해집니다.", "피해를 입거나 입히면 해제됩니다."
+	if {_id} is "mace":
+		return "도약 공격 시 강한 피해를 입힙니다."
+	if {_id} is "crossbow":
+		return "화살을 발사합니다."
 	return "설명 없음"
 
 # 1번째 줄에 붉은 칼 아이콘과 같이 보여줄 데미지 수치(무기만). 없으면 "". 수치만 적는다(범위는 4~12 처럼).
@@ -196,7 +200,7 @@ function itemDamageText(id: text) :: text:
 	if {_id} is "blaze_rod":
 		return "5"
 	if {_id} is "mace":
-		return "4~"
+		return "2 / 4~"
 	return ""
 
 # 1번째 줄에 시계 아이콘과 같이 보여줄 쿨타임 수치(초 단위 숫자만). 없으면 "".
