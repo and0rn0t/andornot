@@ -160,7 +160,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "totem":
 		return "5초간 피해를 받지 않습니다.", "지속시간동안 더블 점프를 사용할 수 없습니다."
 	if {_id} is "bow":
-		return "최대 3초까지 충전합니다", "충전할수록 피해량이 늘어납니다"
+		return "차징할수록 데미지가 강해집니다."
 	if {_id} is "blaze_rod":
 		return "화염구를 발사해 범위 피해를 입힙니다.", "3번째로 사용하면 대상 지역에 화염구 폭격을 가합니다."
 	if {_id} is "wind_charge":
