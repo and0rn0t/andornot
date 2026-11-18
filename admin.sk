@@ -19,12 +19,20 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "itemorder" and "team"
+	return "gamesetup", "gamestart", "gamestop", "itemorder" and "team"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
 		set {_i} to command block named "&f게임 설정"
 		set lore of {_i} to "&7팀 수, 게임모드, 랜덤 아이템을", "&7게임 시작 전에 설정해요", "", "&e▶ 클릭해서 열기"
+		return {_i}
+	if {_id} is "gamestart":
+		set {_i} to lime concrete named "&a게임 시작"
+		set lore of {_i} to "&7게임 설정대로 팀을 나누고", "&7지금 접속한 모두와 게임을 시작해요", "", "&e▶ 클릭해서 시작"
+		return {_i}
+	if {_id} is "gamestop":
+		set {_i} to red concrete named "&c게임 강제 종료"
+		set lore of {_i} to "&7진행 중인 게임을 결과 발표 없이", "&7바로 끝내요", "", "&e▶ 클릭해서 종료"
 		return {_i}
 	if {_id} is "itemorder":
 		set {_i} to writable book named "&f아이템 순서 편집"
@@ -40,6 +48,18 @@ function adminButtonItem(id: text) :: itemtype:
 function adminAction(p: player, id: text):
 	if {_id} is "gamesetup":
 		gameSetupOpen({_p})
+	else if {_id} is "gamestart":
+		close {_p}'s inventory
+		if {-ingame} is true:
+			send "&c이미 게임이 진행 중이에요." to {_p}
+		else:
+			gameStart(name of {_p})
+	else if {_id} is "gamestop":
+		close {_p}'s inventory
+		if {-ingame} is not true:
+			send "&c진행 중인 게임이 없어요." to {_p}
+		else:
+			gameForceStop(name of {_p})
 	else if {_id} is "itemorder":
 		itemGuiOpen({_p}, "order")
 	else if {_id} is "team":

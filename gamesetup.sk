@@ -6,7 +6,8 @@
 # 설정을 바꿀 때마다 접속한 모든 유저에게 채팅 알림 + 소리가 간다(gcAnnounce).
 # 조작: 팀 수/게임모드는 좌클릭 = 다음, 우클릭 = 이전. 랜덤 아이템은 클릭하면 on/off.
 # 게임모드 추가법: gcModeIds() 에 id, gcModeName(id) 에 이름, gcModeDesc(id) 에 설명을 추가한다.
-# 이 설정은 값만 저장한다. 실제로 팀을 나누고 게임을 시작하는 일(팀 배정은 {-team} 변수), 랜덤 아이템 지급은 게임 설계 때 한다.
+# 설정을 읽어 게임을 시작하는 건 game.sk(gameStart)다. 랜덤 아이템 지급은 아직 안 만들었다.
+# 목표 스코어/승점: {gamecfg::target::모드}(저장 변수), getter gcTarget(모드). 칸 4 에서 바꾼다(좌클릭 +1/우클릭 -1, Shift 는 5씩).
 # 미검증 문법: 클릭 종류 판별 event.isRightClick() (skript-reflect), 3줄 GUI 클릭 처리(items.sk 와 같은 방식).
 
 # 선택할 수 있는 최대 팀 수(여기만 고치면 됨)
@@ -23,12 +24,29 @@ function gcModeName(id: text) :: text:
 		return "섬멸전"
 	return "%{_id}%"
 
-function gcModeDesc(id: text) :: text:
+function gcModeDesc(id: text) :: texts:
 	if {_id} is "bounty":
-		return "&7(설명 추가 예정)"
+		return "&7머리 위에 별이 생겨요(기본 2개).", "&7처치하면 상대의 별만큼 스코어가 오르고", "&7내 별(현상금)이 하나 늘어요.", "&7먼저 목표 스코어를 채운 팀/플레이어가 승리해요."
 	if {_id} is "annihilation":
-		return "&7(설명 추가 예정)"
+		return "&7모두 목숨이 1개예요.", "&7마지막까지 살아남은 팀이 승점 1점을 얻고", "&7전투가 다시 시작돼요.", "&7먼저 목표 승점을 쌓은 팀/플레이어가 승리해요."
 	return "&7설명 없음"
+
+# 목표 스코어(바운티)/목표 승점(섬멸전). 기본값은 아래 gcTargetDefault, 관리자 설정은 저장 변수 {gamecfg::target::모드}.
+function gcTargetDefault(mode: text) :: number:
+	if {_mode} is "annihilation":
+		return 3
+	return 20
+
+function gcTarget(mode: text) :: number:
+	set {_v} to {gamecfg::target::%{_mode}%}
+	if {_v} is a number:
+		return {_v}
+	return gcTargetDefault({_mode})
+
+function gcTargetName(mode: text) :: text:
+	if {_mode} is "annihilation":
+		return "목표 승점"
+	return "목표 스코어"
 
 # 현재 설정(없으면 기본값: 2팀, 첫 번째 게임모드, 랜덤 아이템 off)
 function gcTeams() :: number:
@@ -63,6 +81,10 @@ function gcFill(inv: inventory):
 	loop 27 times:
 		set {_s} to loop-value - 1
 		set slot {_s} of {_inv} to gray stained glass pane named " "
+	# 목표 스코어/승점(칸 4, 모드에 따라 이름이 바뀜)
+	set {_i} to nether star named "&f%gcTargetName(gcMode())%"
+	set lore of {_i} to "&7현재: &e%gcTarget(gcMode())%", "", "&e▶ 좌클릭: +1 / 우클릭: -1", "&e▶ Shift+좌클릭: +5 / Shift+우클릭: -5"
+	set slot 4 of {_inv} to {_i}
 	# 팀 수(칸 11)
 	set {_i} to white banner named "&f팀 수"
 	set lore of {_i} to "&7현재: &e%gcTeamLabel(gcTeams())%", "&7개인전, 2팀 ~ %gcTeamMax()%팀", "", "&e▶ 좌클릭: 다음 / 우클릭: 이전"
@@ -123,7 +145,27 @@ on inventory click:
 	if {_ev}.isRightClick() is true:
 		set {_right} to true
 	set {_who} to name of {_p}
-	if {_raw} is 11:
+	set {_shift} to false
+	if {_ev}.isShiftClick() is true:
+		set {_shift} to true
+	if {_raw} is 4:
+		set {_m} to gcMode()
+		set {_step} to 1
+		if {_shift} is true:
+			set {_step} to 5
+		set {_v} to gcTarget({_m})
+		if {_right} is true:
+			set {_v} to {_v} - {_step}
+		else:
+			set {_v} to {_v} + {_step}
+		if {_v} < 1:
+			set {_v} to 1
+		if {_v} > 99:
+			set {_v} to 99
+		set {gamecfg::target::%{_m}%} to {_v}
+		gcAnnounce({_who}, "%gcTargetName({_m})%을(를) &e%{_v}% &7(으)로 바꿨어요.")
+		gcFill({_p}'s current inventory)
+	else if {_raw} is 11:
 		set {_n} to gcTeams()
 		if {_right} is true:
 			if {_n} is 0:
