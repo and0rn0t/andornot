@@ -21,8 +21,12 @@ function gtKdaW() :: number:
 function gtDmgW() :: number:
 	return 36
 
+# ITEM 칸: 구성 아이템 아이콘 최대 5개. 아이콘 하나 = 공백 1칸(4픽셀) + 아이콘 gtIconPx() 픽셀
+function gtIconPx() :: number:
+	return 9
+
 function gtItemW() :: number:
-	return 24
+	return 5 * (4 + gtIconPx())
 
 # 헤더 앞에 둘 공백 수(머리 아이콘 폭 보정)
 function gtHeadPad() :: number:
@@ -89,11 +93,24 @@ function gtEntry(p: player) :: text:
 	if {_dm} is not a number:
 		set {_dm} to 0
 	set {_dms} to "%round({_dm})%"
-	set {_hs} to {_p}.getInventory().getHeldItemSlot()
-	set {_iid} to itemIdAt({_p}, {_hs})
-	set {_ic} to "{""text"":""""}"
-	if {_iid} is not "":
-		set {_ic} to itemIcon({_iid})
+	# ITEM: 로비 탭리스트와 같은 구성 1~5번 아이템 아이콘(정렬 순서도 같음)
+	delete {_ld::*}
+	loop integers from 1 to 5:
+		add loadoutGet({_p}, loop-value) to {_ld::*}
+	set {_ic} to ""
+	set {_nic} to 0
+	loop itemOrder():
+		if {_ld::*} contains loop-value:
+			set {_one} to itemIcon(loop-value)
+			set {_ic} to "%{_ic}%,{""text"":"" ""},%{_one}%"
+			add 1 to {_nic}
+	set {_rest} to gtItemW() - {_nic} * (4 + gtIconPx())
+	set {_rn} to floor({_rest} / 4)
+	set {_rsp} to ""
+	while {_rn} > 0:
+		set {_rsp} to "%{_rsp}% "
+		remove 1 from {_rn}
+	set {_c7} to gtT({_rsp}, "white")
 	set {_cn} to gtColorJ({_ci})
 	set {_c1} to gtT({_nm}, {_cn})
 	set {_t2} to gtPad(gtNameW(), {_nm})
@@ -106,7 +123,7 @@ function gtEntry(p: player) :: text:
 	set {_c5} to gtT({_t5}, "white")
 	set {_t6} to "%{_dms}%%gtPad(gtDmgW(), {_dms})%"
 	set {_c6} to gtT({_t6}, "white")
-	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%,%{_ic}%]}"
+	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%%{_ic}%,%{_c7}%]}"
 
 # ===== 헤더: 팀 스코어(팀전) + 열 제목 =====
 function gtHeader() :: text:
@@ -142,7 +159,8 @@ function gtHeader() :: text:
 	set {_l4} to gtT("A%{_pa}%", "gray")
 	set {_pm} to gtPad(gtDmgW(), "DMG")
 	set {_l5} to gtT("DMG%{_pm}%", "gray")
-	set {_l6} to gtT("ITEM", "gray")
+	set {_pi} to gtPad(gtItemW(), "ITEM")
+	set {_l6} to gtT("ITEM%{_pi}%", "gray")
 	if {_ex} is "":
 		set {_ex} to "%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%"
 	else:

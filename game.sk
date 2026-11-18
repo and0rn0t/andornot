@@ -257,8 +257,10 @@ function gameCleanup():
 # 관리자 강제 종료(연출/결과 발표 없음)
 function gameForceStop(by: text):
 	if {-ingame} is not true:
-		stop
+		if {-gfinale} is not true:
+			stop
 	gameCleanup()
+	gfAbort()
 	loop all players:
 		send "&6[게임] &f%{_by}% &7님이 게임을 강제로 종료했어요." to loop-player
 

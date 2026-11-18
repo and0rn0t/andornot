@@ -1,7 +1,9 @@
 # [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 투표 -> 15초 뒤 정리하고 로비로.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gpin}(결과 채팅 고정 중),
-#   {-gchat::번호}/{-gchatn}(고정 중 올라온 채팅 기록), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구)
+#   {-gchat::번호}/{-gchatn}(고정 중 올라온 채팅 기록), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림)
+#   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
+# 명령: /finaletest(관리자, 종료 연출만 테스트), /gamestop(관리자, 게임/연출 중단), /potm 이름(투표)
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
 #   0초   게임 종료 + 승리 팀 타이틀/소리(3초)
@@ -40,17 +42,31 @@ function gfVotes(tid: text) :: number:
 			add 1 to {_c}
 	return {_c}
 
-# 플레이어 한 명의 결과 줄(JSON): 이름(팀 색)  K / D / A  피해  사용한 아이템 아이콘. gametab.sk 의 gtT/gtColorJ 를 쓴다.
-function gfLineJson(t: player) :: text:
-	set {_id} to "%uuid of {_t}%"
-	set {_ci} to gTeamIndex(gTeamOf({_t}))
+# 결과 표시용 참가자 id 목록: 실제 참가자는 uuid 문자열, 테스트용 가짜 참가자는 {-gfake::id} 의 id
+function gfIds() :: texts:
+	loop {-gplist::*}:
+		add "%uuid of loop-value%" to {_r::*}
+	loop {-gfake::*}:
+		add loop-index to {_r::*}
+	return {_r::*}
+
+function gfName(id: text) :: text:
+	if {-gfake::%{_id}%} is set:
+		return "%{-gfake::%{_id}%}%"
+	loop {-gplist::*}:
+		if "%uuid of loop-value%" is {_id}:
+			return name of loop-value
+	return "?"
+
+# 참가자 한 명의 결과 줄(JSON): 이름(팀 색)  K / D / A  피해  사용한 아이템 아이콘. gametab.sk 의 gtT/gtColorJ 를 쓴다.
+# id 는 전적 변수 키(uuid 또는 가짜 id), ci 는 팀 번호, src 는 아이템 구성을 읽어 올 플레이어(가짜 참가자는 테스트 실행자의 구성을 빌린다).
+function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_k} to gtNum({-gk::%{_id}%})
 	set {_d} to gtNum({-gd::%{_id}%})
 	set {_a} to gtNum({-ga::%{_id}%})
 	set {_dm} to {-gdmg::%{_id}%}
 	if {_dm} is not a number:
 		set {_dm} to 0
-	set {_nm} to name of {_t}
 	set {_cn} to gtColorJ({_ci})
 	set {_c1} to gtT({_nm}, {_cn})
 	set {_s2} to "  %{_k}% / %{_d}% / %{_a}%"
@@ -61,7 +77,7 @@ function gfLineJson(t: player) :: text:
 	# 사용한 아이템: 구성 1~5번 아이템 아이콘(탭리스트와 같은 정렬 순서)
 	delete {_ld::*}
 	loop integers from 1 to 5:
-		add loadoutGet({_t}, loop-value) to {_ld::*}
+		add loadoutGet({_src}, loop-value) to {_ld::*}
 	set {_gap} to "{""text"":"" ""}"
 	loop itemOrder():
 		if {_ld::*} contains loop-value:
@@ -70,26 +86,33 @@ function gfLineJson(t: player) :: text:
 	return "{""text"":"""",""extra"":[%{_ex}%]}"
 
 # 투표 화살표 컴포넌트(클릭하면 /potm 이름). 본인 줄에는 안 붙인다.
-function gfArrow(t: player) :: object:
-	set {_nm} to name of {_t}
-	set {_n} to gfVotes("%uuid of {_t}%")
+function gfArrow(id: text, nm: text) :: object:
+	set {_n} to gfVotes({_id})
 	set {_ar} to Component.text(" ▲ %{_n}%표")
 	set {_ar} to {_ar}.color(NamedTextColor.YELLOW)
 	set {_ar} to {_ar}.clickEvent(ClickEvent.runCommand("/potm %{_nm}%"))
 	set {_ar} to {_ar}.hoverEvent(HoverEvent.showText(Component.text("클릭해서 %{_nm}%님에게 투표")))
 	return {_ar}
 
-# 한 팀의 플레이어 결과 줄들을 viewer 에게 보낸다(중첩 loop 를 피하려고 따로 뺌)
+# 결과 줄 하나를 viewer 에게 보낸다(투표 중이고 viewer 가 참가자이며 본인 줄이 아니면 ▲ 를 붙임)
+function gfSendLine(v: player, id: text, nm: text, ci: number, src: player):
+	set {_c} to GsonComponentSerializer.gson().deserialize(gfLineJson({_id}, {_nm}, {_ci}, {_src}))
+	if {-gvote} is true:
+		if "%uuid of {_v}%" is not {_id}:
+			if {-gplist::*} contains {_v}:
+				set {_c} to {_c}.append(gfArrow({_id}, {_nm}))
+	{_v}.sendMessage({_c})
+
+# 한 팀의 결과 줄들을 viewer 에게 보낸다(중첩 loop 를 피하려고 따로 뺌)
 function gfTeamLines(v: player, tk: text):
+	set {_ci} to gTeamIndex({_tk})
 	loop {-gplist::*}:
 		set {_t} to loop-value
 		if gTeamOf({_t}) is {_tk}:
-			set {_c} to GsonComponentSerializer.gson().deserialize(gfLineJson({_t}))
-			if {-gvote} is true:
-				if {_t} is not {_v}:
-					if {-gplist::*} contains {_v}:
-						set {_c} to {_c}.append(gfArrow({_t}))
-			{_v}.sendMessage({_c})
+			gfSendLine({_v}, "%uuid of {_t}%", name of {_t}, {_ci}, {_t})
+	loop {-gfake::*}:
+		if {-gfteam::%loop-index%} is {_tk}:
+			gfSendLine({_v}, loop-index, "%loop-value%", {_ci}, {-gftester})
 
 # 결과 블록 + 최근 채팅을 viewer 에게 다시 보낸다(앞쪽 30줄은 빈 줄로 이전 채팅을 밀어냄).
 function gfRender(v: player):
@@ -150,19 +173,25 @@ command /potm <text>:
 		if {-gplist::*} does not contain player:
 			send "&c이번 게임 참가자만 투표할 수 있어요."
 			stop
-		set {_tp} to arg-1 parsed as player
-		if {_tp} is not set:
-			send "&c그 플레이어를 찾을 수 없어요."
-			stop
-		if {-gplist::*} does not contain {_tp}:
-			send "&c이번 게임 참가자가 아니에요."
-			stop
-		if {_tp} is player:
+		set {_tid} to ""
+		loop {-gfake::*}:
+			if "%loop-value%" is arg-1:
+				set {_tid} to loop-index
+		if {_tid} is "":
+			set {_tp} to arg-1 parsed as player
+			if {_tp} is not set:
+				send "&c그 플레이어를 찾을 수 없어요."
+				stop
+			if {-gplist::*} does not contain {_tp}:
+				send "&c이번 게임 참가자가 아니에요."
+				stop
+			set {_tid} to "%uuid of {_tp}%"
+		if {_tid} is "%uuid of player%":
 			send "&c본인에게는 투표할 수 없어요."
 			stop
-		set {-gpotm::%uuid of player%} to "%uuid of {_tp}%"
+		set {-gpotm::%uuid of player%} to {_tid}
 		play sound "ui.button.click" to player
-		send "&6[투표] &f%name of {_tp}% &7님에게 투표했어요. (마감 전까지 바꿀 수 있어요)"
+		send "&6[투표] &f%gfName({_tid})% &7님에게 투표했어요. (마감 전까지 바꿀 수 있어요)"
 		gfRenderAll()
 
 # ===== 더미 =====
@@ -194,7 +223,13 @@ function gfClearDummies():
 function gameFinale():
 	if {-gfinale} is true:
 		stop
+	# 강제 종료(gameCleanup)로 {-gover} 가 지워졌으면 늦게 불린 종료 연출은 무시한다
+	if {-gover} is not true:
+		stop
 	set {-gfinale} to true
+	# 강제 종료(gfAbort)가 {-gfgen} 을 올리면 대기 뒤에 이 연출은 멈춘다
+	add 1 to {-gfgen}
+	set {_gen} to {-gfgen}
 	set {_wl} to gTeamLabel({-gwinner})
 	# 1) 게임 종료 + 승리 팀 알림(참가자는 관전 상태를 유지)
 	loop {-gplist::*}:
@@ -204,6 +239,8 @@ function gameFinale():
 		send title "&e게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "ui.toast.challenge_complete" with volume 0.8 to loop-player
 	wait 3 seconds
+	if {-gfgen} is not {_gen}:
+		stop
 	# 2) 무대: 승리 팀 플레이어(접속 중인 사람)와 똑같이 생긴 더미를 가로로 일렬로 세우고, 모두 그 앞으로 모은다
 	set {_stage} to gameStageLoc()
 	delete {_win::*}
@@ -211,6 +248,10 @@ function gameFinale():
 		if gTeamOf(loop-value) is {-gwinner}:
 			if loop-value is online:
 				add loop-value to {_win::*}
+	# 테스트용 가짜 승리 팀원도 실행자의 모습으로 세운다
+	loop {-gfake::*}:
+		if {-gfteam::%loop-index%} is {-gwinner}:
+			add {-gftester} to {_win::*}
 	set {_cnt} to size of {_win::*}
 	set {_i} to 1
 	while {_i} <= {_cnt}:
@@ -235,9 +276,13 @@ function gameFinale():
 	play sound "block.note_block.chime" with volume 0.7 to all players
 	# 4) 투표 시간(마지막 3초 전까지)
 	wait 12 seconds
+	if {-gfgen} is not {_gen}:
+		stop
 	set {-gvote} to false
 	gfPotmAnnounce()
 	wait 3 seconds
+	if {-gfgen} is not {_gen}:
+		stop
 	# 5) 정리: 더미 제거, 채팅 고정 해제, 게임 정리, 로비로
 	gfClearDummies()
 	delete {-gpin}
@@ -248,6 +293,7 @@ function gameFinale():
 	delete {-gchatn}
 	set {_pl::*} to {-gplist::*}
 	gameCleanup()
+	gfTestCleanup()
 	loop {_pl::*}:
 		if loop-value is online:
 			gameLobby(loop-value)
@@ -259,25 +305,138 @@ function gameFinale():
 # 투표 마감: 표가 가장 많은 플레이어(동률이면 모두)를 발표한다. 표가 없으면 없음.
 function gfPotmAnnounce():
 	set {_best} to 0
-	loop {-gplist::*}:
-		set {_n} to gfVotes("%uuid of loop-value%")
+	loop gfIds():
+		set {_n} to gfVotes(loop-value)
 		if {_n} > {_best}:
 			set {_best} to {_n}
 	if {_best} is 0:
 		set {-gpotmres} to "&7투표 없음"
 	else:
 		set {_names} to ""
-		loop {-gplist::*}:
-			if gfVotes("%uuid of loop-value%") is {_best}:
+		loop gfIds():
+			if gfVotes(loop-value) is {_best}:
 				if {_names} is "":
-					set {_names} to name of loop-value
+					set {_names} to gfName(loop-value)
 				else:
-					set {_names} to "%{_names}%, %name of loop-value%"
+					set {_names} to "%{_names}%, %gfName(loop-value)%"
 		set {-gpotmres} to "%{_names}% &7(%{_best}%표)"
 	loop all players:
 		send title "&6Player Of The Match" with subtitle colored "&f%{-gpotmres}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "entity.player.levelup" with volume 0.8 to loop-player
 	gfRenderAll()
+
+# 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/투표 상태를 지우고 테스트 데이터도 정리. gameCleanup() 보다 뒤에 부를 것.
+function gfAbort():
+	add 1 to {-gfgen}
+	gfClearDummies()
+	delete {-gpin}
+	delete {-gvote}
+	delete {-gpotm::*}
+	delete {-gpotmres}
+	delete {-gchat::*}
+	delete {-gchatn}
+	delete {-gfinale}
+	delete {-gwinner}
+	gfTestCleanup()
+
+# 테스트(/finaletest)용으로 만든 가짜 게임 데이터를 지우고 실행자의 팀을 되돌린다.
+function gfTestCleanup():
+	if {-gftest} is not true:
+		stop
+	if {-gfoldteam} is set:
+		set {-team::%{-gftuuid}%} to {-gfoldteam}
+	else:
+		delete {-team::%{-gftuuid}%}
+	loop {-gfake::*}:
+		delete {-gk::%loop-index%}
+		delete {-gd::%loop-index%}
+		delete {-ga::%loop-index%}
+		delete {-gdmg::%loop-index%}
+	delete {-gk::%{-gftuuid}%}
+	delete {-gd::%{-gftuuid}%}
+	delete {-ga::%{-gftuuid}%}
+	delete {-gdmg::%{-gftuuid}%}
+	delete {-gfake::*}
+	delete {-gfteam::*}
+	delete {-gfoldteam}
+	delete {-gftester}
+	delete {-gftuuid}
+	delete {-gplist::*}
+	delete {-gteamlist::*}
+	delete {-gname::*}
+	delete {-gscore::*}
+	delete {-gteams}
+	delete {-gmode}
+	delete {-gtarget}
+	delete {-gftest}
+
+# 관리자 전용: 종료 연출만 따로 본다. 실행자 + 가짜 팀원 3명(더미1~3)이 한 팀으로 바운티를 이겼다는 설정.
+# 실제 게임 변수를 빌려 쓰므로 게임/연출이 진행 중이면 거부하고, 끝나면 전부 되돌린다. 마지막 킬 연출은 포함하지 않는다.
+command /finaletest:
+	description: 게임 종료 연출만 테스트 (관리자 전용)
+	executable by: players
+	trigger:
+		if player is not op:
+			send "&c관리자만 쓸 수 있어요."
+			stop
+		if {-ingame} is true:
+			send "&c게임이 진행 중이라 테스트할 수 없어요. /gamestop 으로 먼저 끝내 주세요."
+			stop
+		if {-gfinale} is true:
+			send "&c이미 종료 연출이 진행 중이에요."
+			stop
+		set {-gftest} to true
+		set {-gftester} to player
+		set {-gftuuid} to "%uuid of player%"
+		set {-gfoldteam} to {-team::%uuid of player%}
+		set {-team::%uuid of player%} to "1팀"
+		set {-gmode} to "bounty"
+		set {-gtarget} to 20
+		set {-gteams} to 1
+		set {-gteamlist::1} to "1팀"
+		set {-gname::1팀} to "1팀"
+		set {-gscore::1팀} to 20
+		set {-gplist::1} to player
+		set {-gk::%uuid of player%} to 7
+		set {-gd::%uuid of player%} to 2
+		set {-ga::%uuid of player%} to 3
+		set {-gdmg::%uuid of player%} to 28
+		set {-gfake::fake1} to "더미1"
+		set {-gfake::fake2} to "더미2"
+		set {-gfake::fake3} to "더미3"
+		set {-gfteam::fake1} to "1팀"
+		set {-gfteam::fake2} to "1팀"
+		set {-gfteam::fake3} to "1팀"
+		set {-gk::fake1} to 5
+		set {-gd::fake1} to 3
+		set {-ga::fake1} to 4
+		set {-gdmg::fake1} to 21.5
+		set {-gk::fake2} to 4
+		set {-gd::fake2} to 4
+		set {-ga::fake2} to 1
+		set {-gdmg::fake2} to 15
+		set {-gk::fake3} to 4
+		set {-gd::fake3} to 1
+		set {-ga::fake3} to 5
+		set {-gdmg::fake3} to 18
+		set {-gwinner} to "1팀"
+		set {-gover} to true
+		send "&6[테스트] &7종료 연출을 시작해요. 더미1~3 에게도 투표할 수 있어요. 중간에 끊으려면 /gamestop"
+		gameFinale()
+
+# 관리자 전용 게임 중단(진행 중인 게임, 종료 연출, 테스트 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
+command /gamestop:
+	description: 게임/종료 연출 강제 중단 (관리자 전용)
+	trigger:
+		if sender is a player:
+			if player is not op:
+				send "&c관리자만 쓸 수 있어요."
+				stop
+		if {-ingame} is not true:
+			if {-gfinale} is not true:
+				send "&c진행 중인 게임이 없어요."
+				stop
+		gameForceStop("%name of sender%")
 
 on load:
 	delete {-gfinale}
