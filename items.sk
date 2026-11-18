@@ -132,14 +132,14 @@ function itemBase(id: text) :: itemtype:
 		return flint and steel
 	return stone
 
-# 아이템 설명(lore) 양식: 1번째 줄은 [붉은 칼 아이콘 + 데미지] [시계 아이콘 + 쿨타임](해당하는 것만, 아래 itemDamageText / itemCooldownText), 2번째 줄부터가 아래 설명이다.
+# 아이템 설명(lore) 양식: 1번째 줄은 [붉은 칼 아이콘 + 데미지] [시계 아이콘 + 쿨타임](해당하는 것만, 아래 itemDamageText / itemCooldownText), 2번째 줄부터가 아래 설명이다("<dmg>" 를 쓰면 그 자리에 [붉은 칼 아이콘 + 데미지] 가 들어간다).
 #   설명은 합니다체. 색은 itemBuild 가 짙은 회색으로 입히므로 여기엔 색 코드를 쓰지 않는다. 줄마다 따로 적는다(퍼센트는 %% 로).
 #   데미지/쿨타임 수치는 현재 코드 기준(2026-11): 체력 숫자는 하트가 아니라 기획서의 실제 체력.
 function itemLoreLines(id: text) :: texts:
 	if {_id} is "crossbow":
-		return "[우클릭] 화살을 발사합니다"
+		return "화살을 발사합니다"
 	if {_id} is "fishing_rod":
-		return "[우클릭] 낚싯바늘을 던집니다", "맞은 적을 5초간 구속하고 끌어당깁니다"
+		return "낚싯바늘을 던집니다", "맞은 적을 5초간 구속하고 끌어당기고 <dmg> 피해를 줍니다"
 	if {_id} is "iron_axe":
 		return "대상의 체력이 80%% 이상이면", "피해가 1.5배가 됩니다"
 	if {_id} is "iron_pickaxe":
@@ -149,33 +149,33 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "mace":
 		return "피해가 낮은 대신 묵직하게 때립니다", "(바닐라 피해의 30%%)"
 	if {_id} is "iron_spear":
-		return "[우클릭] 도약합니다", "피해는 최대 5까지 들어갑니다"
+		return "도약합니다", "피해는 최대 5까지 들어갑니다"
 	if {_id} is "iron_sword":
 		return "들고 있으면 받는 피해를 한 번 막습니다"
 	if {_id} is "tnt":
-		return "[우클릭] TNT 를 던집니다", "폭발에 맞은 적은 2초간 기절하고 피해 2를 입습니다"
+		return "TNT 를 던집니다", "폭발에 맞은 적은 2초간 기절하고 피해 2를 입습니다"
 	if {_id} is "nether_star":
-		return "[우클릭] 6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다"
+		return "6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다"
 	if {_id} is "ominous_bottle":
-		return "[우클릭] 7초간 강화됩니다", "효과가 끝나면 5초간 탈진합니다"
+		return "7초간 강화됩니다", "효과가 끝나면 5초간 탈진합니다"
 	if {_id} is "potion_heal":
-		return "[우클릭] 체력 5를 회복합니다"
+		return "체력 5를 회복합니다"
 	if {_id} is "potion_stamina":
-		return "[우클릭] 스태미너 50을 회복합니다"
+		return "스태미너 50을 회복합니다"
 	if {_id} is "totem":
-		return "[우클릭] 5초간 무적이 됩니다", "무적 동안 도약을 쓸 수 없습니다"
+		return "5초간 무적이 됩니다", "무적 동안 도약을 쓸 수 없습니다"
 	if {_id} is "bow":
 		return "[당겼다 놓기] 최대 3초까지 충전합니다", "충전할수록 피해와 화살 속도가 늘어납니다", "최대 충전 시 소닉붐이 발사됩니다"
 	if {_id} is "blaze_rod":
-		return "[우클릭] 0.2초 뒤 화염구를 발사합니다", "맞으면 폭발해서 범위 피해를 줍니다", "3번째 사용은 바라보는 곳 위에서 화염구 5개가 떨어집니다"
+		return "0.2초 뒤 화염구를 발사합니다", "맞으면 폭발해서 범위 피해를 줍니다", "3번째 사용은 바라보는 곳 위에서 화염구 5개가 떨어집니다"
 	if {_id} is "wind_charge":
-		return "[우클릭] 던진 자리에 10초간 연막(반경 11칸)을 만듭니다", "연막이 시야를 가립니다"
+		return "던진 자리에 10초간 연막(반경 11칸)을 만듭니다", "연막이 시야를 가립니다"
 	if {_id} is "flint_steel":
-		return "[우클릭] 주변 10칸 안의 적을", "5초간 취약(받는 피해 1.2배)으로 만들고 불태웁니다"
+		return "주변 10칸 안의 적을", "5초간 취약(받는 피해 1.2배)으로 만들고 불태웁니다"
 	if {_id} is "anvil":
-		return "[우클릭] 이번 게임 동안", "가하는 피해가 10%% 증가합니다", "사용할 때마다 중첩됩니다(합연산)"
+		return "이번 게임 동안", "가하는 피해가 10%% 증가합니다", "사용할 때마다 중첩됩니다(합연산)"
 	if {_id} is "potion_invis":
-		return "[우클릭] 4초간 투명해집니다", "피해를 입거나 입히면 풀립니다"
+		return "4초간 투명해집니다", "피해를 입거나 입히면 풀립니다"
 	return "설명 없음"
 
 # 1번째 줄에 붉은 칼 아이콘과 같이 보여줄 데미지 수치(무기만). 없으면 "". 수치만 적는다(범위는 4~12 처럼).
@@ -236,20 +236,33 @@ function itemCooldownText(id: text) :: text:
 		return "18"
 	return ""
 
+# 낚싯대처럼 데미지를 설명 줄 중간(<dmg>)에 쓰는 아이템은 1번째 줄에 데미지를 따로 안 보여준다.
+function itemDamageInline(id: text) :: boolean:
+	if {_id} is "fishing_rod":
+		return true
+	return false
+
+# [붉은 칼 아이콘][데미지 수치] 컴포넌트 JSON 조각 둘(아이콘, 흰 숫자). 칼 아이콘은 철 칼 스프라이트에 빨간 색을 입힌 것(미검증).
+function itemDmgPiece(id: text) :: text:
+	set {_sw} to killIcon("iron_sword")
+	replace "}" in {_sw} with ",""color"":""red""}"
+	return "%{_sw}%,{""text"":"" %itemDamageText({_id})%"",""color"":""white""}"
+
 # 설명 1번째 줄 컴포넌트 JSON: [붉은 칼 아이콘][데미지] [시계 아이콘][쿨타임]. 둘 다 없으면 "".
-#   칼 아이콘은 철 칼 스프라이트에 빨간 색을 입힌 것(색 입히기는 탭 아이콘의 포션과 같은 방식, 미검증), 시계는 item/clock_00 스프라이트(미검증).
+#   시계는 item/clock_00 스프라이트(미검증). 색을 white 로 명시해서 원본 색 그대로 나오게 한다(앞의 빨간색이 번지지 않게).
 function itemLoreHeader(id: text) :: text:
 	set {_dm} to itemDamageText({_id})
+	if itemDamageInline({_id}) is true:
+		set {_dm} to ""
 	set {_cd} to itemCooldownText({_id})
 	set {_ex} to ""
 	if {_dm} is not "":
-		set {_sw} to killIcon("iron_sword")
-		replace "}" in {_sw} with ",""color"":""red""}"
-		set {_ex} to "%{_sw}%,{""text"":"" %{_dm}%"",""color"":""white""}"
+		set {_ex} to itemDmgPiece({_id})
 	if {_cd} is not "":
 		if {_ex} is not "":
 			set {_ex} to "%{_ex}%,{""text"":""   ""},"
 		set {_ck} to killIcon("clock_00")
+		replace "}" in {_ck} with ",""color"":""white""}"
 		set {_ex} to "%{_ex}%%{_ck}%,{""text"":"" %{_cd}%"",""color"":""white""}"
 	if {_ex} is "":
 		return ""
@@ -262,52 +275,50 @@ function itemBuild(id: text, extra: text = "") :: itemtype:
 	set {_l::*} to itemLoreLines({_id})
 	set {_i} to {_i} named itemName({_id})
 	set {_i} to {_i} with item flags hide attributes and hide additional tooltip
-	# 불길한 병의 기본 설명(불길한 징조 N)은 위 플래그로 안 숨겨져서, 툴팁에서 해당 컴포넌트를 직접 숨긴다(Paper 데이터 컴포넌트, 미검증).
-	# 이 방법이 안 되면 {_st}.unsetData(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER) 로 컴포넌트 자체를 지우는 방법으로 바꿀 것.
-	if {_id} is "ominous_bottle":
-		set {_st} to {_i}.getRandom()
-		set {_td} to TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER).build()
-		{_st}.setData(DataComponentTypes.TOOLTIP_DISPLAY, {_td})
-		set {_i} to {_st}
-	# 불사의 토템: 진짜 토템이라 들고 죽으면 부활하고 소모되므로 death_protection 컴포넌트를 지운다(미검증).
-	if {_id} is "totem":
-		set {_st2} to {_i}.getRandom()
-		{_st2}.unsetData(DataComponentTypes.DEATH_PROTECTION)
-		set {_i} to {_st2}
-	# 금속 도구/무기: 재질은 네더라이트지만 겉모습(아이템 모델)은 철 도구/무기로 보이게 한다(item_model 컴포넌트, 미검증).
-	# id 가 iron_axe 처럼 철 이름이라 id 가 곧 모델 이름이다. 데미지는 코드에서 고정이라 재질과 무관하다.
-	if {_id} starts with "iron_":
-		set {_st4} to {_i}.getRandom()
-		{_st4}.setData(DataComponentTypes.ITEM_MODEL, Key.key("minecraft", {_id}))
-		set {_i} to {_st4}
-	# 석궁: 화살이 장전된 상태로 만든다(charged_projectiles 컴포넌트, 미검증). 발사는 crossbow.sk 가 우클릭을 취소하고 직접 하므로 장전 상태는 계속 유지된다.
-	# 장전 화살 설명 줄은 툴팁에서 숨긴다.
-	if {_id} is "crossbow":
-		set {_st3} to {_i}.getRandom()
-		set {_arrow} to new ItemStack(Material.ARROW)
-		set {_cp} to ChargedProjectiles.chargedProjectiles().add({_arrow}).build()
-		{_st3}.setData(DataComponentTypes.CHARGED_PROJECTILES, {_cp})
-		set {_td3} to TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.CHARGED_PROJECTILES).build()
-		{_st3}.setData(DataComponentTypes.TOOLTIP_DISPLAY, {_td3})
-		set {_i} to {_st3}
+	# 이후 모든 데이터 컴포넌트 작업은 ItemStack {_st} 하나로 한다(getRandom() 은 아이템타입에서 한 번만 부를 수 있다: ItemStack 에 또 부르면 오류가 나서 아이템이 안 만들어졌다).
+	set {_st} to {_i}.getRandom()
 	# 설명(lore)은 컴포넌트로 직접 만든다(아이콘 스프라이트를 넣으려고). 1번째 줄 = 데미지/쿨타임, 2번째 줄부터 설명(짙은 회색, 기울임 없음).
+	# 설명 줄 안의 <dmg> 는 [붉은 칼 아이콘 + 데미지 수치] 로 바뀐다(낚싯대처럼 데미지를 설명 중간에 쓸 때).
 	# extra("&e▶ ..." 형태)는 노란색 한 줄로 맨 아래에 붙인다. LORE 데이터 컴포넌트(ItemLore)는 미검증.
 	set {_lb} to ItemLore.lore()
 	set {_hd} to itemLoreHeader({_id})
 	if {_hd} is not "":
 		{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_hd}))
 	loop {_l::*}:
-		set {_lj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%loop-value%"",""color"":""dark_gray""}]}"
+		set {_ln} to loop-value
+		if {_ln} contains "<dmg>":
+			set {_pp::*} to split {_ln} at "<dmg>"
+			set {_lj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_pp::1}%"",""color"":""dark_gray""},%itemDmgPiece({_id})%,{""text"":""%{_pp::2}%"",""color"":""dark_gray""}]}"
+		else:
+			set {_lj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_ln}%"",""color"":""dark_gray""}]}"
 		{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_lj}))
 	if {_extra} is not "":
 		set {_xt} to {_extra}
 		replace "&e" in {_xt} with ""
 		set {_xj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_xt}%"",""color"":""yellow""}]}"
 		{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_xj}))
-	set {_stl} to {_i}.getRandom()
-	{_stl}.setData(DataComponentTypes.LORE, {_lb}.build())
-	set {_i} to {_stl}
-	return {_i}
+	{_st}.setData(DataComponentTypes.LORE, {_lb}.build())
+	# 불길한 병의 기본 설명(불길한 징조 N)은 위 플래그로 안 숨겨져서, 툴팁에서 해당 컴포넌트를 직접 숨긴다(Paper 데이터 컴포넌트, 미검증).
+	# 이 방법이 안 되면 {_st}.unsetData(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER) 로 컴포넌트 자체를 지우는 방법으로 바꿀 것.
+	if {_id} is "ominous_bottle":
+		set {_td} to TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER).build()
+		{_st}.setData(DataComponentTypes.TOOLTIP_DISPLAY, {_td})
+	# 불사의 토템: 진짜 토템이라 들고 죽으면 부활하고 소모되므로 death_protection 컴포넌트를 지운다(미검증).
+	if {_id} is "totem":
+		{_st}.unsetData(DataComponentTypes.DEATH_PROTECTION)
+	# 금속 도구/무기: 재질은 네더라이트지만 겉모습(아이템 모델)은 철 도구/무기로 보이게 한다(item_model 컴포넌트, 미검증).
+	# id 가 iron_axe 처럼 철 이름이라 id 가 곧 모델 이름이다. 데미지는 코드에서 고정이라 재질과 무관하다.
+	if {_id} starts with "iron_":
+		{_st}.setData(DataComponentTypes.ITEM_MODEL, Key.key("minecraft", {_id}))
+	# 석궁: 화살이 장전된 상태로 만든다(charged_projectiles 컴포넌트, 미검증). 발사는 crossbow.sk 가 우클릭을 취소하고 직접 하므로 장전 상태는 계속 유지된다.
+	# 장전 화살 설명 줄은 툴팁에서 숨긴다.
+	if {_id} is "crossbow":
+		set {_arrow} to new ItemStack(Material.ARROW)
+		set {_cp} to ChargedProjectiles.chargedProjectiles().add({_arrow}).build()
+		{_st}.setData(DataComponentTypes.CHARGED_PROJECTILES, {_cp})
+		set {_td3} to TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.CHARGED_PROJECTILES).build()
+		{_st}.setData(DataComponentTypes.TOOLTIP_DISPLAY, {_td3})
+	return {_st}
 
 # 플레이어 인벤토리 s 번 칸(0부터)의 아이템이 카탈로그의 어떤 아이템인지. 아니면 "".
 function itemIdAt(p: player, s: number) :: text:
