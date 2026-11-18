@@ -62,10 +62,11 @@ on rightclick:
 	set {_start} to {-bowstart::%{_id}%}
 	# 충전 보스바: 당기는 동안 충전도(0~1)를 매 틱 막대로 보여준다. 최대 충전(3초)이 되면 초록색 + 소리. 쏘거나 당기기를 취소하면 사라진다.
 	# 발사(on shoot)가 {-bowstart} 를 지우거나, 손을 내리는(isHandRaised 가 4틱 연속 false) 걸 보고 끝낸다. 같은 우클릭이 두 번 들어와도 {-bowstart} 값이 달라지면 앞의 루프는 끝난다.
-	set {_t} to colored "&e활 충전"
+	set {_t} to colored "&e집중"
 	set {_b} to Bukkit.createBossBar({_t}, BarColor.YELLOW, BarStyle.SOLID)
 	{_b}.setProgress(0)
 	{_b}.addPlayer({_p})
+	set {_stts} to {_start}.getTimestamp()
 	set {_grace} to 0
 	set {_full} to false
 	loop 1200 times:
@@ -81,8 +82,8 @@ on rightclick:
 			if {_grace} >= 4:
 				delete {-bowstart::%{_id}%}
 				exit loop
-		set {_held} to now - {_start}
-		set {_ms} to {_held}.getMilliSeconds()
+		set {_nowd} to now
+		set {_ms} to {_nowd}.getTimestamp() - {_stts}
 		set {_cf} to {_ms} / 3000
 		if {_cf} > 1:
 			set {_cf} to 1
@@ -90,7 +91,7 @@ on rightclick:
 		if {_cf} >= 1:
 			if {_full} is false:
 				set {_full} to true
-				set {_t2} to colored "&a활 충전 완료"
+				set {_t2} to colored "&a집중 완료"
 				{_b}.setTitle({_t2})
 				{_b}.setColor(BarColor.GREEN)
 				play sound "block.note_block.pling" with volume 0.6 and pitch 2 to {_p}
@@ -113,8 +114,9 @@ on shoot:
 		if {_off} is not "BOW":
 			stop
 	set {_pr} to projectile
-	set {_held} to now - {-bowstart::%{_id}%}
-	set {_ms} to {_held}.getMilliSeconds()
+	set {_nowd} to now
+	set {_sd} to {-bowstart::%{_id}%}
+	set {_ms} to {_nowd}.getTimestamp() - {_sd}.getTimestamp()
 	set {_f} to {_ms} / 3000
 	if {_f} > 1:
 		set {_f} to 1
