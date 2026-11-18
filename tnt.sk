@@ -1,6 +1,7 @@
 # [tnt.sk] TNT 스킬(우클릭 투척, 33틱(약 1.65초) 뒤 폭발, 블럭 피해 없음, 폭발 범위 안의 모두(던진 사람 포함)에게 피해 2(하트 1칸)와 플레이어는 2초 기절). 쿨타임 12초
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-tntcd}, {-tntowner}, {-tntownerp}(던진 플레이어), {-skilldmg}(피해를 주는 동안만), {-skillitems::tnt} (기절은 skill_core.sk 의 stun() 함수와 {-stunend} 가 처리)
+# 바닐라 폭발 피해는 on damage 에서 "skilltnt" 태그로 막는다(아래).
 # 던진 TNT 는 진짜 점화된 TNT 엔티티(퓨즈 33틱 = 약 1.65초)라서 폭발의 근원이 TNT 이고, 폭발하면 바닐라가 TNT 를 제거한다.
 # 폭발 이벤트(on explosion)를 취소해서 바닐라 데미지/블럭 피해/넉백을 없애고, 같은 자리에서 소리/파티클, 고정 피해 2(hp(2)), 기절을 직접 처리한다.
 # 폭발 범위(반경)는 아래 tntRadius() 의 값 하나만 바꾸면 기절 범위와 폭발 이펙트가 같이 바뀐다. 날아가는 거리는 rightclick 의 speed 값(현재 1.5).
@@ -85,6 +86,8 @@ on rightclick:
 		set {-tntowner::%uuid of event-entity%} to "%uuid of {_p}%"
 		set {-tntownerp::%uuid of event-entity%} to {_p}
 		{_t}.setFuseTicks(33)
+		# 바닐라 폭발 피해를 걸러내는 표시(아래 on damage). 변수는 폭발 때 지워지지만 태그는 엔티티에 남아 순서와 상관없이 읽힌다.
+		add "skilltnt" to scoreboard tags of {_t}
 	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
 	wait 13 ticks
 	if {_t} is not alive:
@@ -111,6 +114,17 @@ on rightclick:
 		stop
 	set {_l} to location of {_t}
 	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+
+# 던진 TNT 가 바닐라 폭발로 주는 피해는 전부 막는다(피아 구분 없이 바닐라 피해로 들어오던 문제).
+# 폭발 이벤트(on explosion)를 취소해도 엔티티 피해는 따로 들어올 수 있어서, 피해 이벤트에서 직접 출처가 우리 TNT 인 것을 취소한다.
+# 실제 피해는 tntBlast 가 적(아군 제외)에게만 고정 hp(2)로 준다. 그 피해의 직접 출처는 던진 플레이어라서 여기에 걸리지 않는다.
+# 미검증: getDamageSource().getDirectEntity() (Paper DamageSource, skript-reflect)
+on damage with priority lowest:
+	set {_de} to event.getDamageSource().getDirectEntity()
+	if {_de} is set:
+		if {_de} is a primed tnt:
+			if {_de} has scoreboard tag "skilltnt":
+				cancel event
 
 # 우리가 던진 TNT 만 처리(다른 TNT 는 건드리지 않음). 이벤트를 취소하면 데미지/블럭 피해/넉백이 없다.
 on explosion:
