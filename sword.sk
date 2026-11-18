@@ -1,0 +1,22 @@
+# [sword.sk] 검 패시브: 검을 메인핸드에 들고 있으면 받는 피해를 한 번 막아준다(막으면 쿨타임 20초). 쿨타임이 끝나 막을 수 있는 동안은 머리 위 체력바가 하늘색.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-swcd::uuid}(다음에 다시 막을 수 있는 시각)
+# 피해를 막는 건 main.sk 첫 on damage(토템 무적 바로 아래)에서 swordReady() 로 판정하고 swordBlock() 을 부른다. 체력바 색은 healthbar.sk 가 swordReady() 로 정한다.
+# 막는 피해: 피해량이 0 초과인 모든 피해(근접/투사체/폭발/스킬 피해 등). 검은 메인핸드에 든 것만 인정한다(skill_core.sk 의 weaponKind 와 같은 기준).
+# 쿨타임을 아이템 쿨타임(item cooldown)으로 보여주지는 않는다(쿨타임 중 검 사용/공격에 영향이 없게). 막을 수 있는 상태는 체력바 하늘색으로만 알린다.
+
+function swordReady(e: entity) :: boolean:
+	if {_e} is not a player:
+		return false
+	if weaponKind({_e}) is not "sword":
+		return false
+	set {_cd} to {-swcd::%uuid of {_e}%}
+	if {_cd} is set:
+		if {_cd} > now:
+			return false
+	return true
+
+# 피해를 막았을 때: 쿨타임 시작 + 방패 막는 소리
+function swordBlock(p: player):
+	set {-swcd::%uuid of {_p}%} to now + 20 seconds
+	play sound "item.shield.block" with volume 1 and pitch 1.2 at {_p}

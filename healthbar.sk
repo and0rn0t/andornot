@@ -26,7 +26,11 @@ function hpbar_show(e: living entity):
 
 	set {_max} to {_e}'s max health
 	set {_hp} to {_e}'s health
-	set {_key} to "%{_hp}%/%{_max}%"
+	# 검(sword.sk)의 피해 막기가 준비된 동안은 체력바를 하늘색으로 보여준다. 체력이 그대로여도 색이 바뀌면 갱신되게 키에 넣는다.
+	set {_sw} to "n"
+	if swordReady({_e}) is true:
+		set {_sw} to "y"
+	set {_key} to "%{_hp}%/%{_max}%/%{_sw}%"
 	set {_id} to "%uuid of {_e}%"
 
 	# 투명 포션 효과 중인 플레이어는 체력바를 숨긴다(효과가 끝나면 다음 갱신에서 다시 생김). {-invis} 는 potions.sk 가 관리.
@@ -65,7 +69,9 @@ function hpbar_show(e: living entity):
 		if {_filled} < 1:
 			set {_filled} to 1
 
-	if {_ratio} > 0.6:
+	if {_sw} is "y":
+		set {_c} to "&b"
+	else if {_ratio} > 0.6:
 		set {_c} to "&a"
 	else if {_ratio} > 0.3:
 		set {_c} to "&e"
