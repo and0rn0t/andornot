@@ -155,7 +155,7 @@ on damage with priority highest:
 	killLogShow({_v}, {_ae}, {_c}, {_dt})
 	kcClearState({_v})
 	# 2) 죽은 자리에 손에 아무것도 안 든 스켈레톤을 세운다(바라보는 방향 그대로). 마네킹은 본체와 똑같이 생겨서 죽었는지 구분이 안 돼서 교체.
-	#    AI/소리/충돌/줍기를 끄고 무적(햇빛에 타지도 않음). 스켈레톤은 소환하면 활을 들고 나올 수 있어서 손/방어구를 전부 비운다(미검증).
+	#    AI/소리/충돌/줍기를 끄고 무적(햇빛에 타는 모습은 불 표시를 끄고 매 틱 불을 꺼서 막는다). 스켈레톤은 소환하면 활을 들고 나올 수 있어서 손/방어구를 전부 비운다(미검증).
 	set {_loc} to {_v}.getLocation()
 	set {_w} to {_v}.getWorld()
 	set {_m} to {_w}.spawnEntity({_loc}, EntityType.SKELETON)
@@ -164,6 +164,9 @@ on damage with priority highest:
 	{_m}.setSilent(true)
 	{_m}.setCollidable(false)
 	{_m}.setCanPickupItems(false)
+	# 무적이어도 스켈레톤은 햇빛에 불이 붙은 모습이 되므로 불 표시를 끄고, 아래 루프에서 매 틱 불도 꺼 준다(미검증: setVisualFire).
+	{_m}.setVisualFire(false)
+	{_m}.setFireTicks(0)
 	{_m}.setRemoveWhenFarAway(false)
 	{_m}.setRotation({_loc}.getYaw(), {_loc}.getPitch())
 	set {_meq} to {_m}.getEquipment()
@@ -200,6 +203,7 @@ on damage with priority highest:
 			{_cam}.remove()
 			delete {-kc::%{_vid}%}
 			stop
+		{_m}.setFireTicks(0)
 		set {_cur} to {_v}.getSpectatorTarget()
 		if {_cur} is not {_cam}:
 			{_v}.setSpectatorTarget({_cam})
