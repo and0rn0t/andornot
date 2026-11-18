@@ -21,7 +21,7 @@
 #
 # ===== 직접 고치는 곳 =====
 #   - 아이템 목록/이름/재료: itemIds(), itemName(), itemBase() 에 아이템 한 종류당 한 줄씩. 새 아이템은 세 곳에 id 를 똑같이 추가.
-#   - 설명(lore): itemLoreLines(id) 의 텍스트를 직접 고치면 된다. 색 코드(&7 등) 사용 가능, 줄마다 따로 적는다.
+#   - 설명(lore): 1번째 줄은 itemDamageText(id)(붉은 칼 아이콘 + 수치) / itemCooldownText(id)(시계 아이콘 + 초), 2번째 줄부터는 itemLoreLines(id) 의 텍스트(합니다체, 짙은 회색은 itemBuild 가 입힘, 색 코드 쓰지 않음, 줄마다 따로 적는다).
 #   - 탭 아이콘 모양: itemSprite(id)(스프라이트 이름은 미검증, 틀리면 보라/검정 체크무늬). 표시 순서: /itemorder GUI (목록에 새로 추가된 아이템은 맨 뒤에 붙고, 삭제된 아이템은 순서에서 빠진다).
 #   - 금속 재료 도구/무기는 모두 네더라이트 도구/무기로 통일하되(재료만 네더라이트, id 는 저장된 구성 호환을 위해 iron_ 그대로) 이름에는 '철'을 붙이지 않는다(도끼/곡괭이/괭이/창). 철퇴(mace)는 원래 금속 등급이 없다.
 #
@@ -35,6 +35,7 @@ import:
 	io.papermc.paper.datacomponent.DataComponentTypes
 	io.papermc.paper.datacomponent.item.TooltipDisplay
 	io.papermc.paper.datacomponent.item.ChargedProjectiles
+	io.papermc.paper.datacomponent.item.ItemLore
 	net.kyori.adventure.key.Key
 	org.bukkit.Material
 	org.bukkit.inventory.ItemStack
@@ -131,59 +132,135 @@ function itemBase(id: text) :: itemtype:
 		return flint and steel
 	return stone
 
-# 아이템 설명(lore). 여기를 직접 고치면 된다. 수치는 현재 코드 기준(2026-11): 체력 숫자는 하트가 아니라 기획서의 실제 체력.
+# 아이템 설명(lore) 양식: 1번째 줄은 [붉은 칼 아이콘 + 데미지] [시계 아이콘 + 쿨타임](해당하는 것만, 아래 itemDamageText / itemCooldownText), 2번째 줄부터가 아래 설명이다.
+#   설명은 합니다체. 색은 itemBuild 가 짙은 회색으로 입히므로 여기엔 색 코드를 쓰지 않는다. 줄마다 따로 적는다(퍼센트는 %% 로).
+#   데미지/쿨타임 수치는 현재 코드 기준(2026-11): 체력 숫자는 하트가 아니라 기획서의 실제 체력.
 function itemLoreLines(id: text) :: texts:
 	if {_id} is "crossbow":
-		return "&7[우클릭] 화살을 발사해요", "&7쿨타임 0.8초"
+		return "[우클릭] 화살을 발사합니다"
 	if {_id} is "fishing_rod":
-		return "&7[우클릭] 낚싯바늘을 던져요", "&7맞은 적을 5초간 구속하고 끌어당겨요", "&7피해 4"
+		return "[우클릭] 낚싯바늘을 던집니다", "맞은 적을 5초간 구속하고 끌어당깁니다"
 	if {_id} is "iron_axe":
-		return "&7대상의 체력이 80%% 이상이면", "&7피해가 1.5배가 돼요", "&7기본 피해 5"
+		return "대상의 체력이 80%% 이상이면", "피해가 1.5배가 됩니다"
 	if {_id} is "iron_pickaxe":
-		return "&7타격할 때마다 '채굴' 중첩이 쌓여요", "&7중첩마다 피해가 늘어나요", "&7기본 피해 2"
+		return "타격할 때마다 '채굴' 중첩이 쌓입니다", "중첩마다 피해가 늘어납니다"
 	if {_id} is "iron_hoe":
-		return "&7대상의 체력이 50%% 이하면", "&7피해가 2배가 돼요", "&7기본 피해 2"
+		return "대상의 체력이 50%% 이하면", "피해가 2배가 됩니다"
 	if {_id} is "mace":
-		return "&7피해가 낮은 대신 묵직하게 때려요", "&7(바닐라 피해의 30%%)"
+		return "피해가 낮은 대신 묵직하게 때립니다", "(바닐라 피해의 30%%)"
 	if {_id} is "iron_spear":
-		return "&7[우클릭] 도약해요", "&7피해는 최대 5까지 들어가요"
+		return "[우클릭] 도약합니다", "피해는 최대 5까지 들어갑니다"
 	if {_id} is "iron_sword":
-		return "&7기본 피해 5"
+		return "들고 있으면 받는 피해를 한 번 막습니다"
 	if {_id} is "tnt":
-		return "&7[우클릭] TNT 를 던져요", "&7폭발에 맞은 적은 2초간 기절하고 피해 2를 입어요", "&7쿨타임 12초"
+		return "[우클릭] TNT 를 던집니다", "폭발에 맞은 적은 2초간 기절하고 피해 2를 입습니다"
 	if {_id} is "nether_star":
-		return "&7[우클릭] 6초간 저항, 힘, 재생, 신속 1", "&7쿨타임 45초"
+		return "[우클릭] 6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다"
 	if {_id} is "ominous_bottle":
-		return "&7[우클릭] 7초간 강화돼요", "&7효과가 끝나면 5초간 탈진해요", "&7쿨타임 30초"
+		return "[우클릭] 7초간 강화됩니다", "효과가 끝나면 5초간 탈진합니다"
 	if {_id} is "potion_heal":
-		return "&7[우클릭] 체력 5 회복", "&7쿨타임 7초"
+		return "[우클릭] 체력 5를 회복합니다"
 	if {_id} is "potion_stamina":
-		return "&7[우클릭] 스태미너 50 회복", "&7쿨타임 7초"
+		return "[우클릭] 스태미너 50을 회복합니다"
 	if {_id} is "totem":
-		return "&7[우클릭] 5초간 무적이 돼요", "&7무적 동안 도약을 쓸 수 없어요", "&7쿨타임 60초"
+		return "[우클릭] 5초간 무적이 됩니다", "무적 동안 도약을 쓸 수 없습니다"
 	if {_id} is "bow":
-		return "&7[당겼다 놓기] 최대 3초까지 충전해요", "&7충전할수록 피해(4~10)와 화살 속도가 늘어요", "&7최대 충전 시 소닉붐", "&7발사 후 쿨타임 2초"
+		return "[당겼다 놓기] 최대 3초까지 충전합니다", "충전할수록 피해와 화살 속도가 늘어납니다", "최대 충전 시 소닉붐이 발사됩니다"
 	if {_id} is "blaze_rod":
-		return "&7[우클릭] 0.2초 뒤 화염구를 발사해요", "&7맞으면 폭발해서 범위 피해 5", "&73번째 사용은 바라보는 곳 위에서 화염구 5개가 떨어져요", "&7쿨타임 4초"
+		return "[우클릭] 0.2초 뒤 화염구를 발사합니다", "맞으면 폭발해서 범위 피해를 줍니다", "3번째 사용은 바라보는 곳 위에서 화염구 5개가 떨어집니다"
 	if {_id} is "wind_charge":
-		return "&7[우클릭] 던진 자리에 10초간 연막(반경 11칸)", "&7연막이 시야를 가려요", "&7쿨타임 30초"
+		return "[우클릭] 던진 자리에 10초간 연막(반경 11칸)을 만듭니다", "연막이 시야를 가립니다"
 	if {_id} is "flint_steel":
-		return "&7[우클릭] 주변 10칸 안의 적을", "&75초간 취약(받는 피해 1.2배)으로 만들고 불태워요", "&7쿨타임 20초"
+		return "[우클릭] 주변 10칸 안의 적을", "5초간 취약(받는 피해 1.2배)으로 만들고 불태웁니다"
 	if {_id} is "anvil":
-		return "&7[우클릭] 이번 게임 동안", "&7가하는 피해가 10%% 증가해요", "&7사용할 때마다 중첩돼요(합연산)", "&7쿨타임 90초"
+		return "[우클릭] 이번 게임 동안", "가하는 피해가 10%% 증가합니다", "사용할 때마다 중첩됩니다(합연산)"
 	if {_id} is "potion_invis":
-		return "&7[우클릭] 4초간 투명해져요", "&7피해를 입거나 입히면 풀려요", "&7쿨타임 18초"
-	return "&7설명 없음"
+		return "[우클릭] 4초간 투명해집니다", "피해를 입거나 입히면 풀립니다"
+	return "설명 없음"
+
+# 1번째 줄에 붉은 칼 아이콘과 같이 보여줄 데미지 수치(무기만). 없으면 "". 수치만 적는다(범위는 4~12 처럼).
+function itemDamageText(id: text) :: text:
+	if {_id} is "crossbow":
+		return "4"
+	if {_id} is "fishing_rod":
+		return "4"
+	if {_id} is "iron_axe":
+		return "5"
+	if {_id} is "iron_pickaxe":
+		return "2"
+	if {_id} is "iron_hoe":
+		return "2"
+	if {_id} is "iron_spear":
+		return "5"
+	if {_id} is "iron_sword":
+		return "5"
+	if {_id} is "tnt":
+		return "2"
+	if {_id} is "bow":
+		return "4~12"
+	if {_id} is "blaze_rod":
+		return "5"
+	return ""
+
+# 1번째 줄에 시계 아이콘과 같이 보여줄 쿨타임 수치(초 단위 숫자만). 없으면 "".
+function itemCooldownText(id: text) :: text:
+	if {_id} is "crossbow":
+		return "0.8"
+	if {_id} is "fishing_rod":
+		return "9"
+	if {_id} is "iron_sword":
+		return "20"
+	if {_id} is "tnt":
+		return "12"
+	if {_id} is "nether_star":
+		return "45"
+	if {_id} is "ominous_bottle":
+		return "30"
+	if {_id} is "potion_heal":
+		return "7"
+	if {_id} is "potion_stamina":
+		return "7"
+	if {_id} is "totem":
+		return "60"
+	if {_id} is "bow":
+		return "2"
+	if {_id} is "blaze_rod":
+		return "4"
+	if {_id} is "wind_charge":
+		return "30"
+	if {_id} is "flint_steel":
+		return "20"
+	if {_id} is "anvil":
+		return "90"
+	if {_id} is "potion_invis":
+		return "18"
+	return ""
+
+# 설명 1번째 줄 컴포넌트 JSON: [붉은 칼 아이콘][데미지] [시계 아이콘][쿨타임]. 둘 다 없으면 "".
+#   칼 아이콘은 철 칼 스프라이트에 빨간 색을 입힌 것(색 입히기는 탭 아이콘의 포션과 같은 방식, 미검증), 시계는 item/clock_00 스프라이트(미검증).
+function itemLoreHeader(id: text) :: text:
+	set {_dm} to itemDamageText({_id})
+	set {_cd} to itemCooldownText({_id})
+	set {_ex} to ""
+	if {_dm} is not "":
+		set {_sw} to killIcon("iron_sword")
+		replace "}" in {_sw} with ",""color"":""red""}"
+		set {_ex} to "%{_sw}%,{""text"":"" %{_dm}%"",""color"":""white""}"
+	if {_cd} is not "":
+		if {_ex} is not "":
+			set {_ex} to "%{_ex}%,{""text"":""   ""},"
+		set {_ck} to killIcon("clock_00")
+		set {_ex} to "%{_ex}%%{_ck}%,{""text"":"" %{_cd}%"",""color"":""white""}"
+	if {_ex} is "":
+		return ""
+	return "{""text"":"""",""italic"":false,""extra"":[%{_ex}%]}"
 
 # 아이템 생성. extra 가 비어 있지 않으면 설명 맨 아래에 한 줄 덧붙인다(편집 GUI 의 '선택됨' 표시용).
 # 바닐라 설명(공격력/공격속도 등 속성, 포션 효과 설명)은 아이템 플래그로 숨긴다.
 function itemBuild(id: text, extra: text = "") :: itemtype:
 	set {_i} to itemBase({_id})
 	set {_l::*} to itemLoreLines({_id})
-	if {_extra} is not "":
-		add {_extra} to {_l::*}
 	set {_i} to {_i} named itemName({_id})
-	set lore of {_i} to {_l::*}
 	set {_i} to {_i} with item flags hide attributes and hide additional tooltip
 	# 불길한 병의 기본 설명(불길한 징조 N)은 위 플래그로 안 숨겨져서, 툴팁에서 해당 컴포넌트를 직접 숨긴다(Paper 데이터 컴포넌트, 미검증).
 	# 이 방법이 안 되면 {_st}.unsetData(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER) 로 컴포넌트 자체를 지우는 방법으로 바꿀 것.
@@ -213,6 +290,23 @@ function itemBuild(id: text, extra: text = "") :: itemtype:
 		set {_td3} to TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.CHARGED_PROJECTILES).build()
 		{_st3}.setData(DataComponentTypes.TOOLTIP_DISPLAY, {_td3})
 		set {_i} to {_st3}
+	# 설명(lore)은 컴포넌트로 직접 만든다(아이콘 스프라이트를 넣으려고). 1번째 줄 = 데미지/쿨타임, 2번째 줄부터 설명(짙은 회색, 기울임 없음).
+	# extra("&e▶ ..." 형태)는 노란색 한 줄로 맨 아래에 붙인다. LORE 데이터 컴포넌트(ItemLore)는 미검증.
+	set {_lb} to ItemLore.lore()
+	set {_hd} to itemLoreHeader({_id})
+	if {_hd} is not "":
+		{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_hd}))
+	loop {_l::*}:
+		set {_lj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%loop-value%"",""color"":""dark_gray""}]}"
+		{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_lj}))
+	if {_extra} is not "":
+		set {_xt} to {_extra}
+		replace "&e" in {_xt} with ""
+		set {_xj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_xt}%"",""color"":""yellow""}]}"
+		{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_xj}))
+	set {_stl} to {_i}.getRandom()
+	{_stl}.setData(DataComponentTypes.LORE, {_lb}.build())
+	set {_i} to {_stl}
 	return {_i}
 
 # 플레이어 인벤토리 s 번 칸(0부터)의 아이템이 카탈로그의 어떤 아이템인지. 아니면 "".
