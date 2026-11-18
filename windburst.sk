@@ -3,11 +3,10 @@
 # 이 파일이 쓰는 변수: {-wbcd}(쿨타임 종료 시각), {-wbball::눈덩이uuid}(우리가 던진 연막탄 표시), {-skillitems::wind_charge}
 # 던지기: 돌풍구 모양 아이템을 단 눈덩이를 던진다(진짜 돌풍구를 쓰면 넉백/폭발이 생겨서 안 씀). 어디든 맞으면(땅/벽/엔티티) 그 자리에 연막을 만든다.
 # 연막은 시야를 가리는 파티클 연출뿐이다(실명 효과는 없음, 사용자 요청으로 삭제).
-# 파티클: 흰색 구름(CLOUD)을 쓴다. 한 번 호출에 여러 개를 가우시안 분포로 뿌려서(count, offset) 호출 수를 줄이고 반경 전체를 촘촘히 덮는다.
-#   중심 + 위/아래/동서남북 5곳에 뿌려서 반경이 고르게 채워진다. 2틱마다 뿌리고, 지속이 끝나면 마지막 2초(20스텝 중 10스텝) 동안 양을 줄여 서서히 사라진다.
-#   흰 연기 느낌의 CAMPFIRE_SIGNAL_SMOKE 도 조금 섞어 오래 남는 연기를 만든다. 양은 smokeDensity() 의 숫자로 조절한다.
-#   플레이어 눈 주변에는 따로 더 뿌려서 화면이 확실히 가려지게 한다.
-# 미검증: 눈덩이 setItem(Material.WIND_CHARGE), "wind charge" 별칭, 파티클 CLOUD/CAMPFIRE_SIGNAL_SMOKE 호출.
+# 파티클: 흰색 구름(CLOUD)만 쓴다. 반지름 11.5칸 구 안에 4칸 간격 격자점(약 100곳)을 만들어 점마다 가우시안으로 뿌려 구형으로 고르게 채운다(smokeLattice).
+#   2틱마다 뿌리고, 지속이 끝나면 마지막 2초 동안 양을 줄여 서서히 사라진다. 양은 smokeDensity() 로 조절한다.
+#   force=true 로 뿌려서 먼 거리에서도 보인다(World#spawnParticle 의 force 인자). 플레이어 눈 주변에는 따로 더 뿌려서 화면이 확실히 가려지게 한다.
+# 미검증: 눈덩이 setItem(Material.WIND_CHARGE), "wind charge" 별칭, 파티클 CLOUD 호출(null 데이터 + force 인자 9개짜리 spawnParticle).
 
 import:
 	org.bukkit.Particle
@@ -16,6 +15,8 @@ import:
 
 on load:
 	set {-skillitems::wind_charge} to wind charge
+	# 반경을 바꾼 뒤 리로드하면 격자를 다시 만든다
+	delete {-smokelat::*}
 
 function smokeRadius() :: number:
 	return 11
@@ -27,43 +28,53 @@ function smokeTicks() :: number:
 function smokeFadeTicks() :: number:
 	return 40
 
-# 한 번(2틱)에 뿌리는 구름 양의 기준. 느리면 이 숫자를 줄인다.
+# 격자 한 점당 한 번(2틱)에 뿌리는 구름 개수의 기준. 느리면 줄이고, 덜 덮이면 늘린다.
 function smokeDensity() :: number:
-	return 220
+	return 18
+
+# 구형 배치용 격자 점(중심 기준 벡터)을 한 번만 만들어 {-smokelat::*} 에 둔다. 간격 4칸, 반지름 11.5칸 안의 점만 쓴다.
+# 점마다 작은 가우시안(표준편차 1.6)으로 구름을 뿌리면 전체가 반지름 11칸 구 모양으로 고르게 채워진다.
+function smokeLattice():
+	if {-smokelat::*} is set:
+		stop
+	set {_ix} to 0
+	while {_ix} < 7:
+		set {_iy} to 0
+		while {_iy} < 7:
+			set {_iz} to 0
+			while {_iz} < 7:
+				set {_x} to {_ix} - 3
+				set {_x} to {_x} * 4
+				set {_y} to {_iy} - 3
+				set {_y} to {_y} * 4
+				set {_z} to {_iz} - 3
+				set {_z} to {_z} * 4
+				if ({_x} * {_x} + {_y} * {_y} + {_z} * {_z}) <= 132:
+					add vector({_x}, {_y}, {_z}) to {-smokelat::*}
+				add 1 to {_iz}
+			add 1 to {_iy}
+		add 1 to {_ix}
 
 # 연막 파티클 한 번 뿌리기. f = 0~1 (페이드 아웃 배율)
+# 마지막 인자 true(force)로 먼 거리(최대 512칸)에서도 보이게 한다. 기본값(false)은 근처 32칸 안에서만 보인다.
 function smokeStep(center: location, f: number):
+	smokeLattice()
 	set {_w} to {_center}.getWorld()
-	set {_d} to smokeDensity()
-	set {_n} to floor({_d} * {_f})
+	set {_n} to floor(smokeDensity() * {_f})
 	if {_n} < 1:
 		stop
-	set {_m} to floor({_n} * 0.6)
-	set {_s} to floor({_n} / 8)
-	# 중심은 넓게(표준편차 4), 위/아래/동서남북 5곳은 좁게(2.5)
-	{_w}.spawnParticle(Particle.CLOUD, {_center}, {_n}, 4, 3.5, 4, 0)
-	set {_a} to {_center} ~ vector(5.5, 0, 0)
-	{_w}.spawnParticle(Particle.CLOUD, {_a}, {_m}, 2.5, 2.5, 2.5, 0)
-	set {_a} to {_center} ~ vector(-5.5, 0, 0)
-	{_w}.spawnParticle(Particle.CLOUD, {_a}, {_m}, 2.5, 2.5, 2.5, 0)
-	set {_a} to {_center} ~ vector(0, 0, 5.5)
-	{_w}.spawnParticle(Particle.CLOUD, {_a}, {_m}, 2.5, 2.5, 2.5, 0)
-	set {_a} to {_center} ~ vector(0, 0, -5.5)
-	{_w}.spawnParticle(Particle.CLOUD, {_a}, {_m}, 2.5, 2.5, 2.5, 0)
-	set {_a} to {_center} ~ vector(0, 5, 0)
-	{_w}.spawnParticle(Particle.CLOUD, {_a}, {_m}, 2.5, 2.5, 2.5, 0)
-	set {_a} to {_center} ~ vector(0, -3, 0)
-	{_w}.spawnParticle(Particle.CLOUD, {_a}, {_m}, 2.5, 2.5, 2.5, 0)
-	# 오래 남는 흰 연기를 조금
-	{_w}.spawnParticle(Particle.CAMPFIRE_SIGNAL_SMOKE, {_center}, {_s}, 4.5, 3.5, 4.5, 0)
+	loop {-smokelat::*}:
+		set {_v} to loop-value
+		set {_l} to {_center} ~ {_v}
+		{_w}.spawnParticle(Particle.CLOUD, {_l}, {_n}, 1.6, 1.6, 1.6, 0, null, true)
 
-# 연막 안 플레이어 눈 주변(1.5칸)에 구름을 촘촘히 뿌려 화면을 가린다
+# 연막 안 플레이어 눈 주변(1.3칸)에 구름을 촘촘히 뿌려 화면을 가린다
 function smokeAround(p: player, f: number):
 	set {_eye} to {_p}.getEyeLocation()
 	set {_c} to floor(70 * {_f})
 	if {_c} < 1:
 		stop
-	{_eye}.getWorld().spawnParticle(Particle.CLOUD, {_eye}, {_c}, 1.3, 1.3, 1.3, 0)
+	{_eye}.getWorld().spawnParticle(Particle.CLOUD, {_eye}, {_c}, 1.3, 1.3, 1.3, 0, null, true)
 
 function smokeCloud(center: location):
 	set {_r} to smokeRadius()
