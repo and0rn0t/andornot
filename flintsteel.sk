@@ -22,7 +22,7 @@ function flintRing(center: location, r: number):
 		set {_x} to cos({_a}) * {_r}
 		set {_z} to sin({_a}) * {_r}
 		set {_l} to {_center} ~ vector({_x}, 0.3, {_z})
-		{_w}.spawnParticle(Particle.FLAME, {_l}, 1, 0.1, 0.1, 0.1, 0.02)
+		{_w}.spawnParticle(Particle.FLAME, {_l}, 1, 0.1, 0.1, 0.1, 0.02, null, true)
 
 on rightclick:
 	if skillHand(player, {-skillitems::flint_steel}) is false:
