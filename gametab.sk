@@ -161,11 +161,19 @@ function gtHeader() :: text:
 	set {_l5} to gtT("DMG%{_pm}%", "gray")
 	# ITEM 글자는 아이템 5칸 폭의 가운데쯤 오도록 앞에 공백을 둔다
 	set {_ln} to floor((gtItemW() - gtPx("ITEM")) / 8)
+	set {_lnn} to {_ln}
 	set {_lead} to ""
 	while {_ln} > 0:
 		set {_lead} to "%{_lead}% "
 		remove 1 from {_ln}
-	set {_l6} to gtT("%{_lead}%ITEM", "gray")
+	# 헤더는 탭 폭의 가운데에 놓이므로, 플레이어 줄(머리 9 + 이름~아이템 칸)과 폭이 같아야 왼쪽 끝이 맞는다.
+	#   폭이 짧으면 가운데 정렬 때문에 열 제목이 오른쪽으로 밀린다. 뒤에 공백을 붙여 폭을 맞춘다(아이콘 머리 폭 9 보정).
+	set {_trail} to floor((9 + gtItemW() - gtHeadPad() * 4 - {_lnn} * 4 - gtPx("ITEM")) / 4)
+	set {_tr} to ""
+	while {_trail} > 0:
+		set {_tr} to "%{_tr}% "
+		remove 1 from {_trail}
+	set {_l6} to gtT("%{_lead}%ITEM%{_tr}%", "gray")
 	if {_ex} is "":
 		set {_ex} to "%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%"
 	else:
