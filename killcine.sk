@@ -3,7 +3,7 @@
 # 이 파일이 쓰는 변수: {-kc::uuid}(킬 연출 중 표시. 연출이 끝나면 지움, 접속/퇴장 때도 정리)
 # 순서(시각은 연출 시작 기준):
 #   0틱   치명타 피해 취소 -> 킬 처리(킬 점수 자리 killScoreHook, 킬로그 killLogShow) -> 죽을 때 지워지던 상태 정리(kcClearState)
-#         -> 죽은 자리에 손에 아무것도 안 든 스켈레톤(피격자가 바라보던 방향) 세움 -> 피격자는 관전 모드, 무작위 구도(5개, kcCamLoc)로 둔 카메라에 시점 고정
+#         -> 죽은 자리에 손에 아무것도 안 든 스켈레톤(피격자가 바라보던 방향) 세움 -> 피격자는 관전 모드, 무작위 구도(6개, kcCamLoc)로 둔 카메라에 시점 고정
 #   35틱  스켈레톤 자리에 콰직 소리 + 붉은 파티클, 스켈레톤 제거(엔티티 제거라 사망 메시지 없음). 이때부터 6초 실명 + 타이틀 "리스폰" / 서브타이틀 숫자(5 -> 1)
 #         연출 화면으로 전환되는 순간 iron_golem.repair 소리(피격자에게만)
 #   135틱 리스폰: 어드벤처 모드로 되돌림, 리스폰 위치로 이동, 체력/스태미너 회복. 실명은 1초 남은 상태라 바닐라가 서서히 풀어 준다(미검증).
@@ -80,10 +80,10 @@ function kcClearState(v: player):
 	{_v}.setAbsorptionAmount(0)
 	{_v}.clearActivePotionEffects()
 
-# 카메라 구도 n(1~5)의 카메라 위치(시체를 바라보는 방향까지 설정). base 는 피격자가 죽은 위치(바라보던 방향 yaw 포함), 시체 중심은 base 위 1칸.
-#   앞/오른쪽은 피격자가 바라보던 방향 기준(앞 = 피격자 정면, 오른쪽 = 피격자의 오른쪽). 값은 아래 구도 표에서 칸/높이만 고치면 된다.
-#   1 정면(3.5칸 앞, 높이 1.7)  2 오른쪽 앞 사선(앞 2.5/오른쪽 2.5, 높이 1.4)  3 왼쪽 옆(왼쪽 3.5, 높이 1.2)
-#   4 로우앵글 근접(앞 2.2/오른쪽 0.8, 높이 0.2, 올려다봄)  5 뒤쪽 하이앵글(뒤 2.5/왼쪽 1.5, 높이 3.8, 내려다봄)
+# 카메라 구도 n(1~6)의 카메라 위치(시체를 바라보는 방향까지 설정). base 는 피격자가 죽은 위치(바라보던 방향 yaw 포함), 시체 중심은 base 위 1칸.
+#   앞/오른쪽은 피격자가 바라보던 방향 기준(앞 = 피격자 정면, 오른쪽 = 피격자의 오른쪽). 모든 구도는 시체의 앞모습이 보이도록 카메라가 시체 앞쪽(앞 값이 양수)에 있다.
+#   1 정면(앞 3.5, 높이 1.7)  2 오른쪽 앞 사선(앞 2.5/오른쪽 2.5, 높이 1.4)  3 왼쪽 앞 사선(앞 2.5/왼쪽 2.5, 높이 1.4)
+#   4 로우앵글 근접(앞 2.2/오른쪽 0.8, 높이 0.2, 올려다봄)  5 하이앵글 정면(앞 2.5, 높이 3.5, 내려다봄)  6 와이드(앞 5/오른쪽 1.5, 높이 2)
 function kcCamLoc(base: location, n: number) :: location:
 	set {_fa} to 3.5
 	set {_ra} to 0
@@ -93,17 +93,21 @@ function kcCamLoc(base: location, n: number) :: location:
 		set {_ra} to 2.5
 		set {_ya} to 1.4
 	if {_n} is 3:
-		set {_fa} to 0
-		set {_ra} to -3.5
-		set {_ya} to 1.2
+		set {_fa} to 2.5
+		set {_ra} to -2.5
+		set {_ya} to 1.4
 	if {_n} is 4:
 		set {_fa} to 2.2
 		set {_ra} to 0.8
 		set {_ya} to 0.2
 	if {_n} is 5:
-		set {_fa} to -2.5
-		set {_ra} to -1.5
-		set {_ya} to 3.8
+		set {_fa} to 2.5
+		set {_ra} to 0
+		set {_ya} to 3.5
+	if {_n} is 6:
+		set {_fa} to 5
+		set {_ra} to 1.5
+		set {_ya} to 2
 	set {_yaw} to {_base}.getYaw()
 	# 앞 방향 (-sin, cos), 오른쪽 방향 (-cos, -sin)
 	set {_dx} to (0 - sin({_yaw})) * {_fa} + (0 - cos({_yaw})) * {_ra}
@@ -171,16 +175,16 @@ on damage with priority highest:
 	{_m}.setRotation({_loc}.getYaw(), {_loc}.getPitch())
 	set {_meq} to {_m}.getEquipment()
 	{_meq}.clear()
-	# 3) 구도 5개(kcCamLoc) 중 하나를 무작위로 골라 시체를 바라보는 보이지 않는 카메라(빈 텍스트 디스플레이)를 둔다.
+	# 3) 구도 6개(kcCamLoc) 중 하나를 무작위로 골라 시체를 바라보는 보이지 않는 카메라(빈 텍스트 디스플레이)를 둔다.
 	#    카메라 자리가 블럭 안이면(벽 등) 다음 구도로 넘어가고, 다 막혀 있으면 마지막으로 시도한 구도를 쓴다.
-	set {_cn} to random integer between 1 and 5
+	set {_cn} to random integer between 1 and 6
 	set {_tries} to 0
-	while {_tries} < 5:
+	while {_tries} < 6:
 		set {_cl} to kcCamLoc({_loc}, {_cn})
 		if {_cl}.getBlock().isPassable() is true:
 			exit loop
 		add 1 to {_cn}
-		if {_cn} > 5:
+		if {_cn} > 6:
 			set {_cn} to 1
 		add 1 to {_tries}
 	# 카메라는 글자 없는 텍스트 디스플레이다(보이지 않는 갑옷 거치대는 관전자에게 반투명하게 보여서 교체, 미검증)
