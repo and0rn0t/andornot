@@ -121,17 +121,16 @@ on damage with priority highest:
 	{_meq}.setBoots({_inv}.getBoots())
 	{_meq}.setItemInMainHand({_inv}.getItemInMainHand().clone())
 	{_meq}.setItemInOffHand({_inv}.getItemInOffHand().clone())
-	# 3) 시체 정면 3.5칸, 높이 1.7칸에 보이지 않는 카메라(갑옷 거치대)를 두고 시체를 바라보게 한다
+	# 3) 시체 정면 3.5칸, 높이 1.7칸에 보이지 않는 카메라(빈 텍스트 디스플레이)를 두고 시체를 바라보게 한다
 	set {_yaw} to {_loc}.getYaw()
 	set {_fx} to 0 - sin({_yaw}) * 3.5
 	set {_fz} to cos({_yaw}) * 3.5
 	set {_cl} to {_loc} ~ vector({_fx}, 1.7, {_fz})
 	{_cl}.setYaw({_yaw} + 180)
 	{_cl}.setPitch(8)
-	set {_cam} to {_w}.spawnEntity({_cl}, EntityType.ARMOR_STAND)
-	{_cam}.setInvisible(true)
+	# 카메라는 글자 없는 텍스트 디스플레이다(보이지 않는 갑옷 거치대는 관전자에게 반투명하게 보여서 교체, 미검증)
+	set {_cam} to {_w}.spawnEntity({_cl}, EntityType.TEXT_DISPLAY)
 	{_cam}.setGravity(false)
-	{_cam}.setMarker(true)
 	{_cam}.setInvulnerable(true)
 	{_cam}.setSilent(true)
 	# 4) 피격자를 관전 모드로 바꾸고 카메라에 시점을 붙인다

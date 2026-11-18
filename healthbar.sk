@@ -33,6 +33,13 @@ function hpbar_show(e: living entity):
 	set {_key} to "%{_hp}%/%{_max}%/%{_sw}%"
 	set {_id} to "%uuid of {_e}%"
 
+	# 관전 모드(킬 연출 포함)인 플레이어는 체력바를 숨긴다(관전 카메라 앞에 체력바가 보이는 문제). 모드가 돌아오면 다음 갱신에서 다시 생김.
+	if {_e} is a player:
+		if gamemode of {_e} is spectator:
+			if {-hpbar_d::%{_id}%} is set:
+				hpbar_remove({_id})
+			stop
+
 	# 투명 포션 효과 중인 플레이어는 체력바를 숨긴다(효과가 끝나면 다음 갱신에서 다시 생김). {-invis} 는 potions.sk 가 관리.
 	if {_e} is a player:
 		if {-invis::%{_id}%} is set:
@@ -115,7 +122,9 @@ every {@check-interval}:
 			set {_e} to loop-entity-2
 			if {_e} is not a player:
 				if {_e} is not an armor stand:
-					hpbar_show({_e})
+					# 킬 연출용 마네킹(killcine.sk)에는 체력바를 달지 않는다
+					if {_e}.getType().name() is not "MANNEQUIN":
+						hpbar_show({_e})
 
 # 주인이 사라져 떠돌게 된 체력바 정리 (몹 사망, 디스폰 등)
 every 2 seconds:
