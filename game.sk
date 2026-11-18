@@ -250,6 +250,7 @@ function gameCleanup():
 	set {_empty} to GsonComponentSerializer.gson().deserialize("{""text"":""""}")
 	loop all players:
 		set {_pl2} to loop-player
+		{_pl2}.setPlayerListOrder(0)
 		tabUpdate({_pl2})
 		{_pl2}.sendPlayerListHeaderAndFooter({_empty}, {_empty})
 

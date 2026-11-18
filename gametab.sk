@@ -1,0 +1,172 @@
+# [gametab.sk] 게임 중 탭리스트: 상단에 팀 스코어 + 열 제목(K D A DMG ITEM), 플레이어 줄은 이름 / 킬 / 데스 / 어시스트 / 가한 피해 / 사용 중인 아이템 아이콘, 팀 순서대로 정렬.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 전적/팀 변수는 game.sk 맨 위 참고.
+# 이 파일이 쓰는 변수: 없음(game.sk 의 {-g*} 를 읽기만 함). 게임 중이 아닐 때는 아무것도 안 하고, 탭 이름은 items.sk 의 tabUpdate(구성 아이템 아이콘)가 맡는다.
+# 플레이어 스킨 아이콘은 탭리스트가 이름 왼쪽에 기본으로 그려 주므로 따로 넣지 않는다.
+# 열 맞추기: 탭리스트는 글꼴이 비례폭이라 공백(4픽셀)으로 칸 너비를 맞춘다. 글자별 너비 표(gtPx)로 이름/숫자를 칸 너비까지 공백으로 채우고,
+#   열 제목 줄(헤더)도 같은 칸 너비로 만든다. 헤더는 가운데 정렬이고 플레이어 줄은 머리 아이콘 오른쪽부터 왼쪽 정렬이라, 헤더 앞에 머리 아이콘 폭만큼 공백을 둔다.
+#   실제 화면에서 어긋나면 아래 gtNameW/gtKdaW/gtDmgW/gtItemW/gtHeadPad 값만 바꿔서 맞춘다(한글은 9픽셀로 계산).
+# 정렬: setPlayerListOrder(번호, 큰 번호가 위, 미검증)로 팀 순서(gTeamIndex)대로 정렬한다.
+# 미검증: sendPlayerListHeaderAndFooter, playerListName, setPlayerListOrder, codePointAt 로 글자 너비 계산.
+
+import:
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+# ===== 칸 너비(픽셀) =====
+function gtNameW() :: number:
+	return 104
+
+function gtKdaW() :: number:
+	return 20
+
+function gtDmgW() :: number:
+	return 36
+
+function gtItemW() :: number:
+	return 24
+
+# 헤더 앞에 둘 공백 수(머리 아이콘 폭 보정)
+function gtHeadPad() :: number:
+	return 2
+
+# 글자 하나의 너비(픽셀, 다음 글자와의 간격 1 포함). 마인크래프트 기본 글꼴 기준 근사값.
+function gtCharPx(c: number) :: number:
+	if {_c} is 33, 44, 46, 58, 59, 105 or 124:
+		return 2
+	if {_c} is 39, 96 or 108:
+		return 3
+	if {_c} is 32, 34, 40, 41, 42, 73, 91, 93, 116, 123 or 125:
+		return 4
+	if {_c} is 60, 62, 102 or 107:
+		return 5
+	if {_c} is 64 or 126:
+		return 7
+	if {_c} >= 44032:
+		return 9
+	return 6
+
+function gtPx(s: text) :: number:
+	set {_w} to 0
+	set {_len} to {_s}.length()
+	set {_i} to 0
+	while {_i} < {_len}:
+		set {_c} to {_s}.codePointAt({_i})
+		add gtCharPx({_c}) to {_w}
+		add 1 to {_i}
+	return {_w}
+
+# 글자 s 뒤에 target 픽셀 칸이 되도록 채울 공백(최소 1칸)
+function gtPad(target: number, s: text) :: text:
+	set {_n} to round(({_target} - gtPx({_s})) / 4)
+	if {_n} < 1:
+		return " "
+	set {_r} to " " repeated {_n} times
+	return "%{_r}%"
+
+function gtColorJ(i: number) :: text:
+	set {_c::*} to "red", "blue", "green", "yellow", "light_purple", "aqua", "gold", "dark_purple"
+	return {_c::%mod({_i} - 1, 8) + 1%}
+
+# 텍스트 조각(JSON) 하나. 색 이름은 JSON 색(red, white, gray ...).
+function gtT(t: text, color: text) :: text:
+	return "{""text"":""%{_t}%"",""color"":""%{_color}%""}"
+
+# 숫자 변수 값(없으면 0)을 글자로
+function gtNum(v: object) :: text:
+	if {_v} is not a number:
+		return "0"
+	return "%{_v}%"
+
+# ===== 플레이어 줄: 이름(팀 색) / K / D / A / DMG / 아이템 아이콘 =====
+# (문자열 안 %...% 에 따옴표 글자를 넣지 않으려고 조각마다 변수에 먼저 만든다)
+function gtEntry(p: player) :: text:
+	set {_id} to "%uuid of {_p}%"
+	set {_nm} to name of {_p}
+	set {_ci} to gTeamIndex(gTeamOf({_p}))
+	set {_k} to gtNum({-gk::%{_id}%})
+	set {_d} to gtNum({-gd::%{_id}%})
+	set {_a} to gtNum({-ga::%{_id}%})
+	set {_dm} to {-gdmg::%{_id}%}
+	if {_dm} is not a number:
+		set {_dm} to 0
+	set {_dms} to "%round({_dm})%"
+	set {_hs} to {_p}.getInventory().getHeldItemSlot()
+	set {_iid} to itemIdAt({_p}, {_hs})
+	set {_ic} to "{""text"":""""}"
+	if {_iid} is not "":
+		set {_ic} to itemIcon({_iid})
+	set {_cn} to gtColorJ({_ci})
+	set {_c1} to gtT({_nm}, {_cn})
+	set {_t2} to gtPad(gtNameW(), {_nm})
+	set {_c2} to gtT({_t2}, "white")
+	set {_t3} to "%{_k}%%gtPad(gtKdaW(), {_k})%"
+	set {_c3} to gtT({_t3}, "white")
+	set {_t4} to "%{_d}%%gtPad(gtKdaW(), {_d})%"
+	set {_c4} to gtT({_t4}, "white")
+	set {_t5} to "%{_a}%%gtPad(gtKdaW(), {_a})%"
+	set {_c5} to gtT({_t5}, "white")
+	set {_t6} to "%{_dms}%%gtPad(gtDmgW(), {_dms})%"
+	set {_c6} to gtT({_t6}, "white")
+	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%,%{_ic}%]}"
+
+# ===== 헤더: 팀 스코어(팀전) + 열 제목 =====
+function gtHeader() :: text:
+	set {_ex} to ""
+	if {-gteams} > 0:
+		set {_first} to true
+		loop {-gteamlist::*}:
+			set {_key} to loop-value
+			set {_cn} to gtColorJ(gTeamIndex({_key}))
+			set {_nm} to "%{-gname::%{_key}%}% "
+			set {_sc} to "%{-gscore::%{_key}%}%"
+			if {_first} is false:
+				set {_sep} to gtT("   |   ", "dark_gray")
+				set {_ex} to "%{_ex}%,%{_sep}%"
+			set {_first} to false
+			set {_c1} to gtT({_nm}, {_cn})
+			set {_c2} to gtT({_sc}, "white")
+			if {_ex} is "":
+				set {_ex} to "%{_c1}%,%{_c2}%"
+			else:
+				set {_ex} to "%{_ex}%,%{_c1}%,%{_c2}%"
+		set {_ex} to "%{_ex}%,{""text"":""\n""}"
+	# 열 제목 줄: 플레이어 줄과 같은 칸 너비
+	set {_sp} to " " repeated gtHeadPad() times
+	set {_padn} to gtPad(gtNameW(), "")
+	set {_lab} to "%{_sp}%%{_padn}%"
+	set {_l1} to gtT({_lab}, "gray")
+	set {_pk} to gtPad(gtKdaW(), "K")
+	set {_l2} to gtT("K%{_pk}%", "gray")
+	set {_pd} to gtPad(gtKdaW(), "D")
+	set {_l3} to gtT("D%{_pd}%", "gray")
+	set {_pa} to gtPad(gtKdaW(), "A")
+	set {_l4} to gtT("A%{_pa}%", "gray")
+	set {_pm} to gtPad(gtDmgW(), "DMG")
+	set {_l5} to gtT("DMG%{_pm}%", "gray")
+	set {_l6} to gtT("ITEM", "gray")
+	if {_ex} is "":
+		set {_ex} to "%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%"
+	else:
+		set {_ex} to "%{_ex}%,%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%"
+	return "{""text"":"""",""extra"":[%{_ex}%]}"
+
+function gtFooter() :: text:
+	set {_mn} to gcModeName({-gmode})
+	set {_t} to "%{_mn}% · 목표 %{-gtarget}%"
+	return gtT({_t}, "gray")
+
+function gtRefresh():
+	if {-ingame} is not true:
+		stop
+	set {_hdr} to GsonComponentSerializer.gson().deserialize(gtHeader())
+	set {_ft} to gtFooter()
+	set {_ftr} to GsonComponentSerializer.gson().deserialize("{""text"":"""",""extra"":[%{_ft}%]}")
+	loop all players:
+		set {_p} to loop-player
+		{_p}.sendPlayerListHeaderAndFooter({_hdr}, {_ftr})
+		if gInGame({_p}) is true:
+			{_p}.playerListName(GsonComponentSerializer.gson().deserialize(gtEntry({_p})))
+			{_p}.setPlayerListOrder(1000 - gTeamIndex(gTeamOf({_p})))
+
+every 10 ticks:
+	if {-ingame} is true:
+		gtRefresh()
