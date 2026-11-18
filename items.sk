@@ -166,7 +166,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "wind_charge":
 		return "10초간 연막을 생성합니다."
 	if {_id} is "flint_steel":
-		return "주변 10칸 안의 적을 불태워 5초간 받는 피해를 20%% 증가시킵니다."
+		return "주변의 적을 불태워 5초간 받는 피해를 20%% 증가시킵니다."
 	if {_id} is "anvil":
 		return "사망 전까지 가하는 피해가 10%% 증가합니다.", "무한히 중첩 가능합니다."
 	if {_id} is "potion_invis":
