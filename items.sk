@@ -546,7 +546,7 @@ function loadoutGive(p: player):
 		if loadoutFind({_p}, {_id}) < 0:
 			set {_s} to loadoutEmpty({_p}, loadoutSlot({_k}) - 1)
 			if {_s} < 0:
-				send "&c인벤토리가 가득 차서 %itemName({_id})% &c을(를) 지급하지 못했어요." to {_p}
+				send "&c인벤토리가 가득 차서 %itemName({_id})% &c을(를) 지급하지 못했습니다." to {_p}
 			else:
 				set slot {_s} of {_p}'s inventory to itemBuild({_id})
 
@@ -766,7 +766,7 @@ command /itemorder:
 	executable by: players
 	trigger:
 		if player is not op:
-			send "&c권한이 없어요."
+			send "&c권한이 없습니다."
 			stop
 		itemGuiOpen(player, "order")
 
@@ -831,7 +831,7 @@ on inventory click:
 				set {_c} to loop-value
 				if {_c} is not {_k}:
 					if loadoutGet({_p}, {_c}) is {_id}:
-						send "&c이미 구성에 있는 아이템이에요." to {_p}
+						send "&c이미 구성에 있는 아이템입니다." to {_p}
 						play sound "entity.villager.no" with volume 0.5 to {_p}
 						stop
 			set {_old} to loadoutGet({_p}, {_k})
@@ -851,7 +851,7 @@ on inventory click:
 			delete {-itemguipick::%{_uid}%}
 		else if itemCategory({-itemguimap::%{_uid}%::%{_pick}%}) is not itemCategory({_id}):
 			# 분류가 다르면 자리를 못 바꾼다(분류 순서가 우선)
-			send "&c분류가 다른 아이템끼리는 자리를 바꿀 수 없어요." to {_p}
+			send "&c분류가 다른 아이템끼리는 자리를 바꿀 수 없습니다." to {_p}
 			play sound "entity.villager.no" with volume 0.5 to {_p}
 			delete {-itemguipick::%{_uid}%}
 		else:

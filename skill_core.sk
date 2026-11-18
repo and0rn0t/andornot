@@ -60,7 +60,7 @@
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
 #   {gamecfg::teams|mode|random} 게임 사전 설정(저장 변수, 대시 없음. 팀 수 0=개인전)  gamesetup
 #   {-kc::uuid}              킬 연출 중 표시(연출 끝/접속 시 삭제)                killcine
-#   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} 등)   game(자세한 설명은 game.sk 맨 위)
+#   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
 #   {-gfinale} {-gvote} {-gpotm::투표자uuid} {-gpin} {-gchat::n} {-gchatn} {-gdummies::*} {-gpotmres} {-gfgen}   종료 연출 상태(투표, 채팅 고정, 더미)   gameend
 #   {-gftest} {-gftester} {-gftuuid} {-gfoldteam} {-gfake::id} {-gfteam::id}   /finaletest 테스트용 가짜 게임 데이터(끝나면 전부 지움)   gameend
 #   {gamecfg::target::모드}   목표 스코어/승점(저장 변수, 대시 없음)                  gamesetup(gcTarget)

@@ -71,10 +71,10 @@ function gcTeamLabel(n: number) :: text:
 		return "개인전"
 	return "%{_n}%팀"
 
-# 설정 변경 알림: 접속한 모든 유저에게 채팅 + 소리
+# 설정 변경 알림: 접속한 모든 유저에게 채팅 + 소리. who(바꾼 관리자 이름)는 메시지에 쓰지 않는다.
 function gcAnnounce(who: text, what: text):
 	loop all players:
-		send "&6[게임 설정] &f%{_who}% &7님이 %{_what}%" to loop-player
+		send "&6[게임 설정] &7%{_what}%" to loop-player
 		play sound "entity.experience_orb.pickup" with volume 0.5 to loop-player
 
 function gcFill(inv: inventory):
@@ -163,7 +163,7 @@ on inventory click:
 		if {_v} > 99:
 			set {_v} to 99
 		set {gamecfg::target::%{_m}%} to {_v}
-		gcAnnounce({_who}, "%gcTargetName({_m})%을(를) &e%{_v}% &7(으)로 바꿨어요.")
+		gcAnnounce({_who}, "%gcTargetName({_m})%을(를) &e%{_v}%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 11:
 		set {_n} to gcTeams()
@@ -182,7 +182,7 @@ on inventory click:
 			else:
 				set {_n} to {_n} + 1
 		set {gamecfg::teams} to {_n}
-		gcAnnounce({_who}, "팀 수를 &e%gcTeamLabel({_n})% &7(으)로 바꿨어요.")
+		gcAnnounce({_who}, "팀 수를 &e%gcTeamLabel({_n})%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 13:
 		set {_ids::*} to gcModeIds()
@@ -201,15 +201,15 @@ on inventory click:
 			if {_idx} > {_cnt}:
 				set {_idx} to 1
 		set {gamecfg::mode} to {_ids::%{_idx}%}
-		gcAnnounce({_who}, "게임모드를 &e%gcModeName({_ids::%{_idx}%})% &7(으)로 바꿨어요.")
+		gcAnnounce({_who}, "게임모드를 &e%gcModeName({_ids::%{_idx}%})%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 15:
 		if gcRandom() is true:
 			set {gamecfg::random} to false
-			gcAnnounce({_who}, "랜덤 아이템으로 플레이를 &cOFF &7로 바꿨어요.")
+			gcAnnounce({_who}, "랜덤 아이템으로 플레이를 &cOFF&7로 변경했습니다.")
 		else:
 			set {gamecfg::random} to true
-			gcAnnounce({_who}, "랜덤 아이템으로 플레이를 &aON &7으로 바꿨어요.")
+			gcAnnounce({_who}, "랜덤 아이템으로 플레이를 &aON&7으로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 22:
 		adminOpen({_p})

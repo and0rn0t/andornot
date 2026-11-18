@@ -9,7 +9,8 @@
 #   {-gteams}          이번 게임의 팀 수(0 = 개인전)
 #   {-gplist::*}       이번 게임 참가자(시작 때 접속해 있던 플레이어, 순서 유지)
 #   {-gteamlist::*}    팀 키 목록(정렬됨). 팀전은 {-team} 의 팀 이름("1팀"), 개인전은 "p_플레이어uuid"
-#   {-gname::팀키}      팀 표시 이름(팀전은 팀 이름, 개인전은 플레이어 이름)
+#   {-gname::팀키}      팀 이름(팀전은 {-team} 의 팀 이름, 개인전은 플레이어 이름). 화면에는 gTeamName() 이 만든 색 약자 3글자(RED, BLU ...)로 표시한다.
+#   {-gpteam::uuid} {-gpname::uuid}   시작 때 기록한 참가자의 팀 키/이름(중간에 나가도 결과창에 남기려고)
 #   {-gscore::팀키}     팀 스코어(바운티)/승점(섬멸전)
 #   {-gk::uuid} {-gd::uuid} {-ga::uuid} {-gdmg::uuid}   킬/데스/어시스트/가한 피해(실 체력, 적에게 준 것만)
 #   {-gstar::uuid}     바운티 별 개수(기본 gStarBase())
@@ -51,9 +52,20 @@ function gTeamIndex(key: text) :: number:
 			return loop-index parsed as number
 	return 99
 
+# 팀 색 약자 3글자(gTeamColor 와 같은 순서: 빨강 파랑 초록 노랑 분홍 하늘 주황 보라)
+function gTeamAbbr(i: number) :: text:
+	set {_a::*} to "RED", "BLU", "GRN", "YEL", "PNK", "CYN", "ORG", "PUR"
+	return {_a::%mod({_i} - 1, 8) + 1%}
+
+# 팀 표시 이름(색 코드 없음): 팀전은 색 약자 3글자, 개인전은 플레이어 이름
+function gTeamName(key: text) :: text:
+	if {-gteams} > 0:
+		return gTeamAbbr(gTeamIndex({_key}))
+	return "%{-gname::%{_key}%}%"
+
 # 색 코드가 붙은 팀 표시 이름
 function gTeamLabel(key: text) :: text:
-	return "%gTeamColor(gTeamIndex({_key}))%%{-gname::%{_key}%}%&r"
+	return "%gTeamColor(gTeamIndex({_key}))%%gTeamName({_key})%&r"
 
 function gInGame(p: player) :: boolean:
 	if {-ingame} is not true:
@@ -210,6 +222,12 @@ function gameStart(by: text):
 			set {-gname::%loop-value%} to loop-value
 	loop {-gteamlist::*}:
 		set {-gscore::%loop-value%} to 0
+	# 참가자의 팀/이름 기록(나간 사람도 결과창에 나오게)
+	delete {-gpteam::*}
+	delete {-gpname::*}
+	loop {-gplist::*}:
+		set {-gpteam::%uuid of loop-value%} to gTeamOf(loop-value)
+		set {-gpname::%uuid of loop-value%} to name of loop-value
 	# 전적 초기화
 	delete {-gk::*}
 	delete {-gd::*}
@@ -233,13 +251,15 @@ function gameStart(by: text):
 	loop all players:
 		send title "&e게임 시작!" with subtitle "&7%gcModeName({-gmode})% · 목표 %{-gtarget}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "entity.ender_dragon.growl" with volume 0.6 and pitch 1.2 to loop-player
-		send "&6[게임] &f%{_by}% &7님이 &e%gcModeName({-gmode})% &7게임을 시작했어요. (목표 %{-gtarget}%)" to loop-player
+		send colored "&e%gcModeName({-gmode})% &7게임을 시작했습니다. (목표 %{-gtarget}%)" to loop-player
 
 # 연출 없이 게임을 정리한다(관리자 강제 종료, 연출이 끝난 뒤 로비로 돌아갈 때).
 function gameCleanup():
 	set {-ingame} to false
 	delete {-gover}
 	delete {-groundend}
+	delete {-gpteam::*}
+	delete {-gpname::*}
 	loop {-gplist::*}:
 		gStarRemove("%uuid of loop-value%")
 		delete {-gdead::%uuid of loop-value%}
@@ -255,7 +275,7 @@ function gameCleanup():
 		tabUpdate({_pl2})
 		{_pl2}.sendPlayerListHeaderAndFooter({_empty}, {_empty})
 
-# 관리자 강제 종료(연출/결과 발표 없음)
+# 관리자 강제 종료(연출/결과 발표 없음). by(실행한 관리자 이름)는 메시지에 쓰지 않는다.
 function gameForceStop(by: text):
 	if {-ingame} is not true:
 		if {-gfinale} is not true:
@@ -263,7 +283,7 @@ function gameForceStop(by: text):
 	gameCleanup()
 	gfAbort()
 	loop all players:
-		send "&6[게임] &f%{_by}% &7님이 게임을 강제로 종료했어요." to loop-player
+		send "&7게임을 강제로 종료했습니다." to loop-player
 
 # ===== 전적 =====
 # 피해 기록: 적에게 준 피해(실 체력)를 누적하고 어시스트 판정용 시각을 남긴다. 본인/아군에게 준 피해는 세지 않는다.
@@ -351,7 +371,7 @@ function gBountyKill(v: player, a: entity, kill: boolean):
 	set {-gstar::%{_aid}%} to {_cur} + 1
 	gStarSync({_ap})
 	loop all players:
-		send colored "&6[바운티] &f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했어요! &e+%{_stars}%점 &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
+		send colored "&6[바운티] &f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했습니다! &e+%{_stars}%점 &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
 	if {-gscore::%{_tk}%} >= {-gtarget}:
 		gameWin({_tk})
 
@@ -379,11 +399,11 @@ function gAnnCheck():
 function gRoundEnd(w: text):
 	if {_w} is "":
 		loop all players:
-			send "&6[섬멸전] &7전원 사망! 이번 라운드는 무승부예요." to loop-player
+			send "&6[섬멸전] &7전원 사망! 이번 라운드는 무승부입니다." to loop-player
 	else:
 		add 1 to {-gscore::%{_w}%}
 		loop all players:
-			send colored "&6[섬멸전] %gTeamLabel({_w})% &7(이)가 라운드를 이겼어요! &e승점 %{-gscore::%{_w}%}%&7/%{-gtarget}%" to loop-player
+			send colored "&6[섬멸전] %gTeamLabel({_w})% &7(이)가 라운드에서 승리했습니다! &e승점 %{-gscore::%{_w}%}%&7/%{-gtarget}%" to loop-player
 			play sound "entity.player.levelup" with volume 0.7 and pitch 1 to loop-player
 		if {-gscore::%{_w}%} >= {-gtarget}:
 			gameWin({_w})

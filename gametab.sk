@@ -133,7 +133,7 @@ function gtHeader() :: text:
 		loop {-gteamlist::*}:
 			set {_key} to loop-value
 			set {_cn} to gtColorJ(gTeamIndex({_key}))
-			set {_nm} to "%{-gname::%{_key}%}% "
+			set {_nm} to "%gTeamName({_key})% "
 			set {_sc} to "%{-gscore::%{_key}%}%"
 			if {_first} is false:
 				set {_sep} to gtT("   |   ", "dark_gray")
@@ -182,7 +182,7 @@ function gtHeader() :: text:
 
 function gtFooter() :: text:
 	set {_mn} to gcModeName({-gmode})
-	set {_t} to "%{_mn}% · 목표 %{-gtarget}%"
+	set {_t} to "%{_mn}% · %{-gtarget}%"
 	return gtT({_t}, "gray")
 
 function gtRefresh():

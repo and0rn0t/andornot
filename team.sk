@@ -11,14 +11,14 @@ command /team <player> <text>:
 	trigger:
 		if sender is a player:
 			if player is not op:
-				send "&c권한이 없어요."
+				send "&c권한이 없습니다."
 				stop
 		if arg-2 is "none":
 			delete {-team::%uuid of arg-1%}
-			send "&7%arg-1% 의 팀을 해제했어요."
+			send "&7%arg-1% 의 팀을 해제했습니다."
 		else:
 			set {-team::%uuid of arg-1%} to arg-2
-			send "&7%arg-1% 의 팀을 %arg-2% 로 설정했어요."
+			send "&7%arg-1% 의 팀을 %arg-2% 로 설정했습니다."
 
 on quit:
 	delete {-team::%uuid of player%}
