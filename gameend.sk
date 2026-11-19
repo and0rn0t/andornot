@@ -59,7 +59,7 @@ function gfName(id: text) :: text:
 		return "%{-gpname::%{_id}%}%"
 	loop {-gplist::*}:
 		if "%uuid of loop-value%" is {_id}:
-			return name of loop-value
+			return loop-value.getName()
 	return "?"
 
 # 참가자(id)의 팀 키. 시작 때 기록한 {-gpteam} 을 우선 쓴다(나가면 team.sk 가 {-team} 을 지우기 때문).
@@ -152,7 +152,7 @@ function gfDmgW() :: number:
 function gfT(t: text, color: text, bold: boolean) :: text:
 	if {_bold} is true:
 		return "{""text"":""%{_t}%"",""color"":""%{_color}%"",""bold"":true}"
-	return "{""text"":""%{_t}%"",""color"":""%{_color}%""}"
+	return "{""text"":""%{_t}%"",""color"":""%{_color}%"",""bold"":false}"
 
 # 표 제목 줄(JSON): 플레이어 / K / D / A / 피해 / 아이템. 칸 너비는 참가자 줄과 같다.
 function gfHeaderJson() :: text:
@@ -198,7 +198,7 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 		set {_dm} to 0
 	set {_dmr} to round({_dm})
 	set {_cn} to gtColorJ({_ci})
-	set {_c1} to gtT({_nm}, {_cn})
+	set {_c1} to gfT({_nm}, {_cn}, false)
 	set {_pn} to gtPad(gfNameW(), {_nm})
 	set {_c2} to gtT({_pn}, "white")
 	set {_kcol} to "green"
@@ -274,8 +274,16 @@ function gfTeamLines(v: player, tk: text):
 		gfSendLine({_v}, {_id}, gfName({_id}), {_ci}, gfSrcOf({_id}))
 
 # 결과 블록 + 최근 채팅을 viewer 에게 다시 보낸다(앞쪽 30줄은 빈 줄로 이전 채팅을 밀어냄). 아래쪽 채팅은 gfChatLines() 줄.
+# 채팅창을 연 상태의 기본 높이(20줄) 안에서 결과 블록이 맨 위에 오도록, 블록 줄 수(제목 1 + 정보 1 + 표 머리 1 + 참가자 줄 + 투표/POTM 1)를 뺀 나머지가 아래 채팅 줄 수다(최소 2).
+# 채팅창 높이를 바꿔 쓰는 사람이 있으면 gfWindow() 숫자만 고친다.
+function gfWindow() :: number:
+	return 20
+
 function gfChatLines() :: number:
-	return 6
+	set {_n} to gfWindow() - (4 + size of gfIds())
+	if {_n} < 2:
+		return 2
+	return {_n}
 
 function gfRender(v: player):
 	# 전체 최고 킬/피해(금색 표시용)
@@ -300,7 +308,7 @@ function gfRender(v: player):
 		send " " to {_v}
 	# 제목 줄: 글자 없이 = 로 한 줄을 채운다(기본 채팅 폭 기준, 길이는 아래 숫자만 바꾸면 됨)
 	send "&6==================================================" to {_v}
-	send colored "&e%gcModeName({-gmode})% &7· 승리 &f%gTeamLabel({-gwinner})%" to {_v}
+	set {_info} to "&e%gcModeName({-gmode})% &7· 승리 &f%gTeamLabel({-gwinner})%"
 	if {-gteams} > 0:
 		set {_line} to ""
 		loop gfTeamOrder():
@@ -310,7 +318,8 @@ function gfRender(v: player):
 				set {_line} to {_part}
 			else:
 				set {_line} to "%{_line}% &8| %{_part}%"
-		send colored {_line} to {_v}
+		set {_info} to "%{_info}%   %{_line}%"
+	send colored {_info} to {_v}
 	{_v}.sendMessage(GsonComponentSerializer.gson().deserialize(gfHeaderJson()))
 	loop gfTeamOrder():
 		gfTeamLines({_v}, loop-value)
@@ -318,10 +327,21 @@ function gfRender(v: player):
 		send colored "&6★ Player Of The Match: &f%{-gpotmres}%" to {_v}
 	else if {-gvote} is true:
 		send "&7(▲ 를 눌러 Player Of The Match 에 투표합니다. 본인은 제외)" to {_v}
-	# 최근 채팅 gfChatLines() 줄
-	set {_i} to {-gchatn} - (gfChatLines() - 1)
+	# 아래 채팅 gfChatLines() 줄: 모자라는 만큼은 빈 줄로 채워서 결과 블록이 채팅창 맨 위에 붙어 있게 한다
+	set {_cl} to gfChatLines()
+	set {_i} to {-gchatn} - ({_cl} - 1)
 	if {_i} < 1:
 		set {_i} to 1
+	set {_cnt} to 0
+	set {_j} to {_i}
+	while {_j} <= {-gchatn}:
+		if {-gchat::%{_j}%} is set:
+			add 1 to {_cnt}
+		add 1 to {_j}
+	set {_blank} to {_cl} - {_cnt}
+	while {_blank} > 0:
+		send " " to {_v}
+		remove 1 from {_blank}
 	while {_i} <= {-gchatn}:
 		if {-gchat::%{_i}%} is set:
 			send colored {-gchat::%{_i}%} to {_v}
