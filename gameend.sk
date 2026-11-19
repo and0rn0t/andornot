@@ -3,7 +3,8 @@
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gpin}(결과 채팅 고정 중),
 #   {-gfmaxk}/{-gfmaxd}(결과 표 금색 표시용 최고 킬/피해), {-gchat::번호}/{-gchatn}(고정 중 올라온 채팅 기록), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 #   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
-# 명령: /finaletest(관리자, 종료 연출만 테스트), /gamestop(관리자, 게임/연출 중단), /potm 이름(투표)
+# 명령: /finaletest(관리자, 종료 연출만 테스트), /gamestop(관리자, 게임/연출 중단), /potm 이름(투표), /gameresult(결과 팝업 다시 열기)
+# 결과 표시: 기본은 팝업(Dialog, gfDialogShow, 투표는 ▲ 버튼). gfUseDialog() 가 false 면 예전 채팅 방식(상단 고정). 두 방식 모두 미검증.
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
 #   0초   게임 종료 + 승리 팀 타이틀/소리(3초)
@@ -228,15 +229,16 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_pd} to gtPad(gfKdaW(), {_ds})
 	set {_pa} to gtPad(gfKdaW(), {_as})
 	set {_pm} to gtPad(gfDmgW() - {_mpb}, {_ms})
-	set {_t3} to "%{_ks}%%{_pk}%"
-	set {_t4} to "%{_ds}%%{_pd}%"
-	set {_t5} to "%{_as}%%{_pa}%"
-	set {_t6} to "%{_ms}%%{_pm}%"
-	set {_c3} to gfT({_t3}, {_kcol}, {_kb})
-	set {_c4} to gfT({_t4}, "red", false)
-	set {_c5} to gfT({_t5}, "yellow", false)
-	set {_c6} to gfT({_t6}, {_dcol}, {_db})
-	set {_ex} to "%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%"
+	# 숫자와 채움 공백은 따로 만든다(굵은 글씨의 공백은 5픽셀이라 같은 조각에 넣으면 칸이 밀린다)
+	set {_c3} to gfT({_ks}, {_kcol}, {_kb})
+	set {_c3p} to gfT({_pk}, "white", false)
+	set {_c4} to gfT({_ds}, "red", false)
+	set {_c4p} to gfT({_pd}, "white", false)
+	set {_c5} to gfT({_as}, "yellow", false)
+	set {_c5p} to gfT({_pa}, "white", false)
+	set {_c6} to gfT({_ms}, {_dcol}, {_db})
+	set {_c6p} to gfT({_pm}, "white", false)
+	set {_ex} to "%{_c1}%,%{_c2}%,%{_c3}%,%{_c3p}%,%{_c4}%,%{_c4p}%,%{_c5}%,%{_c5p}%,%{_c6}%,%{_c6p}%"
 	# 사용한 아이템: 구성 1~5번 아이템 아이콘(탭리스트와 같은 정렬 순서)
 	delete {_ld::*}
 	loop integers from 1 to 5:
@@ -349,7 +351,125 @@ function gfRender(v: player):
 
 function gfRenderAll():
 	loop all players:
-		gfRender(loop-player)
+		gfShow(loop-player)
+
+# 결과 표시 방식: true 면 팝업(Dialog), false 면 예전 채팅 방식(상단 고정). 팝업이 안 뜨면 false 로 바꾸면 채팅으로 돌아간다.
+function gfUseDialog() :: boolean:
+	return true
+
+# 결과를 viewer 한 명에게 보여 준다(팝업이면 팝업을 새로 띄움 = 갱신)
+function gfShow(v: player):
+	if gfUseDialog() is true:
+		gfDialogShow({_v})
+	else:
+		gfRender({_v})
+
+function gfCloseDialogs():
+	loop all players:
+		loop-player.closeDialog()
+
+# 팀 키의 색 이름 조각(JSON)
+function gfLabelJ(key: text) :: text:
+	return gfT("%{-gname::%{_key}%}%", gtColorJ(gTeamIndex({_key})), false)
+
+# 한 팀의 참가자 줄들(JSON 조각, 앞에 쉼표, 줄바꿈 포함). 중첩 loop 를 피하려고 따로 뺌.
+function gfTeamRowsJ(tk: text, nlc: text) :: text:
+	set {_ci} to gTeamIndex({_tk})
+	set {_r} to ""
+	loop gfSortedTeam({_tk}):
+		set {_id} to loop-value
+		set {_lj} to gfLineJson({_id}, gfName({_id}), {_ci}, gfSrcOf({_id}))
+		set {_r} to "%{_r}%,%{_lj}%,%{_nlc}%"
+	return {_r}
+
+# 결과 팝업(Dialog, 1.21.6+의 /dialog show)을 띄운다. 내용: 모드/승리/팀 스코어, 표 머리, 참가자 줄, POTM 안내.
+# 투표 중이고 viewer 가 참가자면 다른 참가자마다 버튼(▲ 이름)이 생기고, 누르면 /potm 이름 이 실행된다. 버튼은 누르면 닫히므로 투표 뒤 /potm 이 팝업을 다시 띄운다.
+# 닫아 버린 사람은 /gameresult 로 다시 열 수 있다. 미검증: dialog JSON 필드 이름(multi_action/notice, plain_message, run_command), 콘솔로 보낸 /dialog show.
+function gfDialogShow(v: player):
+	set {_nlc} to "{""text"":""\n""}"
+	set {_i1} to gfT("%gcModeName({-gmode})% · 승리 ", "yellow", false)
+	set {_wj} to gfLabelJ({-gwinner})
+	set {_ex} to "%{_i1}%,%{_wj}%"
+	if {-gteams} > 0:
+		set {_sep} to gfT("    ", "white", false)
+		set {_ex} to "%{_ex}%,%{_sep}%"
+		set {_first} to true
+		loop gfTeamOrder():
+			set {_lj} to gfLabelJ(loop-value)
+			set {_sc} to gfT(" %{-gscore::%loop-value%}%", "white", false)
+			if {_first} is false:
+				set {_bar} to gfT("  |  ", "dark_gray", false)
+				set {_ex} to "%{_ex}%,%{_bar}%"
+			set {_ex} to "%{_ex}%,%{_lj}%,%{_sc}%"
+			set {_first} to false
+	# 최고 킬/피해(금색 표시용)와 이름 칸 너비 계산(표 머리/줄보다 먼저)
+	gfPrep()
+	set {_hd} to gfHeaderJson()
+	set {_ex} to "%{_ex}%,%{_nlc}%,%{_hd}%,%{_nlc}%"
+	loop gfTeamOrder():
+		set {_rows} to gfTeamRowsJ(loop-value, {_nlc})
+		set {_ex} to "%{_ex}%%{_rows}%"
+	if {-gpotmres} is set:
+		set {_pj} to gfT("★ Player Of The Match: ", "gold", false)
+		set {_pn2} to gfT("%{-gpotmres}%", "white", false)
+		set {_ex} to "%{_ex}%,%{_pj}%,%{_pn2}%"
+	else if {-gvote} is true:
+		set {_hint} to gfT("아래 버튼으로 Player Of The Match 에 투표하세요. 본인은 제외입니다.", "gray", false)
+		set {_ex} to "%{_ex}%,%{_hint}%"
+	set {_contents} to "{""text"":"""",""extra"":[%{_ex}%]}"
+	set {_acts} to ""
+	if {-gvote} is true:
+		if {-gplist::*} contains {_v}:
+			loop gfIds():
+				if loop-value is not "%uuid of {_v}%":
+					set {_nm} to gfName(loop-value)
+					set {_mark} to ""
+					if {-gpotm::%uuid of {_v}%} is loop-value:
+						set {_mark} to " ✔"
+					set {_lab} to gfT("▲ %{_nm}%%{_mark}%", "yellow", false)
+					set {_btn} to "{label:%{_lab}%,action:{type:""minecraft:run_command"",command:""potm %{_nm}%""}}"
+					if {_acts} is "":
+						set {_acts} to {_btn}
+					else:
+						set {_acts} to "%{_acts}%,%{_btn}%"
+	set {_title} to "{""text"":""게임 결과"",""color"":""gold"",""bold"":true}"
+	set {_body} to "[{type:""minecraft:plain_message"",contents:%{_contents}%,width:400}]"
+	set {_exit} to "{label:{""text"":""닫기""}}"
+	if {_acts} is "":
+		set {_dj} to "{type:""minecraft:notice"",title:%{_title}%,can_close_with_escape:true,pause:false,body:%{_body}%}"
+	else:
+		set {_dj} to "{type:""minecraft:multi_action"",title:%{_title}%,can_close_with_escape:true,pause:false,body:%{_body}%,columns:3,actions:[%{_acts}%],exit_action:%{_exit}%}"
+	set {_pname} to {_v}.getName()
+	execute console command "dialog show %{_pname}% %{_dj}%"
+
+# 결과 표를 그리기 전에 최고 킬/피해(금색 표시용)와 이름 칸 너비를 계산해 둔다.
+function gfPrep():
+	set {-gfmaxk} to 0
+	set {-gfmaxd} to 0
+	loop gfIds():
+		set {_kk} to {-gk::%loop-value%}
+		if {_kk} is a number:
+			if {_kk} > {-gfmaxk}:
+				set {-gfmaxk} to {_kk}
+		set {_dd} to {-gdmg::%loop-value%}
+		if {_dd} is a number:
+			if round({_dd}) > {-gfmaxd}:
+				set {-gfmaxd} to round({_dd})
+	set {-gfnw} to 96
+	loop gfIds():
+		set {_nw} to (floor((gtPx(gfName(loop-value)) + 8) / 4) + 1) * 4
+		if {_nw} > {-gfnw}:
+			set {-gfnw} to {_nw}
+
+# 팝업을 닫았거나 놓친 사람이 결과를 다시 연다(종료 연출 중에만)
+command /gameresult:
+	description: 게임 결과 팝업 다시 열기
+	executable by: players
+	trigger:
+		if {-gfinale} is not true:
+			send "&c지금은 볼 수 있는 결과가 없습니다."
+			stop
+		gfShow(player)
 
 # 고정 중에는 일반 채팅을 막고 기록한 뒤 결과 블록을 다시 그린다(아래 몇 줄은 평소처럼 채팅이 올라온다)
 on chat:
@@ -393,7 +513,10 @@ command /potm <text>:
 		set {-gpotm::%uuid of player%} to {_tid}
 		play sound "ui.button.click" to player
 		send "&6[투표] &f%gfName({_tid})% &7님에게 투표했습니다. (마감 전까지 변경할 수 있습니다)"
-		gfRenderAll()
+		if gfUseDialog() is true:
+			gfShow(player)
+		else:
+			gfRenderAll()
 
 # ===== 더미 =====
 # 승리 팀 플레이어 한 명과 똑같이 생긴(스킨/장비) 더미를 loc 에 세운다(바라보는 방향 yaw 180 = 남쪽에서 북쪽을 봄).
@@ -491,7 +614,8 @@ function gameFinale():
 	delete {-gpotmres}
 	set {-gchatn} to 0
 	set {-gvote} to true
-	set {-gpin} to true
+	if gfUseDialog() is false:
+		set {-gpin} to true
 	gfRenderAll()
 	play sound "block.note_block.chime" with volume 0.7 to all players
 	# 4) 투표 시간(마지막 3초 전까지)
@@ -503,8 +627,9 @@ function gameFinale():
 	wait 3 seconds
 	if {-gfgen} is not {_gen}:
 		stop
-	# 5) 정리: 더미 제거, 채팅 고정 해제, 게임 정리, 로비로
+	# 5) 정리: 더미 제거, 팝업 닫기, 채팅 고정 해제, 게임 정리, 로비로
 	gfClearDummies()
+	gfCloseDialogs()
 	delete {-gpin}
 	delete {-gvote}
 	delete {-gpotm::*}
@@ -530,7 +655,7 @@ function gfPotmAnnounce():
 		if {_n} > {_best}:
 			set {_best} to {_n}
 	if {_best} is 0:
-		set {-gpotmres} to "&7투표 없음"
+		set {-gpotmres} to "투표 없음"
 	else:
 		set {_names} to ""
 		loop gfIds():
@@ -539,7 +664,7 @@ function gfPotmAnnounce():
 					set {_names} to gfName(loop-value)
 				else:
 					set {_names} to "%{_names}%, %gfName(loop-value)%"
-		set {-gpotmres} to "%{_names}% &7(%{_best}%표)"
+		set {-gpotmres} to "%{_names}% (%{_best}%표)"
 	loop all players:
 		send title "&6Player Of The Match" with subtitle colored "&f%{-gpotmres}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "entity.player.levelup" with volume 0.8 to loop-player
@@ -549,6 +674,7 @@ function gfPotmAnnounce():
 function gfAbort():
 	add 1 to {-gfgen}
 	gfClearDummies()
+	gfCloseDialogs()
 	delete {-gpin}
 	delete {-gvote}
 	delete {-gpotm::*}
