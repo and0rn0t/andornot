@@ -413,7 +413,7 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 # ===== 결과 디스플레이(승리 팀 더미 뒤) =====
 # 팀 키의 색 이름 조각(JSON)
 function gfLabelJ(key: text) :: text:
-	return gfT("%{-gname::%{_key}%}%", gtColorJ(gTeamIndex({_key})), false)
+	return gfT(gTeamName({_key}), gtColorJ(gTeamIndex({_key})), false)
 
 # 한 팀의 참가자 줄들(JSON 조각, 앞에 쉼표, 줄바꿈 포함). 중첩 loop 를 피하려고 따로 뺌.
 function gfTeamRowsJ(tk: text, nlc: text) :: text:
