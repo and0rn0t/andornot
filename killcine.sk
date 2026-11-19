@@ -37,7 +37,10 @@ function kcRespawnLoc(v: player) :: location:
 					set {-gdropflag::%{_v}'s uuid%} to true
 					return gDropLoc({_t})
 				return {_v}.getWorld().getSpawnLocation()
+	# 게임 중이 아닌데 낙하용 겉날개가 남아 있으면 벗기고 로비로 보낸다
 	delete {-gdropflag::%{_v}'s uuid%}
+	if {-gdropon::%{_v}'s uuid%} is true:
+		gDropEnd({_v})
 	return gameLobbyLoc()
 
 # 킬 점수를 올리는 자리(게임 진행 틀이 생기면 여기서 팀 점수/KDA 를 올린다). 지금은 아무 일도 안 한다.
