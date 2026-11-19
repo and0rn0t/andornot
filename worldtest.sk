@@ -95,7 +95,10 @@ command /worldtest [<text>] [<text>]:
 			stop
 		if {_sub} is "info":
 			send "&6[월드 테스트] &7저장된 위치"
-			loop "lobby" and "stage":
+			set {_keys::*} to "lobby" and "stage"
+			loop all worlds:
+				add gcStageKey(loop-world.getName()) to {_keys::*}
+			loop {_keys::*}:
 				set {_k} to loop-value
 				set {_sw} to {gamecfg::loc::%{_k}%::world}
 				if {_sw} is not set:

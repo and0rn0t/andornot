@@ -197,6 +197,13 @@ function gameStart(by: text):
 		add loop-player to {-gplist::*}
 	if size of {-gplist::*} < 1:
 		stop
+	# 게임이 진행되는 월드 = 시작한 관리자가 있는 월드(없으면 첫 참가자의 월드). 종료 연출은 이 월드의 결과 무대에서 한다.
+	set {-gworld} to ""
+	loop {-gplist::*}:
+		if loop-value.getName() is {_by}:
+			set {-gworld} to loop-value.getWorld().getName()
+	if {-gworld} is "":
+		set {-gworld} to {-gplist::1}.getWorld().getName()
 	# 팀 배정: 이미 팀이 있는(/team) 사람은 그대로 두고, 나머지는 섞어서 인원이 가장 적은 팀에 넣는다. 팀 배정은 {-team} 변수.
 	if {_n} > 0:
 		set {_sh::*} to shuffled {-gplist::*}

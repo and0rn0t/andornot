@@ -48,7 +48,7 @@ function adminButtonItem(id: text) :: itemtype:
 		return {_i}
 	if {_id} is "setstage":
 		set {_i} to lectern named "&f결과 무대 위치 설정"
-		set lore of {_i} to "&7지금 서 있는 자리와 바라보는 방향을", "&7승리 팀 더미와 결과 디스플레이의", "&7무대로 저장해요", "&7(더미가 바라볼 쪽, 구경하는 사람이 설 쪽을 보고 서세요)", "", "&e▶ 클릭해서 저장"
+		set lore of {_i} to "&7지금 서 있는 자리와 바라보는 방향을", "&7승리 팀 더미와 결과 디스플레이의", "&7무대로 저장해요", "&7(서 있는 월드마다 따로 저장돼요)", "&7(더미가 바라볼 쪽, 구경하는 사람이 설 쪽을 보고 서세요)", "", "&e▶ 클릭해서 저장"
 		return {_i}
 	if {_id} is "clearstage":
 		set {_i} to barrier named "&c결과 무대 치우기"
@@ -78,8 +78,9 @@ function adminAction(p: player, id: text):
 		send "&a로비 위치를 저장했습니다. (%{_p}.getWorld().getName()%)" to {_p}
 	else if {_id} is "setstage":
 		close {_p}'s inventory
-		gcSaveLoc("stage", location of {_p})
-		send "&a결과 무대 위치를 저장했습니다. 지금 바라보는 방향이 더미가 바라볼 방향입니다. (%{_p}.getWorld().getName()%)" to {_p}
+		set {_sw} to {_p}.getWorld().getName()
+		gcSaveLoc(gcStageKey({_sw}), location of {_p})
+		send "&a'%{_sw}%' 월드의 결과 무대 위치를 저장했습니다. 지금 바라보는 방향이 더미가 바라볼 방향입니다." to {_p}
 	else if {_id} is "clearstage":
 		close {_p}'s inventory
 		gfClearStage()
