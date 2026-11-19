@@ -323,7 +323,14 @@ function gfPrep():
 function gfResultJson() :: text:
 	gfPrep()
 	set {_nlc} to "{""text"":""\n""}"
-	set {_t0} to gfT("게임 결과", "gold", true)
+	# 제목: 글자 없이 표 폭만큼 = 로 줄을 채운다(= 한 글자 6픽셀)
+	set {_tw} to gfNameW() + gfKdaW() * 3 + gfDmgW() + gtItemW()
+	set {_eq} to ""
+	set {_en} to floor({_tw} / 6)
+	while {_en} > 0:
+		set {_eq} to "%{_eq}%="
+		remove 1 from {_en}
+	set {_t0} to gfT({_eq}, "gold", false)
 	set {_i1} to gfT("%gcModeName({-gmode})% · 승리 ", "yellow", false)
 	set {_wj} to gfLabelJ({-gwinner})
 	set {_ex} to "%{_t0}%,%{_nlc}%,%{_i1}%,%{_wj}%"
