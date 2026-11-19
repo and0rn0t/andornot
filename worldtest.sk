@@ -36,8 +36,8 @@ command /worldtest [<text>] [<text>]:
 			stop
 		if {_sub} is "list":
 			send "&6[월드 테스트] &7불러온 월드 목록"
-			loop Bukkit.getWorlds():
-				set {_w} to loop-value
+			loop all worlds:
+				set {_w} to loop-world
 				set {_wn} to {_w}.getName()
 				send "&7- &f%{_wn}%"
 			stop
