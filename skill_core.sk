@@ -68,6 +68,7 @@
 #   {gamecfg::map} 게임 맵 월드 이름, {gamecfg::maprandom} 매 게임 랜덤 모드(관리자 메뉴 맵 설정, 저장 변수)  admin, game
 #   {gamecfg::loc::lobby|stage_<월드>::world|x|y|z|yaw|pitch} 로비 위치/월드별 결과 무대 위치(저장 변수, 월드 이름+좌표라 월드가 안 올라와 있어도 안 사라짐)  gameend(gcSaveLoc/gcLoadLoc)
 #   {gamecfg::loc::respawn_<월드>::world|x|y|z|yaw|pitch} 월드별 리스폰 기준 위치(저장 변수)  admin, game(gcRespawnKey)
+#   {-gdropon|gdropchest|gdropgen|gdropflag::uuid} 상공 낙하(겉날개) 상태(RAM)  game, killcine
 #   {-gspawn::팀키} 이번 게임의 팀별 초기 리스폰 위치(RAM, 게임 시작 때 gGenSpawns 가 뽑음)  game
 #   {gamecfg::loc::training::world|x|y|z|yaw|pitch} 훈련장 위치(저장 변수, 월드 이름+좌표)  lobby
 #   {matchcount}, {matchlog::번호::json|mode|winner|map|rand|time|potm|rv::uuid|rvn::uuid}, {matchshelf::월드_x_y_z} 매치 기록/리뷰/등록 독서대(저장 변수)  matchhistory

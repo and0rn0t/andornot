@@ -366,7 +366,7 @@ function ratingApply():
 # 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 기준 위치를 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때 팀 수만큼(개인전은 참가자 수만큼) 그 기준 위치에서 반경 200칸 안의 무작위 위치를 뽑아
 # 이번 게임의 팀별 초기 리스폰 위치({-gspawn::팀키})로 쓴다. 기준 위치가 없는 월드는 뽑지 않고 예전처럼 동작한다(시작 때 제자리, 리스폰은 월드 스폰).
 # 섬멸전: 리스폰이 없고 초기 위치만 쓴다(게임 시작/매 라운드 시작 때 그 팀의 초기 위치로 이동).
-# 바운티: 처음에는 초기 위치, 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 초기 위치). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
+# 리스폰/초기 위치는 실제로는 그 지점의 상공 400칸에서 시작해 겉날개로 활강한다(아래 "상공 낙하" 절). 바운티: 처음에는 초기 위치, 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 초기 위치). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
 # 무작위 위치: 그 자리의 가장 높은 블럭 위, 물/용암이 아닌 곳. 기준 높이와 너무 차이 나는 곳(동굴 위/아래 등)은 버리고 다시 뽑는다. 20번 안에 못 찾으면 기준 위치를 그대로 쓴다.
 # 미검증: World#getHighestBlockYAt(x, z), Block#getType().name() 문자열 비교.
 function gcRespawnKey(wn: text) :: text:
@@ -437,14 +437,78 @@ function gTeamSpot(v: player) :: location:
 		return gRandomSpot({_ml}, 50, 12)
 	return gInitSpawn({_tk})
 
-# 게임/라운드가 시작될 때 플레이어를 보낼 곳: 그 팀의 초기 리스폰 위치(기준 위치가 없으면 제자리).
+# 게임/라운드가 시작될 때 플레이어를 보낼 곳: 그 팀의 초기 리스폰 위치의 상공(기준 위치가 없으면 제자리). 도착하면 겉날개를 입혀 활강시킨다(gDropStart).
 function gameSpawn(p: player):
 	if {-ingame} is not true:
 		stop
 	set {_s} to gInitSpawn(gTeamOf({_p}))
 	if {_s} is not set:
 		stop
-	tpSafe({_p}, {_s})
+	tpSafe({_p}, gDropLoc({_s}))
+	gDropStart({_p})
+
+# ===== 상공 낙하(겉날개) =====
+# 리스폰/초기 위치는 그 지점의 상공 400칸(월드 높이 제한까지)에서 시작하고, 겉날개를 입혀 활강시킨다. 땅에 닿으면 겉날개를 벗기고 원래 가슴 방어구를 돌려준다.
+# 낙하 중에는 낙하/벽 충돌 피해만 받지 않는다(착지 때 죽지 않게). 변수(RAM): {-gdropon::uuid}(낙하 중), {-gdropchest::uuid}(원래 가슴 방어구), {-gdropgen::uuid}(낙하 세대, 새 낙하/종료 때 올려서 이전 감시를 끝냄), {-gdropflag::uuid}(kcRespawnLoc 가 상공 위치를 돌려줬다는 표시)
+# 미검증: chestplate 설정/삭제, setGliding, isOnGround, 낙하/벽 충돌 피해 원인 이름(fall, fly into wall).
+function gDropLoc(l: location) :: location:
+	set {_w} to {_l}.getWorld()
+	set {_top} to {_w}.getMaxHeight() - 2
+	set {_y} to {_l}.getY() + 400
+	if {_y} > {_top}:
+		set {_y} to {_top}
+	set {_r} to {_l}.clone()
+	{_r}.setY({_y})
+	return {_r}
+
+function gDropEnd(p: player):
+	set {_id} to "%uuid of {_p}%"
+	add 1 to {-gdropgen::%{_id}%}
+	if {-gdropon::%{_id}%} is true:
+		if {_p} is online:
+			if {-gdropchest::%{_id}%} is set:
+				set chestplate of {_p} to {-gdropchest::%{_id}%}
+			else:
+				delete chestplate of {_p}
+			{_p}.setGliding(false)
+	delete {-gdropon::%{_id}%}
+	delete {-gdropchest::%{_id}%}
+
+function gDropStart(p: player):
+	set {_id} to "%uuid of {_p}%"
+	if {-gdropon::%{_id}%} is true:
+		# 이미 낙하 중(원래 방어구는 처음 것을 유지)
+		add 1 to {-gdropgen::%{_id}%}
+	else:
+		delete {-gdropchest::%{_id}%}
+		if chestplate of {_p} is set:
+			set {-gdropchest::%{_id}%} to chestplate of {_p}
+		set {-gdropon::%{_id}%} to true
+		add 1 to {-gdropgen::%{_id}%}
+	set {_gen} to {-gdropgen::%{_id}%}
+	set chestplate of {_p} to elytra named "&f낙하용 겉날개"
+	{_p}.setGliding(true)
+	wait 1 second
+	set {_t} to 0
+	while {_t} < 400:
+		if {-gdropgen::%{_id}%} is not {_gen}:
+			stop
+		if {_p} is not online:
+			stop
+		if {_p}.isOnGround() is true:
+			exit loop
+		wait 5 ticks
+		add 1 to {_t}
+	if {-gdropgen::%{_id}%} is {_gen}:
+		gDropEnd({_p})
+
+on damage of player:
+	if {-gdropon::%victim's uuid%} is not true:
+		stop
+	if damage cause is fall:
+		cancel event
+	if damage cause is fly into wall:
+		cancel event
 
 # ===== 머리 위 별(바운티) =====
 function gStarText(n: number) :: text:
@@ -660,6 +724,7 @@ function gameCleanup():
 		set {_pl} to loop-value
 		if {_pl} is online:
 			kcClearState({_pl})
+			gDropEnd({_pl})
 			set gamemode of {_pl} to adventure
 			{_pl}.setInvulnerable(false)
 			{_pl}.clearTitle()
@@ -883,6 +948,7 @@ on PlayerMoveEvent:
 on quit:
 	if {-ingame} is true:
 		if {-gplist::*} contains player:
+			gDropEnd(player)
 			gStarRemove("%uuid of player%")
 			set {-gdead::%uuid of player%} to true
 			gAnnCheck()
