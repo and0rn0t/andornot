@@ -20,7 +20,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "team", "setlobby", "setstage", "clearstage", "settraining", "trainingnpc" and "cleartrainingnpc"
+	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "team", "setlobby", "setstage", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc" and "clearlobbynpc"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -76,6 +76,14 @@ function adminButtonItem(id: text) :: itemtype:
 		set {_i} to red wool named "&c훈련장 NPC 치우기"
 		set lore of {_i} to "&7설치된 훈련장 NPC 를", "&7모든 월드에서 지워요", "", "&e▶ 클릭해서 치우기"
 		return {_i}
+	if {_id} is "lobbynpc":
+		set {_i} to compass named "&f로비 NPC 설치"
+		set lore of {_i} to "&7서 있는 자리 앞에 NPC 를 세워요", "&7(누르면 로비로 이동)", "&7(NPC 가 서 있는 쪽을 보고 서세요)", "", "&e▶ 클릭해서 설치"
+		return {_i}
+	if {_id} is "clearlobbynpc":
+		set {_i} to red wool named "&c로비 NPC 치우기"
+		set lore of {_i} to "&7설치된 로비 NPC 를", "&7모든 월드에서 지워요", "", "&e▶ 클릭해서 치우기"
+		return {_i}
 	set {_i} to barrier named "&c알 수 없는 버튼"
 	return {_i}
 
@@ -125,6 +133,16 @@ function adminAction(p: player, id: text):
 		close {_p}'s inventory
 		set {_n} to trainingNpcClear()
 		send "&7훈련장 NPC %{_n}%개를 치웠습니다." to {_p}
+	else if {_id} is "lobbynpc":
+		close {_p}'s inventory
+		set {_yaw} to {_p}.getLocation().getYaw()
+		set {_nl} to location of {_p} ~ vector(0 - sin({_yaw}) * 1.5, 0, cos({_yaw}) * 1.5)
+		lobbyNpcSpawn({_nl}, {_yaw} + 180)
+		send "&a서 있는 자리 앞에 로비 NPC 를 설치했습니다." to {_p}
+	else if {_id} is "clearlobbynpc":
+		close {_p}'s inventory
+		set {_n} to lobbyNpcClear()
+		send "&7로비 NPC %{_n}%개를 치웠습니다." to {_p}
 	else if {_id} is "itemorder":
 		itemGuiOpen({_p}, "order")
 	else if {_id} is "team":

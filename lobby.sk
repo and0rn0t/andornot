@@ -6,6 +6,7 @@
 #   - 로비 위치가 저장돼 있지 않으면 막지 않는다. 낙사/몹 피해 등 플레이어끼리가 아닌 피해는 막지 않는다.
 #   - 피해를 주지 않는 기절/끌어당기기 같은 스킬 효과는 이 규칙으로 못 막는다(필요하면 스킬 쪽에서 따로 막아야 한다).
 # 훈련장 NPC 의 스킨은 trainingNpcSkin()(지금 Dream). 이미 설치한 NPC 는 스킨이 안 바뀌니 치우고 다시 설치한다.
+# 로비 NPC: 같은 방식으로 세우고, 누르면 로비(관리자 메뉴 "로비 위치 설정")로 돌아온다(스코어보드 태그 lobbynpc, 스킨은 lobbyNpcSkin(), 지금은 기본 스킨).
 # 훈련장 NPC: 관리자 메뉴 "훈련장 NPC 설치"가 서 있는 자리 앞에 마네킹 NPC 를 세운다(스코어보드 태그 trainingnpc). 우클릭/좌클릭하면 저장된 훈련장으로 이동한다.
 #   게임 참가자는 게임 중에 못 쓴다. 이동은 다른 월드여도 되게 tpSafe(gameend.sk)를 쓴다.
 # 미검증 문법: on damage with priority lowest, 마네킹 NPC(이름/설명/태그), PlayerInteractEntityEvent/PrePlayerAttackEntityEvent 로 NPC 클릭 받기, send action bar.
@@ -86,49 +87,83 @@ function trainingGo(p: player):
 function trainingNpcSkin() :: text:
 	return "Dream"
 
-# 훈련장 NPC 를 loc 에 yaw 방향으로 세운다(마네킹, 움직이지 않음, 무적, 스코어보드 태그 trainingnpc)
-function trainingNpcSpawn(loc: location, yaw: number):
+# 로비 NPC 가 입을 스킨(계정 이름). 빈 글자면 기본 스킨.
+function lobbyNpcSkin() :: text:
+	return ""
+
+# NPC(마네킹)를 loc 에 yaw 방향으로 세운다: 움직이지 않고 무적이며 스코어보드 태그 tag 를 단다. 이름은 이름표(색 color, 굵게), desc 는 이름 아래 설명. skin 이 빈 글자가 아니면 그 계정의 스킨을 입힌다.
+function npcSpawn(loc: location, yaw: number, tag: text, name: text, color: text, desc: text, skin: text):
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
-	# 스킨: 마인크래프트 계정 이름 Dream 의 스킨(이름만 주면 서버가 스킨을 찾아 온다, 미검증: ResolvableProfile 빌더). 바꾸려면 trainingNpcSkin() 의 이름만 고친다.
-	{_m}.setProfile(ResolvableProfile.resolvableProfile().name(trainingNpcSkin()).build())
+	if {_skin} is not "":
+		{_m}.setProfile(ResolvableProfile.resolvableProfile().name({_skin}).build())
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)
 	{_m}.setSilent(true)
 	{_m}.setRotation({_yaw}, 0)
-	{_m}.addScoreboardTag("trainingnpc")
-	set {_nj} to "{""text"":""훈련장"",""color"":""green"",""bold"":true}"
-	set {_dj} to "{""text"":""클릭해서 이동"",""color"":""gray""}"
+	{_m}.addScoreboardTag({_tag})
+	set {_nj} to "{""text"":""%{_name}%"",""color"":""%{_color}%"",""bold"":true}"
+	set {_dj} to "{""text"":""%{_desc}%"",""color"":""gray""}"
 	{_m}.customName(GsonComponentSerializer.gson().deserialize({_nj}))
 	{_m}.setCustomNameVisible(true)
 	{_m}.setDescription(GsonComponentSerializer.gson().deserialize({_dj}))
 
-# 훈련장 NPC 를 모두 지우고 지운 수를 돌려준다
-function trainingNpcClear() :: number:
+function trainingNpcSpawn(loc: location, yaw: number):
+	npcSpawn({_loc}, {_yaw}, "trainingnpc", "훈련장", "green", "클릭해서 이동", trainingNpcSkin())
+
+function lobbyNpcSpawn(loc: location, yaw: number):
+	npcSpawn({_loc}, {_yaw}, "lobbynpc", "로비", "aqua", "클릭해서 이동", lobbyNpcSkin())
+
+# 태그가 tag 인 NPC 를 모든 월드에서 지우고 지운 수를 돌려준다
+function npcClear(tag: text) :: number:
 	set {_n} to 0
 	loop all entities:
 		set {_e} to loop-entity
-		set {_has} to {_e}.getScoreboardTags().contains("trainingnpc")
+		set {_has} to {_e}.getScoreboardTags().contains({_tag})
 		if {_has} is true:
 			{_e}.remove()
 			add 1 to {_n}
 	return {_n}
+
+function trainingNpcClear() :: number:
+	return npcClear("trainingnpc")
+
+function lobbyNpcClear() :: number:
+	return npcClear("lobbynpc")
+
+# 로비로 이동(로비 NPC 클릭). 게임 참가자는 게임 중에 못 쓴다.
+function lobbyGo(p: player):
+	if {-kc::%{_p}'s uuid%} is set:
+		stop
+	if {-ingame} is true:
+		if {-gplist::*} contains {_p}:
+			send "&c게임 중에는 로비로 이동할 수 없습니다." to {_p}
+			stop
+	tpSafe({_p}, gameLobbyLoc())
+	play sound "entity.enderman.teleport" with volume 0.7 and pitch 1.2 to {_p}
+	send "&a로비로 이동했습니다." to {_p}
+
+# NPC 클릭 처리: 훈련장/로비 NPC 이면 해당 이동을 하고 true
+function npcClick(p: player, e: entity) :: boolean:
+	set {_t} to {_e}.getScoreboardTags().contains("trainingnpc")
+	if {_t} is true:
+		trainingGo({_p})
+		return true
+	set {_l} to {_e}.getScoreboardTags().contains("lobbynpc")
+	if {_l} is true:
+		lobbyGo({_p})
+		return true
+	return false
 
 # 우클릭
 on PlayerInteractEntityEvent:
 	if event.getHand().name() is not "HAND":
 		stop
 	set {_e} to event.getRightClicked()
-	set {_has} to {_e}.getScoreboardTags().contains("trainingnpc")
-	if {_has} is not true:
-		stop
-	event.setCancelled(true)
-	trainingGo(event.getPlayer())
+	if npcClick(event.getPlayer(), {_e}) is true:
+		event.setCancelled(true)
 
 # 좌클릭(공격 직전 이벤트)
 on PrePlayerAttackEntityEvent:
 	set {_e} to event.getAttacked()
-	set {_has} to {_e}.getScoreboardTags().contains("trainingnpc")
-	if {_has} is not true:
-		stop
-	event.setCancelled(true)
-	trainingGo(event.getPlayer())
+	if npcClick(event.getPlayer(), {_e}) is true:
+		event.setCancelled(true)
