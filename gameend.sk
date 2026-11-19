@@ -169,12 +169,14 @@ function gfBuildStage(stage: location) :: object:
 		set {_dl} to {_stage} ~ vector({_rx} * {_off}, 0, {_rz} * {_off})
 		gfDummy({-gfwinp::%{_i}%}, {_dl}, {-gfwinid::%{_i}%}, {_sy})
 		add 1 to {_i}
-	# 결과 디스플레이: 더미들 뒤쪽(앞의 반대) 위에 띄운다(보는 사람 쪽을 향함). 크기/위치는 아래 숫자로 조절.
+	# 결과 디스플레이: 더미들 뒤쪽(앞의 반대) 위에 띄운다(고정, 구경꾼이 서는 쪽을 향함). 크기/위치는 아래 숫자로 조절.
 	set {_dloc} to {_stage} ~ vector({_fx} * -2.5, 3.5, {_fz} * -2.5)
 	spawn a text display at {_dloc}:
 		set {_disp} to event-entity
 		add "gdummy" to scoreboard tags of event-entity
-		set billboard of event-entity to vertical
+		set billboard of event-entity to fixed
+	# 고정: 시선을 따라 돌지 않고, 더미와 같은 방향(구경꾼이 서는 쪽)을 향해 한 자리에 붙어 있다. 글자가 거울처럼 뒤집혀 보이면 아래 {_sy} 를 {_sy} + 180 으로 바꾼다(미검증).
+	{_disp}.setRotation({_sy}, 0)
 	{_disp}.setLineWidth(600)
 	{_disp}.text(GsonComponentSerializer.gson().deserialize(gfResultJson()))
 	add {_disp} to {-gdummies::*}
