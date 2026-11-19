@@ -5,12 +5,14 @@
 #   - 진행 중인 게임의 참가자끼리는 막지 않는다(게임 월드가 로비 월드와 같아도 게임이 돌아가게).
 #   - 로비 위치가 저장돼 있지 않으면 막지 않는다. 낙사/몹 피해 등 플레이어끼리가 아닌 피해는 막지 않는다.
 #   - 피해를 주지 않는 기절/끌어당기기 같은 스킬 효과는 이 규칙으로 못 막는다(필요하면 스킬 쪽에서 따로 막아야 한다).
+# 훈련장 NPC 의 스킨은 trainingNpcSkin()(지금 Dream). 이미 설치한 NPC 는 스킨이 안 바뀌니 치우고 다시 설치한다.
 # 훈련장 NPC: 관리자 메뉴 "훈련장 NPC 설치"가 서 있는 자리 앞에 마네킹 NPC 를 세운다(스코어보드 태그 trainingnpc). 우클릭/좌클릭하면 저장된 훈련장으로 이동한다.
 #   게임 참가자는 게임 중에 못 쓴다. 이동은 다른 월드여도 되게 tpSafe(gameend.sk)를 쓴다.
 # 미검증 문법: on damage with priority lowest, 마네킹 NPC(이름/설명/태그), PlayerInteractEntityEvent/PrePlayerAttackEntityEvent 로 NPC 클릭 받기, send action bar.
 
 import:
 	org.bukkit.entity.EntityType
+	io.papermc.paper.datacomponent.item.ResolvableProfile
 	org.bukkit.event.player.PlayerInteractEntityEvent
 	io.papermc.paper.event.player.PrePlayerAttackEntityEvent
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
@@ -80,9 +82,15 @@ function trainingGo(p: player):
 	play sound "entity.enderman.teleport" with volume 0.7 and pitch 1.2 to {_p}
 	send "&a훈련장으로 이동했습니다." to {_p}
 
+# 훈련장 NPC 가 입을 스킨(마인크래프트 계정 이름)
+function trainingNpcSkin() :: text:
+	return "Dream"
+
 # 훈련장 NPC 를 loc 에 yaw 방향으로 세운다(마네킹, 움직이지 않음, 무적, 스코어보드 태그 trainingnpc)
 function trainingNpcSpawn(loc: location, yaw: number):
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
+	# 스킨: 마인크래프트 계정 이름 Dream 의 스킨(이름만 주면 서버가 스킨을 찾아 온다, 미검증: ResolvableProfile 빌더). 바꾸려면 trainingNpcSkin() 의 이름만 고친다.
+	{_m}.setProfile(ResolvableProfile.resolvableProfile().name(trainingNpcSkin()).build())
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)
 	{_m}.setSilent(true)
