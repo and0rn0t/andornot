@@ -658,6 +658,10 @@ function itemGuiFill(p: player, inv: inventory, mode: text):
 				set {_x} to "&e▶ 자리를 바꿀 아이템이에요"
 		set slot {_s} of {_inv} to itemBuild({_id}, {_x})
 		set {-itemguimap::%{_uid}%::%{_s}%} to {_id}
+	# 아이템 변경(select) 화면: 4번째 줄 가운데(칸 31)에 "돌아가기" 방벽. 누르면 무기고 기본 화면으로 돌아간다(클릭 처리의 "__back").
+	if {_mode} is "select":
+		set slot 31 of {_inv} to barrier named "&c돌아가기"
+		set {-itemguimap::%{_uid}%::31} to "__back"
 
 # 무기고 GUI(2줄): 윗줄 가운데(칸 4)는 내 머리, 아랫줄 3~7번째 칸(칸 11~15)이 구성 1~5번. 나머지는 회색 색유리판.
 function armoryFill(p: player, inv: inventory):
@@ -836,6 +840,9 @@ on inventory click:
 	if {_m} is "armory":
 		itemGuiOpen({_p}, "select", {_id})
 	else if {_m} is "select":
+		if {_id} is "__back":
+			itemGuiOpen({_p}, "armory")
+			stop
 		set {_k} to {-itemguislot::%{_uid}%}
 		if loadoutGet({_p}, {_k}) is not {_id}:
 			loop integers from 1 to 5:
