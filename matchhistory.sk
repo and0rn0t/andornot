@@ -4,7 +4,7 @@
 #   {matchlog::번호::mode|winner|map|rand|time|potm}(목록 설명용), {matchlog::번호::rv::uuid}/{matchlog::번호::rvn::uuid}(한 줄 리뷰/작성자 이름, 사람당 1개),
 #   {matchshelf::월드_x_y_z}(등록된 독서대 블록, true)
 # 이 파일이 쓰는 변수(RAM): {-mhgui::uuid}(GUI 열림), {-mhmap::uuid::칸}(칸 -> 매치 번호), {-mhpage::uuid}(현재 쪽, 0부터)
-# 기록 시점: gameFinale 마지막 단계(gmRecord). /finaletest 테스트는 기록하지 않는다. 번호는 1부터, 100 미만은 MATCH 001 처럼 3자리로 표기(matchLabel).
+# 기록 시점: gameFinale 마지막 단계(gmRecord). 번호는 1부터, 100 미만은 MATCH 001 처럼 3자리로 표기(matchLabel).
 # GUI: 독서대 우클릭 -> 4줄. 1~3줄 27칸 = 매치(최신이 먼저, 작성된 책), 4줄 1/9번 칸 = 이전/다음 쪽 종이(매치 28개 이상일 때만), 4줄 5번 칸 = 나가기(방벽).
 # 책을 누르면 vanilla dialog(/dialog show)로 결과창을 띄우고, 한 줄 리뷰(40자)를 남길 수 있다(입력은 채팅: dialog 입력칸은 한글이 안 들어가서). 리뷰는 결과 아래에 표시된다.
 # 관리자 메뉴 버튼: 독서대 등록/해제(바라보는 독서대 블록).
@@ -28,10 +28,8 @@ function mhCount() :: number:
 		return {matchcount}
 	return 0
 
-# 매치 끝에 결과를 저장한다(테스트는 저장 안 함). 결과창에 POTM 이 반영된 뒤에 부를 것.
+# 매치 끝에 결과를 저장한다. 결과창에 POTM 이 반영된 뒤에 부를 것.
 function gmRecord():
-	if {-gftest} is true:
-		stop
 	set {-gfinline} to true
 	add 1 to {matchcount}
 	set {_n} to floor({matchcount})
@@ -282,55 +280,9 @@ on quit:
 	delete {-mhmap::%player's uuid%::*}
 	delete {-mhpage::%player's uuid%}
 
-# ===== 테스트: 가짜 매치 기록을 만들어 매치 결과 dialog 를 띄운다(관리자 전용) =====
-# /matchtest        가짜 게임 데이터(3인씩 3팀, 1팀 승리, POTM 더미1)로 결과를 만들어 0번 기록에 저장하고 dialog 를 바로 연다. 진짜 기록 번호/개수는 건드리지 않는다.
-# /matchtest reopen 저장해 둔 0번 기록 dialog 를 다시 연다(리뷰 등록 후 반영 확인용)
-# /matchtest clear  0번 기록(리뷰 포함)을 지운다
-# 0번은 책장 목록 GUI 에 나오지 않는다(목록은 1번부터). 책장/목록/쪽 넘김은 실제 매치로 확인할 것.
-command /matchtest [<text>]:
-	permission: minecraft.command.op
-	permission message: &c권한이 없습니다.
-	description: 매치 기록 dialog 테스트 (관리자 전용)
-	executable by: players
-	trigger:
-		if arg-1 is "clear":
-			delete {matchlog::0::*}
-			send "&7테스트 기록(0번)을 지웠습니다."
-			stop
-		if arg-1 is "reopen":
-			gmDialog(player, 0)
-			stop
-		if {-ingame} is true:
-			send "&c게임이 진행 중이라 테스트할 수 없습니다."
-			stop
-		if {-gfinale} is true:
-			send "&c종료 연출이 진행 중이라 테스트할 수 없습니다."
-			stop
-		if {-gftest} is true:
-			send "&c다른 테스트가 진행 중입니다."
-			stop
-		gfTestSetup(player)
-		delete {-gover}
-		set {-gmatchlbl} to "MATCH TEST"
-		set {-gpotmres} to "Dummy1 (3표)"
-		delete {matchlog::0::*}
-		set {-gfinline} to true
-		set {matchlog::0::json} to gfResultJson()
-		delete {-gfinline}
-		set {matchlog::0::mode} to gcModeName({-gmode})
-		set {matchlog::0::winner} to gTeamLabel({-gwinner})
-		set {matchlog::0::map} to "%{-gworld}%"
-		set {matchlog::0::rand} to "false"
-		set {matchlog::0::potm} to "%{-gpotmres}%"
-		set {matchlog::0::time} to now formatted as "yyyy-MM-dd HH:mm"
-		# 가짜 데이터 되돌리기
-		delete {-gmatchlbl}
-		delete {-gpotmres}
-		delete {-gwinner}
-		delete {-gfnw}
-		gfTestCleanup()
-		send "&6[테스트] &7가짜 매치 기록(0번)을 만들었습니다. 결과 dialog 를 엽니다."
-		gmDialog(player, 0)
+# 예전 테스트 기록(0번)이 남아 있으면 지운다
+on load:
+	delete {matchlog::0::*}
 
 # 리뷰 입력 대기 중인 사람의 다음 채팅 한 줄을 리뷰로 받는다(채팅으로는 한글이 들어간다).
 on chat:

@@ -2,9 +2,8 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
 #   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
-#   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
 # 매치 기록(결과 저장/책장 GUI/리뷰)은 matchhistory.sk. {-gmatchlbl}(이번 매치 이름, 결과 맨 윗줄)
-# 명령: /finaletest(관리자, 마지막 킬 연출부터 종료 연출까지 전체 테스트), /gamestop(관리자, 게임/연출 중단)
+# 명령: /gamestop(관리자, 게임/연출 중단)
 # 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭해서 한다(좌클릭은 무반응)(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 제외). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
@@ -209,17 +208,13 @@ function gfVotes(tid: text) :: number:
 			add 1 to {_c}
 	return {_c}
 
-# 결과 표시용 참가자 id 목록: 실제 참가자는 uuid 문자열, 테스트용 가짜 참가자는 {-gfake::id} 의 id
+# 결과 표시용 참가자 id 목록(참가자 uuid 문자열)
 function gfIds() :: texts:
 	loop {-gplist::*}:
 		add "%uuid of loop-value%" to {_r::*}
-	loop {-gfake::*}:
-		add loop-index to {_r::*}
 	return {_r::*}
 
 function gfName(id: text) :: text:
-	if {-gfake::%{_id}%} is set:
-		return "%{-gfake::%{_id}%}%"
 	if {-gpname::%{_id}%} is set:
 		return "%{-gpname::%{_id}%}%"
 	loop {-gplist::*}:
@@ -229,8 +224,6 @@ function gfName(id: text) :: text:
 
 # 참가자(id)의 팀 키. 시작 때 기록한 {-gpteam} 을 우선 쓴다(나가면 team.sk 가 {-team} 을 지우기 때문).
 function gfTeamOfId(id: text) :: text:
-	if {-gfake::%{_id}%} is set:
-		return "%{-gfteam::%{_id}%}%"
 	if {-gpteam::%{_id}%} is set:
 		return "%{-gpteam::%{_id}%}%"
 	loop {-gplist::*}:
@@ -238,10 +231,8 @@ function gfTeamOfId(id: text) :: text:
 			return gTeamOf(loop-value)
 	return ""
 
-# 아이템 구성을 읽어 올 플레이어(가짜 참가자는 테스트 실행자)
+# 아이템 구성을 읽어 올 플레이어
 function gfSrcOf(id: text) :: player:
-	if {-gfake::%{_id}%} is set:
-		return {-gftester}
 	loop {-gplist::*}:
 		if "%uuid of loop-value%" is {_id}:
 			return loop-value
@@ -774,14 +765,10 @@ function gameFinale():
 	if {-gover} is not true:
 		stop
 	set {-gfinale} to true
-	# 이번 매치 번호(결과창 맨 윗줄에 표시). 테스트는 TEST, 저장은 gmRecord
-	if {-gftest} is true:
-		set {-gmatchlbl} to "MATCH TEST"
-	else:
-		set {-gmatchlbl} to matchLabel(mhCount() + 1)
-	# 내부 승점 갱신(테스트 /finaletest 는 제외)
-	if {-gftest} is not true:
-		ratingApply()
+	# 이번 매치 번호(결과창 맨 윗줄에 표시). 저장은 gmRecord
+	set {-gmatchlbl} to matchLabel(mhCount() + 1)
+	# 내부 승점 갱신
+	ratingApply()
 	# 강제 종료(gfAbort)가 {-gfgen} 을 올리면 대기 뒤에 이 연출은 멈춘다
 	add 1 to {-gfgen}
 	set {_gen} to {-gfgen}
@@ -808,11 +795,6 @@ function gameFinale():
 			if loop-value is online:
 				add loop-value to {-gfwinp::*}
 				add "%uuid of loop-value%" to {-gfwinid::*}
-	# 테스트용 가짜 승리 팀원도 실행자의 모습으로 세운다
-	loop {-gfake::*}:
-		if {-gfteam::%loop-index%} is {-gwinner}:
-			add {-gftester} to {-gfwinp::*}
-			add loop-index to {-gfwinid::*}
 	delete {-gpotm::*}
 	delete {-gpotmres}
 	set {-gvote} to true
@@ -857,7 +839,6 @@ function gameFinale():
 	delete {-gmatchlbl}
 	set {_pl::*} to {-gplist::*}
 	gameCleanup()
-	gfTestCleanup()
 	loop {_pl::*}:
 		if loop-value is online:
 			gameLobby(loop-value)
@@ -890,7 +871,7 @@ function gfPotmAnnounce():
 	gfDummyRefresh()
 	gfDisplayRefresh()
 
-# 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/투표 상태를 지우고 테스트 데이터도 정리. gameCleanup() 보다 뒤에 부를 것.
+# 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/투표 상태를 지운다. gameCleanup() 보다 뒤에 부를 것.
 function gfAbort():
 	add 1 to {-gfgen}
 	gfClearStage()
@@ -900,143 +881,6 @@ function gfAbort():
 	delete {-gfinale}
 	delete {-gwinner}
 	delete {-gfnw}
-	gfTestCleanup()
-
-# 테스트(/finaletest)용으로 만든 가짜 게임 데이터를 지우고 실행자의 팀을 되돌린다.
-function gfTestCleanup():
-	if {-gftest} is not true:
-		stop
-	if {-gfoldteam} is set:
-		set {-team::%{-gftuuid}%} to {-gfoldteam}
-	else:
-		delete {-team::%{-gftuuid}%}
-	loop {-gfake::*}:
-		delete {-gk::%loop-index%}
-		delete {-gd::%loop-index%}
-		delete {-ga::%loop-index%}
-		delete {-gdmg::%loop-index%}
-	delete {-gk::%{-gftuuid}%}
-	delete {-gd::%{-gftuuid}%}
-	delete {-ga::%{-gftuuid}%}
-	delete {-gdmg::%{-gftuuid}%}
-	delete {-gfake::*}
-	delete {-gfteam::*}
-	delete {-gfoldteam}
-	delete {-gftester}
-	delete {-gftuuid}
-	delete {-gplist::*}
-	delete {-gteamlist::*}
-	delete {-gname::*}
-	delete {-gscore::*}
-	delete {-gteams}
-	delete {-gmode}
-	delete {-gtarget}
-	delete {-gftest}
-
-# /finaletest, /matchtest 공용: 가짜 게임 데이터(3인씩 3팀 9명, 1팀 승리)를 실제 게임 변수에 채운다. 끝나면 gfTestCleanup() 으로 되돌릴 것. 실행자 p 가 1팀의 실제 참가자.
-function gfTestSetup(p: player):
-	set {-gftest} to true
-	set {-gworld} to {_p}.getWorld().getName()
-	set {-gftester} to {_p}
-	set {-gftuuid} to "%uuid of {_p}%"
-	set {-gfoldteam} to {-team::%uuid of {_p}%}
-	set {-team::%uuid of {_p}%} to "1팀"
-	set {-gmode} to "bounty"
-	set {-gtarget} to 20
-	set {-gteams} to 3
-	set {-gteamlist::1} to "1팀"
-	set {-gteamlist::2} to "2팀"
-	set {-gteamlist::3} to "3팀"
-	set {-gname::1팀} to "1팀"
-	set {-gname::2팀} to "2팀"
-	set {-gname::3팀} to "3팀"
-	set {-gscore::1팀} to 20
-	set {-gscore::2팀} to 13
-	set {-gscore::3팀} to 9
-	set {-gplist::1} to {_p}
-	set {-gk::%uuid of {_p}%} to 9
-	set {-gd::%uuid of {_p}%} to 4
-	set {-ga::%uuid of {_p}%} to 3
-	set {-gdmg::%uuid of {_p}%} to 46
-	set {-gfake::fake1} to "Dummy1"
-	set {-gfake::fake2} to "Dummy2"
-	set {-gfake::fake3} to "Dummy3"
-	set {-gfake::fake4} to "Dummy4"
-	set {-gfake::fake5} to "Dummy5"
-	set {-gfake::fake6} to "Dummy6"
-	set {-gfake::fake7} to "Dummy7"
-	set {-gfake::fake8} to "Dummy8"
-	set {-gfteam::fake1} to "1팀"
-	set {-gfteam::fake2} to "1팀"
-	set {-gfteam::fake3} to "2팀"
-	set {-gfteam::fake4} to "2팀"
-	set {-gfteam::fake5} to "2팀"
-	set {-gfteam::fake6} to "3팀"
-	set {-gfteam::fake7} to "3팀"
-	set {-gfteam::fake8} to "3팀"
-	set {-gk::fake1} to 7
-	set {-gd::fake1} to 3
-	set {-ga::fake1} to 4
-	set {-gdmg::fake1} to 38
-	set {-gk::fake2} to 4
-	set {-gd::fake2} to 2
-	set {-ga::fake2} to 6
-	set {-gdmg::fake2} to 27.5
-	set {-gk::fake3} to 6
-	set {-gd::fake3} to 5
-	set {-ga::fake3} to 2
-	set {-gdmg::fake3} to 33
-	set {-gk::fake4} to 4
-	set {-gd::fake4} to 6
-	set {-ga::fake4} to 3
-	set {-gdmg::fake4} to 24
-	set {-gk::fake5} to 3
-	set {-gd::fake5} to 7
-	set {-ga::fake5} to 1
-	set {-gdmg::fake5} to 16.5
-	set {-gk::fake6} to 3
-	set {-gd::fake6} to 6
-	set {-ga::fake6} to 2
-	set {-gdmg::fake6} to 19
-	set {-gk::fake7} to 2
-	set {-gd::fake7} to 7
-	set {-ga::fake7} to 4
-	set {-gdmg::fake7} to 14
-	set {-gk::fake8} to 4
-	set {-gd::fake8} to 8
-	set {-ga::fake8} to 0
-	set {-gdmg::fake8} to 21
-	set {-gwinner} to "1팀"
-	set {-gover} to true
-
-# 관리자 전용: 마지막 킬 연출(실행자가 죽는 연출을 모두 관전)부터 종료 연출까지 전체를 재생한다. 3인씩 3팀(총 9명): 실행자 + 가짜 참가자 더미1~8. 1팀(실행자, 더미1, 더미2)이 바운티를 이겼다는 설정.
-# 승리 팀 3명이라 무대에 더미 3개(가짜 팀원은 실행자의 모습)가 선다. 실제 게임 변수를 빌려 쓰므로 게임/연출이 진행 중이면 거부하고, 끝나면 전부 되돌린다. 마지막 킬 연출은 포함하지 않는다.
-command /finaletest:
-	permission: minecraft.command.op
-	permission message: &c권한이 없습니다.
-	description: 마지막 킬 연출부터 게임 종료 연출까지 전체 테스트 (관리자 전용)
-	executable by: players
-	trigger:
-		if player is not op:
-			send "&c관리자만 사용할 수 있습니다."
-			stop
-		if {-ingame} is true:
-			send "&c게임이 진행 중이라 테스트할 수 없습니다. 먼저 /gamestop 으로 종료해 주십시오."
-			stop
-		if {-gfinale} is true:
-			send "&c이미 종료 연출이 진행 중입니다."
-			stop
-		if size of {-kc::*} > 0:
-			send "&c킬 연출이 진행 중입니다. 끝난 뒤 다시 시도해 주십시오."
-			stop
-		gfTestSetup(player)
-		# 실제 마지막 킬과 같은 순서: 승패가 난 상태({-gover})에서 실행자가 치명타를 받으면 킬 연출(killcine.sk)이 돌고, 연출이 끝나면 killcine.sk 가 gameFinale() 을 부른다.
-		# 킬 연출은 생존/모험 모드에서만 돌아서 모험 모드로 바꾼 뒤 치명 피해를 준다(공격자는 없음). 종료 연출이 끝나면 gfTestCleanup 이 되돌린다.
-		set {_tp} to player
-		set gamemode of {_tp} to adventure
-		send "&6[테스트] &7마지막 킬 연출부터 종료 연출까지 전체를 재생합니다. 더미1~8 에게도 투표할 수 있습니다. 중단하려면 /gamestop 을 사용하십시오."
-		wait 1 tick
-		damage {_tp} by 1000 hearts
 
 # 관리자 전용 게임 중단(진행 중인 게임, 종료 연출, 테스트 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
 command /gamestop:
