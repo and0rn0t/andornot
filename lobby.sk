@@ -11,6 +11,8 @@
 
 import:
 	org.bukkit.entity.EntityType
+	org.bukkit.event.player.PlayerInteractEntityEvent
+	io.papermc.paper.event.player.PrePlayerAttackEntityEvent
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 
 # 로비 PvP 금지 반경(칸)
