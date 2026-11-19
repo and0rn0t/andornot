@@ -481,6 +481,18 @@ function gfResultJson() :: text:
 				set {_ex} to "%{_ex}%,%{_bar}%"
 			set {_ex} to "%{_ex}%,%{_lj}%,%{_sc}%"
 			set {_first} to false
+	# 맵(게임이 진행된 월드)과, 랜덤 아이템 모드였으면 그것도 표시
+	set {_mt} to ""
+	if {-gworld} is set:
+		set {_mt} to "맵 %{-gworld}%"
+	if {-grandon} is true:
+		if {_mt} is "":
+			set {_mt} to "랜덤 아이템 모드"
+		else:
+			set {_mt} to "%{_mt}%  ·  랜덤 아이템 모드"
+	if {_mt} is not "":
+		set {_mj} to gfT({_mt}, "gray", false)
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_mj}%"
 	set {_hd} to gfHeaderJson()
 	set {_ex} to "%{_ex}%,%{_nlc}%,%{_nlc}%,%{_hd}%,%{_nlc}%"
 	loop gfTeamOrder():
