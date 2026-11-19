@@ -450,7 +450,7 @@ function gameSpawn(p: player):
 # ===== 상공 낙하(겉날개) =====
 # 리스폰/초기 위치는 그 지점의 상공 400칸(월드 높이 제한까지)에서 시작하고, 겉날개를 입혀 활강시킨다. 땅에 닿으면 겉날개를 벗기고 원래 가슴 방어구를 돌려준다.
 # 낙하 중에는 낙하/벽 충돌 피해만 받지 않는다(착지 때 죽지 않게). 변수(RAM): {-gdropon::uuid}(낙하 중), {-gdropchest::uuid}(원래 가슴 방어구), {-gdropgen::uuid}(낙하 세대, 새 낙하/종료 때 올려서 이전 감시를 끝냄), {-gdropflag::uuid}(kcRespawnLoc 가 상공 위치를 돌려줬다는 표시)
-# 미검증: chestplate 설정/삭제, setGliding, isOnGround, 낙하/벽 충돌 피해 원인 이름(fall, fly into wall).
+# 미검증: chestplate 설정/삭제, setGliding, isOnGround, 낙하/벽 충돌 피해 원인 이름(FALL, FLY_INTO_WALL, 이벤트의 getCause 로 비교).
 function gDropLoc(l: location) :: location:
 	set {_w} to {_l}.getWorld()
 	set {_top} to {_w}.getMaxHeight() - 2
@@ -505,9 +505,12 @@ function gDropStart(p: player):
 on damage of player:
 	if {-gdropon::%victim's uuid%} is not true:
 		stop
-	if damage cause is fall:
+	set {_ev} to event
+	set {_cause} to {_ev}.getCause()
+	set {_cn} to {_cause}.name()
+	if {_cn} is "FALL":
 		cancel event
-	if damage cause is fly into wall:
+	if {_cn} is "FLY_INTO_WALL":
 		cancel event
 
 # ===== 머리 위 별(바운티) =====
