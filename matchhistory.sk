@@ -32,9 +32,11 @@ function mhCount() :: number:
 function gmRecord():
 	if {-gftest} is true:
 		stop
+	set {-gfinline} to true
 	add 1 to {matchcount}
 	set {_n} to floor({matchcount})
 	set {matchlog::%{_n}%::json} to gfResultJson()
+	delete {-gfinline}
 	set {matchlog::%{_n}%::mode} to gcModeName({-gmode})
 	set {matchlog::%{_n}%::winner} to gTeamLabel({-gwinner})
 	set {matchlog::%{_n}%::map} to "%{-gworld}%"
@@ -309,7 +311,9 @@ command /matchtest [<text>]:
 		set {-gmatchlbl} to "MATCH TEST"
 		set {-gpotmres} to "더미1 (3표)"
 		delete {matchlog::0::*}
+		set {-gfinline} to true
 		set {matchlog::0::json} to gfResultJson()
+		delete {-gfinline}
 		set {matchlog::0::mode} to gcModeName({-gmode})
 		set {matchlog::0::winner} to gTeamLabel({-gwinner})
 		set {matchlog::0::map} to "%{-gworld}%"

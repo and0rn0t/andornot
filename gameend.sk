@@ -344,6 +344,8 @@ function gfHeaderJson() :: text:
 	set {_h4} to "%{_s4}%%{_p4}%"
 	set {_h5} to "%{_s5}%%{_p5}%"
 	set {_c1} to gfNameBlank()
+	if {-gfinline} is true:
+		set {_c1} to gfT({_h1}, "gray", false)
 	set {_c2} to gfT({_h2}, "gray", false)
 	set {_c3} to gfT({_h3}, "gray", false)
 	set {_c4} to gfT({_h4}, "gray", false)
@@ -394,6 +396,11 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	# 이름은 겹쳐 놓은 두 번째 디스플레이(gfOverlayJson)가 그린다. 여기서는 이름 칸 폭만큼 공백만 둬서 뒤 칸이 이름 폭과 상관없이 같은 자리에 선다.
 	set {_c1} to gfNameBlank()
 	set {_c2} to gfT("", "white", false)
+	# 저장용/dialog 용(겹친 디스플레이가 없다): 이름을 줄 안에 직접 넣는다. {-gfinline} 이 true 일 때만.
+	if {-gfinline} is true:
+		set {_c1} to gfT({_nm}, {_cn}, false)
+		set {_pn} to gtPad(gfNameW(), {_nm})
+		set {_c2} to gtT({_pn}, "white")
 	# 숫자는 회색. 각 항목(K/D/A/피해)에서 전체 최고값(0 초과)을 기록한 사람만 노란색 굵은 글씨
 	set {_hk} to false
 	if {_k} > 0:
