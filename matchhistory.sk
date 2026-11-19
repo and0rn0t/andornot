@@ -330,6 +330,29 @@ function mhSpaceTest(p: player):
 	set {_pn} to {_p}.getName()
 	execute console command "dialog show %{_pn}% %{_d}%"
 
+# 폭은 차지하지만 보이지 않는 글자가 가능한지 확인하는 진단(이름 폭 때문에 열이 밀리는 문제를 없애려고, 줄 오른쪽에 같은 이름을 안 보이게 두는 방법).
+function mhHideLine(label: text, mid: text) :: text:
+	set {_a} to "{""text"":""%{_label}%  |"",""color"":""gray""}"
+	set {_c} to "{""text"":""|\n"",""color"":""gray""}"
+	return "%{_a}%,%{_mid}%,%{_c}%"
+
+function mhHideTest(p: player):
+	set {_n} to "And_0r_Not"
+	set {_m1} to "{""text"":""%{_n}%"",""color"":""white""}"
+	set {_m2} to "{""text"":""%{_n}%"",""color"":""#00FFFFFF""}"
+	set {_m3} to "{""text"":""%{_n}%"",""color"":""#FF000000"",""shadow_color"":0}"
+	set {_m4} to "{""text"":""%{_n}%"",""color"":""white"",""font"":""minecraft:does_not_exist""}"
+	set {_m5} to "{""text"":""%{_n}%"",""color"":""white"",""obfuscated"":true}"
+	set {_l1} to mhHideLine("보통", {_m1})
+	set {_l2} to mhHideLine("투명 #00FFFFFF", {_m2})
+	set {_l3} to mhHideLine("검정+그림자0", {_m3})
+	set {_l4} to mhHideLine("없는 폰트", {_m4})
+	set {_l5} to mhHideLine("obfuscated", {_m5})
+	set {_d} to "{""type"":""minecraft:notice"",""title"":{""text"":""보이지 않는 글자 진단""},""can_close_with_escape"":true,"
+	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%]},""width"":420}]}"
+	set {_pn} to {_p}.getName()
+	execute console command "dialog show %{_pn}% %{_d}%"
+
 # ===== 테스트: 가짜 매치 기록을 만들어 매치 결과 dialog 를 띄운다(관리자 전용) =====
 # /matchtest        가짜 게임 데이터(3인씩 3팀, 1팀 승리, POTM 더미1)로 결과를 만들어 0번 기록에 저장하고 dialog 를 바로 연다. 진짜 기록 번호/개수는 건드리지 않는다.
 # /matchtest reopen 저장해 둔 0번 기록 dialog 를 다시 연다(리뷰 등록 후 반영 확인용)
@@ -345,6 +368,9 @@ command /matchtest [<text>]:
 		if arg-1 is "clear":
 			delete {matchlog::0::*}
 			send "&7테스트 기록(0번)을 지웠습니다."
+			stop
+		if arg-1 is "hide":
+			mhHideTest(player)
 			stop
 		if arg-1 is "space":
 			mhSpaceTest(player)
