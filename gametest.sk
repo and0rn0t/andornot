@@ -26,13 +26,17 @@ function gtTeam(p: player, cnt: number, n: number):
 	loop integers from 1 to {_cnt}:
 		add "gt_%loop-value%" to {_ids::*}
 	send "&6[테스트] 팀 구성 비교: %{_cnt}%명 %{_n}%팀, 가짜 승점 60~140, 방식당 10번" to {_p}
-	loop 2 times:
+	set {_mi} to 0
+	while {_mi} < 2:
+		add 1 to {_mi}
 		set {_mode} to "mmr"
-		if loop-value is 2:
+		if {_mi} is 2:
 			set {_mode} to "random"
 		set {_tot} to 0
 		set {_last} to ""
-		loop 10 times:
+		set {_gi} to 0
+		while {_gi} < 10:
+			add 1 to {_gi}
 			loop {_ids::*}:
 				set {rating::%loop-value%} to random integer between 60 and 140
 			gBuildTeams({_ids::*}, {_n}, {_mode})
@@ -152,7 +156,9 @@ function gtSim(p: player, games: number):
 	loop integers from 1 to 8:
 		add "gt_%loop-value%" to {_ids::*}
 	set {_gap} to 0
-	loop {_games} times:
+	set {_gn} to 0
+	while {_gn} < {_games}:
+		add 1 to {_gn}
 		gBuildTeams({_ids::*}, 2, "mmr")
 		set {_s1} to 0
 		set {_s2} to 0

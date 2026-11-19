@@ -305,8 +305,11 @@ on join:
 function gAnnounceTeams():
 	if {-gteams} < 1:
 		stop
-	loop {-gteamlist::*}:
-		set {_k} to loop-value
+	set {_tl::*} to {-gteamlist::*}
+	set {_ti} to 0
+	while {_ti} < size of {_tl::*}:
+		add 1 to {_ti}
+		set {_k} to {_tl::%{_ti}%}
 		set {_names::*} to ""
 		delete {_names::*}
 		loop {-gplist::*}:
