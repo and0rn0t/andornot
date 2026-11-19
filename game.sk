@@ -512,15 +512,24 @@ function gameWin(key: text):
 	if size of {-kc::*} is 0:
 		gameFinale()
 
-# 게임 중 관전 상태(죽은 사람, 종료 연출 중)인 참가자는 제자리에서 못 움직이게 한다. 시선 회전은 허용.
+# 연출을 보거나 리스폰을 기다리는 관전 상태 참가자만 제자리에서 못 움직이게 한다. 시선 회전은 허용.
+#   대상: 킬 연출 중/리스폰 대기 중인 사람({-kc} 가 켜진 사람), 승패가 난 뒤 마지막 킬 연출을 보는 사람({-gover}), 종료 연출 중인 사람({-gfinale}).
+#   "게임 중"인지는 보지 않는다(종료 연출 중에는 게임이 진행 중이 아니어도 막아야 해서). 섬멸전에서 죽어 라운드를 기다리는 관전자는 자유롭게 움직인다.
 # 카메라를 따라가는 관전(setSpectatorTarget)은 건드리지 않는다. 미검증: 관전자의 PlayerMoveEvent 취소가 서버에서 제자리로 되돌리는지.
 on PlayerMoveEvent:
-	if {-ingame} is not true:
-		stop
 	set {_p} to event.getPlayer()
 	if gamemode of {_p} is not spectator:
 		stop
 	if {-gplist::*} does not contain {_p}:
+		stop
+	set {_lock} to false
+	if {-kc::%{_p}'s uuid%} is set:
+		set {_lock} to true
+	if {-gover} is true:
+		set {_lock} to true
+	if {-gfinale} is true:
+		set {_lock} to true
+	if {_lock} is false:
 		stop
 	if {_p}.getSpectatorTarget() is set:
 		stop
