@@ -7,6 +7,7 @@
 #   35틱  스켈레톤 자리에 콰직 소리 + 붉은 파티클, 스켈레톤 제거(엔티티 제거라 사망 메시지 없음). 이때부터 6초 실명 + 타이틀 "리스폰" / 서브타이틀 숫자(5 -> 1)
 #         연출 화면으로 전환되는 순간 iron_golem.repair 소리(피격자에게만)
 #   135틱 리스폰: 어드벤처 모드로 되돌림, 리스폰 위치로 이동, 체력/스태미너 회복. 실명은 1초 남은 상태라 바닐라가 서서히 풀어 준다(미검증).
+# 게임을 끝내는 킬: 모든 참가자가 킬 연출을 관전한 뒤, 마지막 킬을 한 플레이어를 같은 구도로 한 번 클로즈업(그 자리에 세운 더미, 약 3초)하고 나서 종료 연출(gameFinale)로 넘어간다.
 # 섬멸전 라운드를 끝내는 킬: 모든 참가자가 이 연출을 관전 -> 콰직 뒤 승리 팀 살아 있는 사람 자리에 세운 더미(gfDummyAt) 중 한 명을 같은 구도로 클로즈업 + 타이틀 "라운드 승리"/팀 이름 -> 원래 자리로 복귀, 다음 라운드(gRoundNext).
 #   섬멸전에서 죽은 사람에게는 "리스폰" 카운트다운 타이틀/실명을 보여 주지 않는다.
 # 이동 막기: 관전 상태에서는 카메라 엔티티에 붙어 있어서 못 움직인다. 시점 해제(Shift)나 다른 대상 관전을 하면 매 틱 다시 붙인다.
@@ -222,6 +223,13 @@ on damage with priority highest:
 					if gTeamOf({_o}) is {_wk}:
 						if {-gdead::%uuid of {_o}%} is not set:
 							set {_wd::%uuid of {_o}%} to gfDummyAt({_o}, {_o}.getLocation(), {_o}.getLocation().getYaw())
+	# 게임을 끝내는 킬: 마지막 킬을 한 플레이어(공격자)가 서 있던 자리에 똑같이 생긴 더미를 세워 두고, 킬 연출 뒤 종료 연출 전에 그 더미를 클로즈업한다.
+	if {_fin} is true:
+		if {_ae} is a player:
+			if {_ae} is not {_v}:
+				if {-gplist::*} contains {_ae}:
+					if {_ae} is online:
+						set {_wd::%uuid of {_ae}%} to gfDummyAt({_ae}, {_ae}.getLocation(), {_ae}.getLocation().getYaw())
 	# 4) 피격자를 관전 모드로 바꾸고 카메라에 시점을 붙인다
 	set {_bl} to {_loc} ~ vector(0, 1, 0)
 	set gamemode of {_v} to spectator
@@ -274,7 +282,42 @@ on damage with priority highest:
 	# 게임을 끝내는 킬이면 여기서 연출을 마치고 종료 연출로 넘어간다(리스폰 없이 모두 관전 상태 유지)
 	if {_fin} is true:
 		wait 25 ticks
+		# 게임을 끝낸 플레이어 클로즈업(킬 연출과 같은 정면 구도, 약 3초). 공격자가 플레이어가 아니면 건너뛴다.
+		set {_cam2} to {_cam}
+		if {_ae} is a player:
+			if {_wd::%uuid of {_ae}%} is set:
+				set {_dm} to {_wd::%uuid of {_ae}%}
+				set {_dl} to {_dm}.getLocation()
+				set {_dy} to kcPickYaw({_dl})
+				{_dl}.setYaw({_dy})
+				{_dl}.setPitch(0)
+				{_dm}.setRotation({_dy}, 0)
+				set {_cl2} to kcCamLoc({_dl})
+				set {_cam2} to {_w}.spawnEntity({_cl2}, EntityType.TEXT_DISPLAY)
+				{_cam2}.setGravity(false)
+				{_cam2}.setInvulnerable(true)
+				{_cam2}.setSilent(true)
+				loop {-gplist::*}:
+					if loop-value is online:
+						tpSafe(loop-value, {_cl2})
+				wait 1 tick
+				loop {-gplist::*}:
+					if loop-value is online:
+						loop-value.setSpectatorTarget({_cam2})
+				{_cam}.remove()
+				set {_t} to 0
+				while {_t} < 60:
+					loop {-gplist::*}:
+						set {_o} to loop-value
+						if {_o} is online:
+							set {_cur3} to {_o}.getSpectatorTarget()
+							if {_cur3} is not {_cam2}:
+								{_o}.setSpectatorTarget({_cam2})
+					add 1 to {_t}
+					wait 1 tick
+		{_cam2}.remove()
 		{_cam}.remove()
+		gfClearDummies()
 		delete {-kc::%{_vid}%}
 		gameFinale()
 		stop

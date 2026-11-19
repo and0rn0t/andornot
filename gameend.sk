@@ -697,10 +697,12 @@ function gameFinale():
 	wait 3 seconds
 	if {-gfgen} is not {_gen}:
 		stop
-	# 5) 정리: 로비(메인 월드)에도 결과 무대(더미 + 완성된 결과 디스플레이)를 놓고, 게임 정리 후 로비로. 게임 월드와 로비 둘 다 다음 게임 시작(gameStart -> gfClearStage) 전까지 그대로 둔다.
+	# 5) 정리: 게임 월드와 로비가 다르면 게임 월드의 결과 무대를 치우고 로비(메인 월드)에 결과 무대(더미 + 완성된 결과 디스플레이)를 놓은 뒤, 게임 정리 후 로비로. 로비 무대는 다음 게임 시작(gameStart -> gfClearStage) 전까지 그대로 둔다(게임 월드와 로비가 같으면 그 무대 하나가 남는다).
 	set {_ls} to gameLobbyStageLoc()
 	set {_lw} to gameLobbyLoc().getWorld().getName()
 	if {_lw} is not {_gw}:
+		# 로비로 옮겨 가면서 게임이 진행된 월드의 결과 무대(더미 + 결과 디스플레이)는 치운다. 로비 월드의 무대만 남는다.
+		gfClearDummies()
 		if {_ls} is set:
 			set {_d2} to gfBuildStage({_ls})
 		else:
