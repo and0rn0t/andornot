@@ -21,6 +21,7 @@ import:
 	org.bukkit.WorldCreator
 	org.bukkit.NamespacedKey
 	org.bukkit.entity.TextDisplay$TextAlignment
+	org.bukkit.Color
 	net.kyori.adventure.text.Component
 	net.kyori.adventure.text.event.ClickEvent
 	net.kyori.adventure.text.event.HoverEvent
@@ -184,6 +185,19 @@ function gfBuildStage(stage: location) :: object:
 	{_disp}.setAlignment(TextAlignment.LEFT)
 	{_disp}.text(GsonComponentSerializer.gson().deserialize(gfResultJson()))
 	add {_disp} to {-gdummies::*}
+	# 이름 칸 디스플레이: 같은 자리에 겹치되 구경꾼 쪽으로 아주 조금 앞에 두고 배경은 투명(미검증: setBackgroundColor, 두 디스플레이의 가로 위치 일치)
+	set {_oloc} to {_dloc} ~ vector({_fx} * 0.01, 0, {_fz} * 0.01)
+	spawn a text display at {_oloc}:
+		set {_ovl} to event-entity
+		add "gdummy" to scoreboard tags of event-entity
+		set billboard of event-entity to fixed
+	{_ovl}.setRotation({_sy}, 0)
+	{_ovl}.setLineWidth(600)
+	{_ovl}.setAlignment(TextAlignment.LEFT)
+	{_ovl}.setBackgroundColor(Color.fromARGB(0, 0, 0, 0))
+	{_ovl}.text(GsonComponentSerializer.gson().deserialize(gfOverlayJson()))
+	add {_ovl} to {-gdummies::*}
+	set {-gdisp2::%{_disp}'s uuid%} to {_ovl}
 	return {_disp}
 
 # ===== 결과 문구 만들기 =====
@@ -304,6 +318,13 @@ function gfT(t: text, color: text, bold: boolean) :: text:
 		return "{""text"":""%{_t}%"",""color"":""%{_color}%"",""bold"":true}"
 	return "{""text"":""%{_t}%"",""color"":""%{_color}%"",""bold"":false}"
 
+# 이름 칸 폭만큼의 공백 조각(공백 한 칸 4픽셀이라 정확한 폭)
+function gfNameBlank() :: text:
+	set {_n} to round(gfNameW() / 4)
+	set {_r} to " " repeated {_n} times
+	set {_sp} to "%{_r}%"
+	return gfT({_sp}, "white", false)
+
 # 표 제목 줄(JSON): 플레이어 / K / D / A / 피해 / 아이템. 칸 너비는 참가자 줄과 같다.
 function gfHeaderJson() :: text:
 	# (문자열 안 %...% 에 따옴표를 넣지 않으려고 글자와 공백을 변수로 먼저 만든다)
@@ -322,7 +343,7 @@ function gfHeaderJson() :: text:
 	set {_h3} to "%{_s3}%%{_p3}%"
 	set {_h4} to "%{_s4}%%{_p4}%"
 	set {_h5} to "%{_s5}%%{_p5}%"
-	set {_c1} to gfT({_h1}, "gray", false)
+	set {_c1} to gfNameBlank()
 	set {_c2} to gfT({_h2}, "gray", false)
 	set {_c3} to gfT({_h3}, "gray", false)
 	set {_c4} to gfT({_h4}, "gray", false)
@@ -372,9 +393,9 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 		set {_dm} to 0
 	set {_dmr} to round({_dm})
 	set {_cn} to gtColorJ({_ci})
-	set {_c1} to gfT({_nm}, {_cn}, false)
-	set {_pn} to gtPad(gfNameW(), {_nm})
-	set {_c2} to gtT({_pn}, "white")
+	# 이름은 겹쳐 놓은 두 번째 디스플레이(gfOverlayJson)가 그린다. 여기서는 이름 칸 폭만큼 공백만 둬서 뒤 칸이 이름 폭과 상관없이 같은 자리에 선다.
+	set {_c1} to gfNameBlank()
+	set {_c2} to gfT("", "white", false)
 	# 숫자는 회색. 각 항목(K/D/A/피해)에서 전체 최고값(0 초과)을 기록한 사람만 노란색 굵은 글씨
 	set {_hk} to false
 	if {_k} > 0:
@@ -476,6 +497,46 @@ function gfCenter(plain: text, tw: number) :: text:
 	set {_sp} to "%{_r}%"
 	return gfT({_sp}, "white", false)
 
+# 이름 칸 전용 디스플레이(겹쳐 놓음): 본 디스플레이와 줄 수/순서가 똑같고, 헤더 줄에는 "플레이어", 참가자 줄에는 이름만 있고 나머지 줄은 빈칸이다.
+# 이름 폭을 글자 폭 추정에 의존하지 않으려고 이름만 따로 그린다(본 디스플레이는 이름 자리에 공백만 둠).
+function gfTeamRowsOv(tk: text, nlc: text) :: text:
+	set {_ci} to gTeamIndex({_tk})
+	set {_cn} to gtColorJ({_ci})
+	set {_r} to ""
+	loop gfSortedTeam({_tk}):
+		set {_nmj} to gfT(gfName(loop-value), {_cn}, false)
+		set {_r} to "%{_r}%,%{_nmj}%,%{_nlc}%"
+	return {_r}
+
+function gfOverlayJson() :: text:
+	gfPrep()
+	set {_nlc} to "{""text"":""\n""}"
+	set {_tw} to gfNameW() + gfKdaW() * 3 + gfDmgW() + gtItemW()
+	set {_n} to round({_tw} / 4)
+	set {_r} to " " repeated {_n} times
+	set {_wide} to "%{_r}%"
+	set {_w1} to gfT({_wide}, "white", false)
+	set {_b} to gfT(" ", "white", false)
+	set {_ex} to "%{_w1}%,%{_nlc}%,%{_b}%"
+	set {_mt} to ""
+	if {-gworld} is set:
+		set {_mt} to "x"
+	if {-grandon} is true:
+		set {_mt} to "x"
+	if {_mt} is not "":
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_b}%"
+	set {_hl} to "플레이어"
+	set {_hj} to gfT({_hl}, "gray", false)
+	set {_ex} to "%{_ex}%,%{_nlc}%,%{_nlc}%,%{_hj}%,%{_nlc}%"
+	loop gfTeamOrder():
+		set {_rows} to gfTeamRowsOv(loop-value, {_nlc})
+		set {_ex} to "%{_ex}%%{_rows}%"
+	if {-gpotmres} is set:
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_b}%"
+	else if {-gvote} is true:
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_b}%"
+	return "{""text"":"""",""extra"":[%{_ex}%]}"
+
 function gfResultJson() :: text:
 	gfPrep()
 	set {_nlc} to "{""text"":""\n""}"
@@ -560,6 +621,9 @@ function gfDisplayRefresh():
 	if {-gdisp} is not set:
 		stop
 	{-gdisp}.text(GsonComponentSerializer.gson().deserialize(gfResultJson()))
+	set {_o} to {-gdisp2::%{-gdisp}'s uuid%}
+	if {_o} is set:
+		{_o}.text(GsonComponentSerializer.gson().deserialize(gfOverlayJson()))
 
 # ===== 더미 클릭 투표 =====
 # 더미 머리 위 설명(투표 수를 별 ★ 개수로)을 다시 쓴다
@@ -676,6 +740,7 @@ function gfClearDummies():
 	delete {-gdummies::*}
 	delete {-gdummyid::*}
 	delete {-gdisp}
+	delete {-gdisp2::*}
 
 # ===== 종료 연출 =====
 # 승리 팀 키는 {-gwinner}. 킬 연출(killcine.sk)이 끝난 뒤, 또는 킬 연출 없는 승리에서 바로 불린다.
