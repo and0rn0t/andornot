@@ -624,7 +624,7 @@ function gfResultJson() :: text:
 		set {_cp3} to gfCenter({_pp}, {_tw})
 		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cp3}%,%{_pj}%,%{_pn2}%"
 	else if {-gvote} is true:
-		set {_hint} to gfT("승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요", "gray", false)
+		set {_hint} to gfT("승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요", "gray", false)
 		set {_hp} to "승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요"
 		set {_cp4} to gfCenter({_hp}, {_tw})
 		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cp4}%,%{_hint}%"
@@ -678,7 +678,7 @@ function gfVoteClick(p: player, e: entity):
 	play sound "ui.button.click" to {_p}
 	set {_tid} to "%{_id}%"
 	set {_tn} to gfName({_tid})
-	send "&6[투표] &f%{_tn}% &7님에게 투표했습니다. (마감 전까지 변경할 수 있습니다)" to {_p}
+	send "&f%{_tn}% &7님에게 투표했습니다. (마감 전까지 변경할 수 있습니다)" to {_p}
 	gfDummyRefresh()
 
 # 우클릭(미검증: 마네킹 상호작용 이벤트). 손마다 두 번 오므로 주 손만 본다.
@@ -810,7 +810,7 @@ function gameFinale():
 	play sound "block.note_block.chime" with volume 0.7 to all players
 	loop {-gplist::*}:
 		if loop-value is online:
-			send "&6[투표] &7승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요. (본인 제외)" to loop-value
+			send "&7승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요. (본인 제외)" to loop-value
 	# 4) 투표 시간(마지막 3초 전까지)
 	wait 12 seconds
 	if {-gfgen} is not {_gen}:

@@ -443,6 +443,9 @@ function gameSpawn(p: player):
 		stop
 	set {_s} to gInitSpawn(gTeamOf({_p}))
 	if {_s} is not set:
+		# 리스폰 기준 위치가 없으면 시작 카메라로 가기 전 자리로 되돌린다
+		if {-gstartprev::%uuid of {_p}%} is set:
+			tpSafe({_p}, {-gstartprev::%uuid of {_p}%})
 		stop
 	tpSafe({_p}, gDropLoc({_s}))
 	gDropStart({_p})
@@ -598,6 +601,8 @@ function gRollLoadout(p: player):
 function gameStart(by: text):
 	if {-ingame} is true:
 		stop
+	if {-gstarting} is true:
+		stop
 	# 이전 게임의 결과 무대(승리자 더미, 결과 디스플레이)를 치운다
 	gfClearStage()
 	set {-gmode} to gcMode()
@@ -691,6 +696,95 @@ function gameStart(by: text):
 		set {-gstar::%{_id}%} to gStarBase()
 	delete {-groundend}
 	delete {-gover}
+	# 시작 연출(팀 추첨 -> 시작 카메라에서 카운트다운 -> 게임 시작). 끝나는 자리는 gStartFinish.
+	set {-gstarting} to true
+	add 1 to {-gstartgen}
+	gStartIntro({-gstartgen})
+
+# ===== 시작 연출 =====
+# 1) 팀전이면 팀 추첨: 타이틀에 팀 이름이 슬롯머신처럼 돌다가(게임 설정에 있는 팀들만) 각자의 팀에서 "찰칵" 소리와 함께 멈춘다. 5초 대기.
+# 2) 모든 참가자를 그 월드의 시작 카메라 위치(관리자 메뉴 "시작 카메라 위치 지정", 없으면 제자리)로 보내 관전 상태로 고정한다.
+# 3) 타이틀 "게임 시작까지" + 5~1 카운트다운(시계 소리) 뒤 gStartFinish 가 실제로 게임을 시작한다.
+# 강제 종료/정리(gameCleanup)가 {-gstartgen} 을 올리면 각 대기 뒤에 이 연출은 멈춘다. 변수(RAM): {-gstarting}(시작 연출 중), {-gstartgen}(세대), {-gstartprev::uuid}(카메라로 가기 전 위치, 리스폰 위치가 없을 때 되돌려 보낸다).
+# 미검증: 타이틀 연속 갱신 체감, 카메라 위치에서 관전 고정(이동만 막고 시선은 자유).
+function gcStartCamKey(wn: text) :: text:
+	return "startcam_%{_wn}%"
+
+function gStartAbort(sg: number) :: boolean:
+	if {-gstarting} is not true:
+		return true
+	if {-gstartgen} is not {_sg}:
+		return true
+	return false
+
+function gStartIntro(sg: number):
+	if {-gteams} > 0:
+		set {_tl::*} to {-gteamlist::*}
+		set {_n} to size of {_tl::*}
+		set {_total} to 24
+		set {_step} to 0
+		set {_last} to 0
+		while {_step} < {_total}:
+			if gStartAbort({_sg}) is true:
+				stop
+			add 1 to {_step}
+			set {_rn} to random integer between 1 and {_n}
+			if {_n} > 1:
+				if {_rn} is {_last}:
+					set {_rn} to mod({_rn}, {_n}) + 1
+			set {_last} to {_rn}
+			set {_roll} to gTeamLabel({_tl::%{_rn}%})
+			loop {-gplist::*}:
+				set {_pl} to loop-value
+				if {_pl} is online:
+					if {_step} is {_total}:
+						set {_lab} to gTeamLabel(gTeamOf({_pl}))
+						send title colored "%{_lab}%" with subtitle colored "&7당신은..." to {_pl} for 5 seconds with fadein 0 ticks and fade out 10 ticks
+						play sound "block.lever.click" with volume 1 and pitch 1 to {_pl}
+					else:
+						send title colored "%{_roll}%" with subtitle colored "&7당신은..." to {_pl} for 10 ticks with fadein 0 ticks and fade out 0 ticks
+						play sound "block.note_block.hat" with volume 0.5 and pitch 1.4 to {_pl}
+			if {_step} <= 12:
+				wait 2 ticks
+			else if {_step} <= 18:
+				wait 4 ticks
+			else if {_step} <= 22:
+				wait 6 ticks
+			else if {_step} < {_total}:
+				wait 9 ticks
+		wait 5 seconds
+		if gStartAbort({_sg}) is true:
+			stop
+	# 시작 카메라: 모두 관전 상태로 이동해 고정(이동 잠금은 아래 PlayerMoveEvent)
+	set {_cam} to gcLoadLoc(gcStartCamKey({-gworld}))
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
+			set gamemode of {_pl} to spectator
+			if {_cam} is set:
+				tpSafe({_pl}, {_cam})
+	set {_c} to 5
+	while {_c} > 0:
+		if gStartAbort({_sg}) is true:
+			stop
+		loop {-gplist::*}:
+			set {_pl} to loop-value
+			if {_pl} is online:
+				send title "&e게임 시작까지" with subtitle "&f%{_c}%" to {_pl} for 25 ticks with fadein 0 ticks and fade out 0 ticks
+				if mod({_c}, 2) is 0:
+					play sound "block.comparator.click" with volume 1 and pitch 1.5 to {_pl}
+				else:
+					play sound "block.comparator.click" with volume 1 and pitch 1 to {_pl}
+		wait 1 second
+		remove 1 from {_c}
+	if gStartAbort({_sg}) is true:
+		stop
+	gStartFinish({_sg})
+
+# 카운트다운이 끝나면 실제 게임 시작: 인벤토리 초기화, 랜덤 아이템, 초기 리스폰 위치(상공 낙하), 시작 타이틀.
+function gStartFinish(sg: number):
+	delete {-gstarting}
 	# 인벤토리 완전 초기화: 메인 인벤토리, 핫바, 오프핸드, 방어구를 전부 비운다(로비에서 오프핸드 등을 이용해 구성보다 많이 가져온 아이템을 없앤다). 구성 아이템은 아래 gameRespawn -> loadoutGive 가 새로 지급한다.
 	loop {-gplist::*}:
 		loop-value.getInventory().clear()
@@ -706,18 +800,24 @@ function gameStart(by: text):
 	gGenSpawns()
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
+	delete {-gstartprev::*}
 	gAnnounceTeams()
+	set {_sub} to "목표 %{-gtarget}%"
+	if {-gmode} is "annihilation":
+		set {_sub} to "%{-gtarget}%선승"
+	if {-gmode} is "bounty":
+		set {_sub} to "%{-gtarget}%★"
 	loop all players:
-		send title "&e게임 시작!" with subtitle "&7%gcModeName({-gmode})% · 목표 %{-gtarget}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+		send title "&e%gcModeName({-gmode})%" with subtitle "&7%{_sub}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "entity.ender_dragon.growl" with volume 0.6 and pitch 1.2 to loop-player
-		send colored "&e%gcModeName({-gmode})% &7게임을 시작했습니다. (목표 %{-gtarget}%)" to loop-player
-		send colored "&7맵: &f%{-gworld}%" to loop-player
-		if {-grandon} is true:
-			send colored "&7랜덤 아이템 모드: &f아이템 5개를 새로 뽑았습니다." to loop-player
+
 
 # 연출 없이 게임을 정리한다(관리자 강제 종료, 연출이 끝난 뒤 로비로 돌아갈 때).
 function gameCleanup():
 	set {-ingame} to false
+	delete {-gstarting}
+	add 1 to {-gstartgen}
+	delete {-gstartprev::*}
 	delete {-gover}
 	delete {-groundend}
 	delete {-gpteam::*}
@@ -749,7 +849,8 @@ function gameCleanup():
 function gameForceStop(by: text):
 	if {-ingame} is not true:
 		if {-gfinale} is not true:
-			stop
+			if {-gstarting} is not true:
+				stop
 	gameCleanup()
 	gfAbort()
 	loop all players:
@@ -841,7 +942,7 @@ function gBountyKill(v: player, a: entity, kill: boolean):
 	set {-gstar::%{_aid}%} to {_cur} + 1
 	gStarSync({_ap})
 	loop all players:
-		send colored "&6[바운티] &f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했습니다! &e+%{_stars}%점 &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
+		send action bar colored "&f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했습니다! &e+%{_stars}%점 &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
 	if {-gscore::%{_tk}%} >= {-gtarget}:
 		gameWin({_tk})
 
@@ -867,13 +968,9 @@ function gAnnCheck():
 	gRoundEnd({_w})
 
 function gRoundEnd(w: text):
-	if {_w} is "":
-		loop all players:
-			send "&6[섬멸전] &7전원 사망! 이번 라운드는 무승부입니다." to loop-player
-	else:
+	if {_w} is not "":
 		add 1 to {-gscore::%{_w}%}
 		loop all players:
-			send colored "&6[섬멸전] %gTeamLabel({_w})% &7(이)가 라운드에서 승리했습니다! &e승점 %{-gscore::%{_w}%}%&7/%{-gtarget}%" to loop-player
 			play sound "entity.player.levelup" with volume 0.7 and pitch 1 to loop-player
 		if {-gscore::%{_w}%} >= {-gtarget}:
 			gameWin({_w})
@@ -940,6 +1037,8 @@ on PlayerMoveEvent:
 		set {_lock} to true
 	if {-gfinale} is true:
 		set {_lock} to true
+	if {-gstarting} is true:
+		set {_lock} to true
 	if {_lock} is false:
 		stop
 	if {_p}.getSpectatorTarget() is set:
@@ -959,6 +1058,7 @@ on quit:
 
 # 스크립트를 다시 불러오면 진행 중이던 게임은 끝난 것으로 본다(타이머가 사라져서). 남은 별 표시도 지운다.
 on load:
+	delete {-gstarting}
 	delete {-ingame}
 	delete {-gover}
 	delete {-groundend}

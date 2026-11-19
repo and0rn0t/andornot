@@ -11,7 +11,7 @@
 # 미검증 문법: 6줄 GUI 와 클릭 처리는 items.sk 와 같은 방식(event.getRawSlot() 등).
 
 # ===== 설정 잠금(덮어쓰기 방지) =====
-# 켜져 있으면(기본값) 이미 저장된 로비 위치, 결과 무대 위치(월드별), 리스폰 기준 위치(월드별), 훈련장 위치와, 이미 설치된 훈련장/로비 NPC 를 버튼으로 덮어쓰거나 다시 설치/치우지 못한다.
+# 켜져 있으면(기본값) 이미 저장된 로비 위치, 결과 무대 위치(월드별), 리스폰 기준 위치(월드별), 시작 카메라 위치(월드별), 훈련장 위치와, 이미 설치된 훈련장/로비 NPC 를 버튼으로 덮어쓰거나 다시 설치/치우지 못한다.
 # 처음 저장하는 것은 잠겨 있어도 된다. 바꾸려면 "설정 잠금" 버튼으로 끈 뒤 바꾸고 다시 켠다. 저장 변수 {gamecfg::unlock}(true 면 잠금 꺼짐, 없으면 켜짐).
 # 잠그지 않는 것: 맵 선택, 게임 설정(팀 수/모드/랜덤 아이템), 아이템 순서, 결과 무대 치우기(위치 설정이 아니라 남은 더미 청소).
 function adminLockOn() :: boolean:
@@ -39,7 +39,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
+	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -78,6 +78,10 @@ function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "setrespawn":
 		set {_i} to red bed named "&f리스폰 위치 지정"
 		set lore of {_i} to "&7지금 서 있는 자리를 이 월드의 리스폰 기준 위치로 저장해요", "&7게임을 시작할 때마다 팀 수만큼 이 위치 반경 200칸 안에서", "&7무작위 초기 리스폰 위치를 뽑아요", "&7(바운티 리스폰은 팀원 근처 50칸, 섬멸전은 초기 위치만)", "&7(서 있는 월드마다 따로 저장돼요)", "", "&e▶ 클릭해서 저장"
+		return {_i}
+	if {_id} is "setstartcam":
+		set {_i} to ender eye named "&f시작 카메라 위치 지정"
+		set lore of {_i} to "&7지금 서 있는 자리와 바라보는 방향을", "&7게임 시작 카운트다운 때 모두가", "&7관전 상태로 고정되어 보게 될 카메라로 저장해요", "&7(서 있는 월드마다 따로 저장돼요)", "", "&e▶ 클릭해서 저장"
 		return {_i}
 	if {_id} is "clearstage":
 		set {_i} to barrier named "&c결과 무대 치우기"
@@ -176,6 +180,15 @@ function adminAction(p: player, id: text):
 				stop
 		gcSaveLoc(gcRespawnKey({_rw}), location of {_p})
 		send "&a'%{_rw}%' 월드의 리스폰 기준 위치를 저장했습니다. 게임을 시작하면 이 위치 반경 200칸 안에서 팀별 초기 위치를 뽑습니다." to {_p}
+	else if {_id} is "setstartcam":
+		close {_p}'s inventory
+		set {_cw} to {_p}.getWorld().getName()
+		if adminLockOn() is true:
+			if gcLocSet(gcStartCamKey({_cw})) is true:
+				adminLockDeny({_p}, "'%{_cw}%' 월드의 시작 카메라 위치")
+				stop
+		gcSaveLoc(gcStartCamKey({_cw}), location of {_p})
+		send "&a'%{_cw}%' 월드의 시작 카메라 위치를 저장했습니다. 게임 시작 카운트다운 때 모두 이 시점에서 관전합니다." to {_p}
 	else if {_id} is "clearstage":
 		close {_p}'s inventory
 		gfClearStage()
