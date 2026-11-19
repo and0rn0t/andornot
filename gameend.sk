@@ -1,7 +1,7 @@
 # [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 투표 -> 15초 뒤 정리하고 로비로.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gpin}(결과 채팅 고정 중),
-#   {-gfmaxk}/{-gfmaxd}(결과 표 금색 표시용 최고 킬/피해), {-gchat::번호}/{-gchatn}(고정 중 올라온 채팅 기록), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림)
+#   {-gfmaxk}/{-gfmaxd}(결과 표 금색 표시용 최고 킬/피해), {-gchat::번호}/{-gchatn}(고정 중 올라온 채팅 기록), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 #   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
 # 명령: /finaletest(관리자, 종료 연출만 테스트), /gamestop(관리자, 게임/연출 중단), /potm 이름(투표)
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
@@ -136,7 +136,10 @@ function gfTeamOrder() :: texts:
 	return {_out::*}
 
 # ===== 결과 표 칸 너비(픽셀, 채팅 기본 폭 320 안에 ▲ 까지 들어가게). 어긋나면 이 값만 고친다. 글자 폭 계산은 gametab.sk 의 gtPx/gtPad 를 쓴다. =====
+# 이름 칸: 가장 긴 이름에 맞춰 gfRender 가 {-gfnw} 에 계산해 둔다(없으면 96). 긴 이름이 있어도 뒤 칸이 밀리지 않게 하려는 것.
 function gfNameW() :: number:
+	if {-gfnw} is a number:
+		return {-gfnw}
 	return 96
 
 function gfKdaW() :: number:
@@ -170,10 +173,10 @@ function gfHeaderJson() :: text:
 	set {_h4} to "%{_s4}%%{_p4}%"
 	set {_h5} to "%{_s5}%%{_p5}%"
 	set {_c1} to gfT({_h1}, "gray", false)
-	set {_c2} to gfT({_h2}, "green", true)
-	set {_c3} to gfT({_h3}, "red", true)
-	set {_c4} to gfT({_h4}, "yellow", true)
-	set {_c5} to gfT({_h5}, "aqua", true)
+	set {_c2} to gfT({_h2}, "gray", false)
+	set {_c3} to gfT({_h3}, "gray", false)
+	set {_c4} to gfT({_h4}, "gray", false)
+	set {_c5} to gfT({_h5}, "gray", false)
 	set {_c6} to gfT("아이템", "gray", false)
 	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%]}"
 
@@ -214,10 +217,17 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_ds} to "%{_d}%"
 	set {_as} to "%{_a}%"
 	set {_ms} to "%{_dmr}%"
-	set {_pk} to gtPad(gfKdaW(), {_ks})
+	# 굵은 글씨는 글자마다 1픽셀씩 넓어서 그만큼 공백을 덜 채운다(뒤 칸이 밀리지 않게)
+	set {_kpb} to 0
+	if {_kb} is true:
+		set {_kpb} to {_ks}.length()
+	set {_mpb} to 0
+	if {_db} is true:
+		set {_mpb} to {_ms}.length()
+	set {_pk} to gtPad(gfKdaW() - {_kpb}, {_ks})
 	set {_pd} to gtPad(gfKdaW(), {_ds})
 	set {_pa} to gtPad(gfKdaW(), {_as})
-	set {_pm} to gtPad(gfDmgW(), {_ms})
+	set {_pm} to gtPad(gfDmgW() - {_mpb}, {_ms})
 	set {_t3} to "%{_ks}%%{_pk}%"
 	set {_t4} to "%{_ds}%%{_pd}%"
 	set {_t5} to "%{_as}%%{_pa}%"
@@ -280,9 +290,16 @@ function gfRender(v: player):
 		if {_dd} is a number:
 			if round({_dd}) > {-gfmaxd}:
 				set {-gfmaxd} to round({_dd})
+	# 이름 칸 너비: 가장 긴 이름 + 여유, 최소 96 (4픽셀 단위)
+	set {-gfnw} to 96
+	loop gfIds():
+		set {_nw} to (floor((gtPx(gfName(loop-value)) + 8) / 4) + 1) * 4
+		if {_nw} > {-gfnw}:
+			set {-gfnw} to {_nw}
 	loop 30 times:
 		send " " to {_v}
-	send "&6&l▬▬▬▬▬▬▬▬▬▬ 게임 결과 ▬▬▬▬▬▬▬▬▬▬" to {_v}
+	# 제목 줄: 글자 없이 = 로 한 줄을 채운다(기본 채팅 폭 기준, 길이는 아래 숫자만 바꾸면 됨)
+	send "&6==================================================" to {_v}
 	send colored "&e%gcModeName({-gmode})% &7· 승리 &f%gTeamLabel({-gwinner})%" to {_v}
 	if {-gteams} > 0:
 		set {_line} to ""
@@ -376,6 +393,25 @@ function gfDummy(p: player, loc: location):
 	{_meq}.setLeggings({_inv}.getLeggings())
 	{_meq}.setBoots({_inv}.getBoots())
 	add {_m} to {-gdummies::*}
+
+# 라운드 승리자 더미: p 와 똑같이 생긴(스킨/방어구) 더미를 loc 에 yaw 방향으로 세우고 돌려준다. 섬멸전 라운드 종료 연출(killcine.sk)이 쓴다. gfClearDummies() 로 지워진다.
+function gfDummyAt(p: player, loc: location, yaw: number) :: object:
+	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
+	{_m}.setProfile(ResolvableProfile.resolvableProfile({_p}.getPlayerProfile()))
+	{_m}.setImmovable(true)
+	{_m}.setInvulnerable(true)
+	{_m}.setSilent(true)
+	{_m}.setDescription(GsonComponentSerializer.gson().deserialize("{""text"":""""}"))
+	{_m}.setRotation({_yaw}, 0)
+	{_m}.addScoreboardTag("gdummy")
+	set {_inv} to {_p}.getInventory()
+	set {_meq} to {_m}.getEquipment()
+	{_meq}.setHelmet({_inv}.getHelmet())
+	{_meq}.setChestplate({_inv}.getChestplate())
+	{_meq}.setLeggings({_inv}.getLeggings())
+	{_meq}.setBoots({_inv}.getBoots())
+	add {_m} to {-gdummies::*}
+	return {_m}
 
 function gfClearDummies():
 	loop {-gdummies::*}:
@@ -501,6 +537,7 @@ function gfAbort():
 	delete {-gchatn}
 	delete {-gfinale}
 	delete {-gwinner}
+	delete {-gfnw}
 	gfTestCleanup()
 
 # 테스트(/finaletest)용으로 만든 가짜 게임 데이터를 지우고 실행자의 팀을 되돌린다.

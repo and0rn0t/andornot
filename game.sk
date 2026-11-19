@@ -17,6 +17,7 @@
 #   {-gstar_d::uuid}   머리 위 별 표시(텍스트 디스플레이)
 #   {-gdead::uuid}     섬멸전에서 이번 라운드에 죽은 플레이어
 #   {-groundend}       섬멸전에서 라운드가 끝나는 중(true)
+#   {-groundwin}       이번 라운드 승리 팀 키(무승부는 ""). killcine.sk 의 라운드 종료 연출이 읽는다.
 #   {-glastdmg::피격자uuid::공격자uuid}   마지막으로 피해를 준 시각(어시스트 판정용)
 # 킬 처리 연결: killcine.sk 의 killScoreHook() 가 gameOnKill() 을 부르고, 치명타 피해량은 gameDamageRecord() 로 넘긴다. 치명타가 아닌 피해는 아래 on damage 가 센다.
 import:
@@ -408,12 +409,21 @@ function gRoundEnd(w: text):
 		if {-gscore::%{_w}%} >= {-gtarget}:
 			gameWin({_w})
 			stop
-	# 마지막 킬의 연출(약 6.8초)이 끝난 뒤 다음 라운드 시작
-	wait 8 seconds
+	# 킬 연출 중이면 killcine.sk 가 라운드 종료 연출(전원 관람 -> 승리자 클로즈업 -> 타이틀)을 한 뒤 gRoundNext() 를 부른다.
+	set {-groundwin} to {_w}
+	if size of {-kc::*} > 0:
+		stop
+	# 킬 연출이 없는 라운드 종료(접속 종료 등)는 잠깐 뒤에 바로 다음 라운드
+	wait 5 seconds
+	gRoundNext()
+
+# 다음 라운드 시작: 모두 부활시키고 시작 타이틀. 강제 종료/게임 종료로 상태가 바뀌었으면 아무것도 안 한다.
+function gRoundNext():
 	if {-ingame} is not true:
 		stop
 	if {-gover} is true:
 		stop
+	delete {-groundwin}
 	loop {-gplist::*}:
 		if loop-value is online:
 			gameRespawn(loop-value)
