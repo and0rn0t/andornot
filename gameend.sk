@@ -365,18 +365,16 @@ function gfHeaderJson() :: text:
 # 숫자 한 칸(JSON 조각 두 개: 숫자 + 채움 공백). 기본 회색, hi 이면 노란색 굵은 글씨. 굵은 글씨는 글자마다 1픽셀 넓고 공백도 5픽셀이라
 # 숫자와 공백을 다른 조각으로 만들고, 굵은 만큼 공백을 덜 채워서 뒤 칸이 밀리지 않게 한다.
 function gfCol(s: text, w: number, hi: boolean) :: text:
-	set {_bonus} to 0
 	set {_col} to "gray"
 	if {_hi} is true:
-		set {_bonus} to {_s}.length()
 		set {_col} to "yellow"
-	set {_pd} to gtPad({_w} - {_bonus}, {_s})
-	set {_a} to gfT({_s}, {_col}, {_hi})
+	set {_pd} to gtPad({_w}, {_s})
+	set {_a} to gfT({_s}, {_col}, false)
 	set {_b} to gfT({_pd}, "white", false)
 	return "%{_a}%,%{_b}%"
 
 # 참가자 한 명의 결과 줄(JSON): 이름(팀 색) / K / D / A / 피해 / 사용한 아이템 아이콘. 칸 너비를 맞춰서 세로로 줄이 선다.
-# 숫자는 회색, 각 항목의 전체 최고값({-gfmaxk} {-gfmaxdt} {-gfmaxa} {-gfmaxd}, gfPrep 가 계산)만 노란색 굵은 글씨.
+# 숫자는 회색, 각 항목의 전체 최고값({-gfmaxk} {-gfmaxdt} {-gfmaxa} {-gfmaxd}, gfPrep 가 계산)만 노란색(굵게는 하지 않음, 글자 폭이 달라져 열이 밀림).
 # id 는 전적 변수 키(uuid 또는 가짜 id), ci 는 팀 번호, src 는 아이템 구성을 읽어 올 플레이어(가짜 참가자는 테스트 실행자의 구성을 빌린다).
 function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_k} to {-gk::%{_id}%}
