@@ -157,6 +157,139 @@ function gBuildTeams(n: number, mode: text):
 		add 1 to {_num::%{_pick}%}
 		add 1 to {_a}
 
+# 중간 참가자를 넣을 팀: 인원이 가장 적은 팀(최우선) 중, 넣었을 때 팀 간 승점 합 격차(최대-최소)가 가장 작아지는 팀(차선). 접속 중인 참가자만 센다.
+function gJoinTeam(p: player) :: text:
+	set {_t} to 0
+	while {_t} < {-gteams}:
+		add 1 to {_t}
+		set {_num::%{_t}%} to 0
+		set {_sum::%{_t}%} to 0
+	loop {-gplist::*}:
+		if loop-value is online:
+			if loop-value is not {_p}:
+				set {_tk} to "%{-team::%uuid of loop-value%}%"
+				set {_ti} to gTeamIndex({_tk})
+				if {_num::%{_ti}%} is set:
+					add 1 to {_num::%{_ti}%}
+					add ratingOf("%uuid of loop-value%") to {_sum::%{_ti}%}
+	set {_min} to 9999
+	set {_t} to 1
+	while {_t} <= {-gteams}:
+		if {_num::%{_t}%} < {_min}:
+			set {_min} to {_num::%{_t}%}
+		add 1 to {_t}
+	set {_r} to ratingOf("%uuid of {_p}%")
+	set {_best} to 0
+	set {_bs} to 999999
+	set {_t} to 1
+	while {_t} <= {-gteams}:
+		if {_num::%{_t}%} is {_min}:
+			set {_mx} to -999999
+			set {_mn} to 999999
+			set {_u} to 1
+			while {_u} <= {-gteams}:
+				set {_v} to {_sum::%{_u}%}
+				if {_u} is {_t}:
+					add {_r} to {_v}
+				if {_v} > {_mx}:
+					set {_mx} to {_v}
+				if {_v} < {_mn}:
+					set {_mn} to {_v}
+				add 1 to {_u}
+			set {_spread} to {_mx} - {_mn}
+			if {_spread} < {_bs}:
+				set {_bs} to {_spread}
+				set {_best} to {_t}
+		add 1 to {_t}
+	return "%{_best}%팀"
+
+# 중간 참가: 게임 중인 월드에서 관전 중인 사람이 /참가 를 입력하면 팀(팀전)이나 새 개인(개인전)으로 들어간다. 섬멸전은 진행 중인 라운드가 끝날 때까지 관전, 바운티는 바로 투입.
+function gJoinMid(p: player):
+	set {_id} to "%uuid of {_p}%"
+	if {-gteams} > 0:
+		set {-team::%{_id}%} to gJoinTeam({_p})
+	set {_k} to gTeamOf({_p})
+	set {-gpteam::%{_id}%} to {_k}
+	set {-gpname::%{_id}%} to name of {_p}
+	if {-gscore::%{_k}%} is not set:
+		set {-gscore::%{_k}%} to 0
+		add {_k} to {-gteamlist::*}
+		set {-gname::%{_k}%} to name of {_p}
+		if {-gteams} > 0:
+			set {_sorted::*} to sorted {-gteamlist::*}
+			set {-gteamlist::*} to {_sorted::*}
+	if {-gplist::*} does not contain {_p}:
+		add {_p} to {-gplist::*}
+	set {-gk::%{_id}%} to 0
+	set {-gd::%{_id}%} to 0
+	set {-ga::%{_id}%} to 0
+	set {-gdmg::%{_id}%} to 0
+	set {-gstar::%{_id}%} to gStarBase()
+	delete {-gdead::%{_id}%}
+	delete {-glastdmg::%{_id}%::*}
+	{_p}.getInventory().clear()
+	if {-grandon} is true:
+		gRollLoadout({_p})
+		loadoutClearAll({_p})
+	loop all players:
+		send colored "&e[중간 참가] &f%name of {_p}% &7님이 %gTeamLabel({_k})% &7에 참가했습니다." to loop-player
+	if {-gmode} is "annihilation":
+		if {-groundend} is not true:
+			set {-gdead::%{_id}%} to true
+			send "&7이번 라운드가 끝나면 전투에 참가합니다." to {_p}
+			stop
+	gameRespawn({_p})
+
+command /참가:
+	description: 진행 중인 게임에 중간 참가해요
+	aliases: joingame
+	executable by: players
+	trigger:
+		if {-ingame} is not true:
+			send "&c진행 중인 게임이 없습니다."
+			stop
+		if {-gover} is true:
+			send "&c게임이 끝나가는 중이라 참가할 수 없습니다."
+			stop
+		if {-gfinale} is true:
+			send "&c게임이 끝나가는 중이라 참가할 수 없습니다."
+			stop
+		if {-gplist::*} contains player:
+			send "&c이미 참가 중입니다."
+			stop
+		gJoinMid(player)
+
+# 접속: 게임이 진행 중이 아니면 로비로, 진행 중이면 게임 월드에서 관전 상태로 보낸다. 이미 참가자였던 사람(재접속)은 바운티면 바로 복귀, 섬멸전이면 다음 라운드까지 관전.
+on join:
+	wait 1 tick
+	if player is not online:
+		stop
+	set {_playing} to false
+	if {-ingame} is true:
+		if {-gover} is not true:
+			if {-gfinale} is not true:
+				set {_playing} to true
+	if {_playing} is false:
+		set gamemode of player to adventure
+		gameLobby(player)
+		stop
+	set {_gw} to gcWorld("%{-gworld}%")
+	if {_gw} is not set:
+		stop
+	if {-gplist::*} contains player:
+		delete {-gdead::%uuid of player%}
+		if {-gmode} is "annihilation":
+			if {-groundend} is not true:
+				set {-gdead::%uuid of player%} to true
+				set gamemode of player to spectator
+				send "&7이번 라운드가 끝나면 전투에 참가합니다." to player
+				stop
+		gameRespawn(player)
+		stop
+	set gamemode of player to spectator
+	tpSafe(player, {_gw}.getSpawnLocation())
+	send "&e게임이 진행 중입니다. &7중간 참가는 &e/참가 &7를 입력하세요. (인원이 적은 팀, 승점 균형 순으로 배치됩니다)" to player
+
 # 게임 시작 때 팀 구성을 모두에게 알린다(내부 승점은 알리지 않는다).
 function gAnnounceTeams():
 	if {-gteams} < 1:

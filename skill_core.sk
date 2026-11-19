@@ -74,7 +74,7 @@
 #   {gamecfg::target::모드}   목표 스코어/승점(저장 변수, 대시 없음)                  gamesetup(gcTarget)
 #   {-ingame}                게임 진행 여부(true 면 무기고 해제). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
 #   {itemorder::*}           아이템 GUI 표시 순서(저장 변수, 대시 없음)           items
-#   {loadout::uuid::1~5}     플레이어별 아이템 구성 id(저장 변수, 대시 없음)       items
+#   {loadout::uuid::1~15} {loadoutset::uuid}  플레이어별 아이템 구성 id(3세트 x 5칸, 사용 중 세트 번호, 저장 변수, 대시 없음)       items
 #   {-itemgui::uuid} {-itemguislot::uuid} {-itemguimap::uuid::슬롯} {-itemguipick::uuid}  아이템 GUI 상태   items
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing

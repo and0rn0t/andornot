@@ -1,7 +1,7 @@
 # [items.sk] 아이템 시스템: 카탈로그(이름/재료/설명 lore), 플레이어별 구성(변수 저장), 무기고(9번 슬롯 상자) GUI, 아이템 변경 GUI, /itemorder 순서 편집, 탭리스트 아이콘
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. (탭 아이콘은 killlog.sk 의 killIcon() 함수를 쓴다)
 # 이 파일이 쓰는 변수: {-ingame}(게임 진행 여부, 지금은 아무도 안 켬. 게임 설계 때 true/false 로 사용),
-#   {loadout::uuid::1~5}(플레이어별 아이템 구성 id, 앞에 대시가 없어서 재시작해도 유지됨. 최초 접속 시 itemDefaults() 로 초기화),
+#   {loadout::uuid::1~15}(플레이어별 아이템 구성 id, 3세트: 1~5/6~10/11~15), {loadoutset::uuid}(사용 중인 로드아웃 1~3, 아이템 호출은 loadoutGet 이 사용 중인 세트를 읽음)(구성 id, 앞에 대시가 없어서 재시작해도 유지됨. 최초 접속 시 itemDefaults() 로 초기화),
 #   {itemorder::*}(GUI 표시 순서, 저장됨), {-itemgui::uuid}(열린 GUI 종류 armory/select/order), {-itemguislot::uuid}(변경 중인 구성 번호 1~5),
 #   {-itemguimap::uuid::칸}(GUI 칸 -> armory 는 구성 번호, select/order 는 아이템 id), {-itemguipick::uuid}(순서 편집에서 고른 칸), {-grand::uuid::1~5}(랜덤 아이템 모드로 게임 중 뽑은 구성, loadoutGet 이 게임 중에만 우선해서 읽음)
 #
@@ -461,14 +461,28 @@ function itemSprite(id: text) :: text:
 function itemDefaults() :: texts:
 	return "crossbow", "iron_axe", "mace", "tnt" and "potion_heal"
 
-# 플레이어의 구성 k 번(1~5) 아이템 id. 저장값이 없거나 카탈로그에서 사라진 id 면 기본값.
+# 로드아웃은 3세트(1번=저장칸 1~5, 2번=6~10, 3번=11~15). 사용 중인 세트 번호는 {loadoutset::uuid}(저장, 기본 1).
+function loadoutSet(p: player) :: number:
+	set {_v} to {loadoutset::%{_p}'s uuid%}
+	if {_v} is 2:
+		return 2
+	if {_v} is 3:
+		return 3
+	return 1
+
+# 사용 중인 세트의 구성 k 번(1~5)이 저장되는 실제 칸 번호(1~15)
+function loadoutIdx(p: player, k: number) :: number:
+	return (loadoutSet({_p}) - 1) * 5 + {_k}
+
+# 플레이어의 구성 k 번(1~5) 아이템 id(사용 중인 로드아웃 기준). 저장값이 없거나 카탈로그에서 사라진 id 면 기본값.
 function loadoutGet(p: player, k: number) :: text:
 	# 랜덤 아이템 모드로 진행 중인 게임이면 그 게임에서 뽑은 구성({-grand}, game.sk 의 gRollLoadout)이 우선한다. 저장된 구성({loadout})은 건드리지 않는다.
 	if {-ingame} is true:
 		set {_g} to {-grand::%{_p}'s uuid%::%{_k}%}
 		if {_g} is set:
 			return {_g}
-	set {_id} to {loadout::%{_p}'s uuid%::%{_k}%}
+	set {_ri} to loadoutIdx({_p}, {_k})
+	set {_id} to {loadout::%{_p}'s uuid%::%{_ri}%}
 	set {_ids::*} to itemIds()
 	if {_id} is set:
 		if {_ids::*} contains {_id}:
@@ -484,10 +498,12 @@ function loadoutClearAll(p: player):
 
 # 최초 접속 시 구성 초기화(저장값이 없는 칸만 채움)
 function loadoutInit(p: player):
-	loop integers from 1 to 5:
+	set {_d::*} to itemDefaults()
+	loop integers from 1 to 15:
 		set {_k} to loop-value
 		if {loadout::%{_p}'s uuid%::%{_k}%} is not set:
-			set {loadout::%{_p}'s uuid%::%{_k}%} to loadoutGet({_p}, {_k})
+			set {_dk} to mod({_k} - 1, 5) + 1
+			set {loadout::%{_p}'s uuid%::%{_k}%} to {_d::%{_dk}%}
 
 # 탭 아이콘 색(텍스트 색으로 스프라이트를 물들임, 미검증: 색이 안 입혀지면 itemSprite 에서 포션마다 다른 아이템 스프라이트를 쓰는 방법으로 바꿀 것).
 # 색을 안 입힐 아이템은 "" 를 돌려준다. 색은 #RRGGBB.
@@ -663,19 +679,27 @@ function itemGuiFill(p: player, inv: inventory, mode: text):
 		set slot 31 of {_inv} to barrier named "&c돌아가기"
 		set {-itemguimap::%{_uid}%::31} to "__back"
 
-# 무기고 GUI(2줄): 윗줄 가운데(칸 4)는 내 머리, 아랫줄 3~7번째 칸(칸 11~15)이 구성 1~5번. 나머지는 회색 색유리판.
+# 무기고 GUI(2줄): 윗줄 칸 3/4/5 가 로드아웃 1/2/3번 유리판(사용 중 = 초록, 미사용 = 파랑), 아랫줄 3~7번째 칸(칸 11~15)이 사용 중인 로드아웃의 구성 1~5번. 나머지는 회색 색유리판.
 function armoryFill(p: player, inv: inventory):
 	set {_uid} to "%{_p}'s uuid%"
 	delete {-itemguimap::%{_uid}%::*}
 	loop 18 times:
 		set {_s} to loop-value - 1
 		set slot {_s} of {_inv} to gray stained glass pane named " "
-	set {_h} to player head
-	set skull owner of {_h} to {_p}
-	set {_hn} to name of {_p}
-	set {_h} to {_h} named "&f%{_hn}%"
-	set lore of {_h} to "&7아이템 구성"
-	set slot 4 of {_inv} to {_h}
+	set {_cur} to loadoutSet({_p})
+	loop integers from 1 to 3:
+		set {_n} to loop-value
+		set {_from} to ({_n} - 1) * 5 + 1
+		set {_to} to {_n} * 5
+		if {_n} is {_cur}:
+			set {_g} to lime stained glass pane named "&a%{_n}%번 로드아웃"
+			set lore of {_g} to "&a사용 중", "&7아이템 %{_from}%~%{_to}%번"
+		else:
+			set {_g} to blue stained glass pane named "&9%{_n}%번 로드아웃"
+			set lore of {_g} to "&7미사용", "&7아이템 %{_from}%~%{_to}%번", "", "&e▶ 클릭해서 이 로드아웃 사용"
+		set {_s} to {_n} + 2
+		set slot {_s} of {_inv} to {_g}
+		set {-itemguimap::%{_uid}%::%{_s}%} to "__set%{_n}%"
 	loop integers from 1 to 5:
 		set {_k} to loop-value
 		set {_s} to {_k} + 10
@@ -838,6 +862,20 @@ on inventory click:
 	if {_id} is not set:
 		stop
 	if {_m} is "armory":
+		set {_idt} to "%{_id}%"
+		if {_idt} starts with "__set":
+			set {_sn} to {_idt}
+			replace "__set" in {_sn} with ""
+			set {_sn} to {_sn} parsed as number
+			if {_sn} is not loadoutSet({_p}):
+				set {loadoutset::%{_uid}%} to {_sn}
+				# 이전 로드아웃 아이템을 치우고 새 로드아웃 아이템을 지급한다
+				loadoutClearAll({_p})
+				loadoutGive({_p})
+				tabUpdate({_p})
+				play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
+			itemGuiOpen({_p}, "armory")
+			stop
 		itemGuiOpen({_p}, "select", {_id})
 	else if {_m} is "select":
 		if {_id} is "__back":
@@ -854,7 +892,8 @@ on inventory click:
 						stop
 			set {_old} to loadoutGet({_p}, {_k})
 			set {_os} to loadoutFind({_p}, {_old})
-			set {loadout::%{_uid}%::%{_k}%} to {_id}
+			set {_ri} to loadoutIdx({_p}, {_k})
+			set {loadout::%{_uid}%::%{_ri}%} to {_id}
 			# 기존 아이템이 있던 칸에 새 아이템을 넣는다(없으면 loadoutGive 가 빈 칸에 지급)
 			if {_os} >= 0:
 				set slot {_os} of {_p}'s inventory to itemBuild({_id})
