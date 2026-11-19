@@ -10,6 +10,25 @@
 # 빈 칸은 전부 회색 색유리판(이름 공백)이고 클릭해도 아무 일도 안 일어난다. GUI 칸 클릭에는 UI 버튼 소리가 난다.
 # 미검증 문법: 6줄 GUI 와 클릭 처리는 items.sk 와 같은 방식(event.getRawSlot() 등).
 
+# ===== 설정 잠금(덮어쓰기 방지) =====
+# 켜져 있으면(기본값) 이미 저장된 로비 위치, 결과 무대 위치(월드별), 훈련장 위치와, 이미 설치된 훈련장/로비 NPC 를 버튼으로 덮어쓰거나 다시 설치/치우지 못한다.
+# 처음 저장하는 것은 잠겨 있어도 된다. 바꾸려면 "설정 잠금" 버튼으로 끈 뒤 바꾸고 다시 켠다. 저장 변수 {gamecfg::unlock}(true 면 잠금 꺼짐, 없으면 켜짐).
+# 잠그지 않는 것: 맵 선택, 게임 설정(팀 수/모드/랜덤 아이템), 아이템 순서, 결과 무대 치우기(위치 설정이 아니라 남은 더미 청소).
+function adminLockOn() :: boolean:
+	if {gamecfg::unlock} is true:
+		return false
+	return true
+
+# 저장된 위치가 있는지(gcSaveLoc 키)
+function gcLocSet(key: text) :: boolean:
+	if {gamecfg::loc::%{_key}%::world} is set:
+		return true
+	return false
+
+function adminLockDeny(p: player, what: text):
+	send "&c이미 설정된 %{_what}%을(를) 바꿀 수 없습니다. 관리자 메뉴의 '설정 잠금'을 끈 뒤 다시 시도해 주십시오." to {_p}
+	play sound "block.note_block.bass" with volume 1 and pitch 0.6 to {_p}
+
 # 8번 슬롯에 고정되는 관리자 메뉴 아이템(op 전용, 고정/제거는 items.sk)
 function adminItemName() :: text:
 	return "&c관리자 메뉴"
@@ -20,7 +39,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "team", "setlobby", "setstage", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc" and "clearlobbynpc"
+	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "team", "setlobby", "setstage", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc" and "lock"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -84,6 +103,14 @@ function adminButtonItem(id: text) :: itemtype:
 		set {_i} to red wool named "&c로비 NPC 치우기"
 		set lore of {_i} to "&7설치된 로비 NPC 를", "&7모든 월드에서 지워요", "", "&e▶ 클릭해서 치우기"
 		return {_i}
+	if {_id} is "lock":
+		if adminLockOn() is true:
+			set {_i} to iron door named "&f설정 잠금: &a켜짐"
+			set lore of {_i} to "&7이미 저장된 로비/결과 무대/훈련장 위치와", "&7설치된 NPC 를 덮어쓰지 못하게 막아요", "", "&e▶ 클릭해서 끄기"
+		else:
+			set {_i} to iron door named "&f설정 잠금: &c꺼짐"
+			set lore of {_i} to "&7지금은 저장된 위치와 NPC 를", "&7덮어쓰거나 치울 수 있어요", "&c바꾼 뒤 다시 켜는 걸 권해요", "", "&e▶ 클릭해서 켜기"
+		return {_i}
 	set {_i} to barrier named "&c알 수 없는 버튼"
 	return {_i}
 
@@ -104,13 +131,32 @@ function adminAction(p: player, id: text):
 			send "&c진행 중인 게임이 없습니다." to {_p}
 		else:
 			gameForceStop(name of {_p})
+	else if {_id} is "lock":
+		if adminLockOn() is true:
+			set {gamecfg::unlock} to true
+			send "&c설정 잠금을 껐습니다. 저장된 위치와 NPC 를 바꿀 수 있습니다." to {_p}
+		else:
+			delete {gamecfg::unlock}
+			send "&a설정 잠금을 켰습니다." to {_p}
+		adminOpen({_p})
 	else if {_id} is "setlobby":
 		close {_p}'s inventory
+		if adminLockOn() is true:
+			if gcLocSet("lobby") is true:
+				adminLockDeny({_p}, "로비 위치")
+				stop
+			if {gamecfg::lobby} is set:
+				adminLockDeny({_p}, "로비 위치")
+				stop
 		gcSaveLoc("lobby", location of {_p})
 		send "&a로비 위치를 저장했습니다. (%{_p}.getWorld().getName()%)" to {_p}
 	else if {_id} is "setstage":
 		close {_p}'s inventory
 		set {_sw} to {_p}.getWorld().getName()
+		if adminLockOn() is true:
+			if gcLocSet(gcStageKey({_sw})) is true:
+				adminLockDeny({_p}, "'%{_sw}%' 월드의 결과 무대 위치")
+				stop
 		gcSaveLoc(gcStageKey({_sw}), location of {_p})
 		send "&a'%{_sw}%' 월드의 결과 무대 위치를 저장했습니다. 지금 바라보는 방향이 더미가 바라볼 방향입니다." to {_p}
 	else if {_id} is "clearstage":
@@ -119,10 +165,18 @@ function adminAction(p: player, id: text):
 		send "&7남아 있는 결과 무대를 치웠습니다." to {_p}
 	else if {_id} is "settraining":
 		close {_p}'s inventory
+		if adminLockOn() is true:
+			if gcLocSet("training") is true:
+				adminLockDeny({_p}, "훈련장 위치")
+				stop
 		gcSaveLoc("training", location of {_p})
 		send "&a훈련장 위치를 저장했습니다. (%{_p}.getWorld().getName()%)" to {_p}
 	else if {_id} is "trainingnpc":
 		close {_p}'s inventory
+		if adminLockOn() is true:
+			if npcCount("trainingnpc") > 0:
+				adminLockDeny({_p}, "훈련장 NPC")
+				stop
 		set {_yaw} to {_p}.getLocation().getYaw()
 		set {_nl} to location of {_p} ~ vector(0 - sin({_yaw}) * 1.5, 0, cos({_yaw}) * 1.5)
 		trainingNpcSpawn({_nl}, {_yaw} + 180)
@@ -131,16 +185,28 @@ function adminAction(p: player, id: text):
 			send "&e아직 훈련장 위치가 저장되지 않았습니다. 관리자 메뉴의 '훈련장 위치 설정'으로 저장해 주십시오." to {_p}
 	else if {_id} is "cleartrainingnpc":
 		close {_p}'s inventory
+		if adminLockOn() is true:
+			if npcCount("trainingnpc") > 0:
+				adminLockDeny({_p}, "훈련장 NPC")
+				stop
 		set {_n} to trainingNpcClear()
 		send "&7훈련장 NPC %{_n}%개를 치웠습니다." to {_p}
 	else if {_id} is "lobbynpc":
 		close {_p}'s inventory
+		if adminLockOn() is true:
+			if npcCount("lobbynpc") > 0:
+				adminLockDeny({_p}, "로비 NPC")
+				stop
 		set {_yaw} to {_p}.getLocation().getYaw()
 		set {_nl} to location of {_p} ~ vector(0 - sin({_yaw}) * 1.5, 0, cos({_yaw}) * 1.5)
 		lobbyNpcSpawn({_nl}, {_yaw} + 180)
 		send "&a서 있는 자리 앞에 로비 NPC 를 설치했습니다." to {_p}
 	else if {_id} is "clearlobbynpc":
 		close {_p}'s inventory
+		if adminLockOn() is true:
+			if npcCount("lobbynpc") > 0:
+				adminLockDeny({_p}, "로비 NPC")
+				stop
 		set {_n} to lobbyNpcClear()
 		send "&7로비 NPC %{_n}%개를 치웠습니다." to {_p}
 	else if {_id} is "itemorder":

@@ -127,6 +127,16 @@ function trainingNpcSpawn(loc: location, yaw: number):
 function lobbyNpcSpawn(loc: location, yaw: number):
 	npcSpawn({_loc}, {_yaw}, "lobbynpc", "로비", "aqua", "클릭해서 이동", lobbyNpcSkin())
 
+# 태그가 tag 인 NPC 가 모든 월드에 몇 개 있는지(불러온 청크 기준)
+function npcCount(tag: text) :: number:
+	set {_n} to 0
+	loop all entities:
+		set {_e} to loop-entity
+		set {_has} to {_e}.getScoreboardTags().contains({_tag})
+		if {_has} is true:
+			add 1 to {_n}
+	return {_n}
+
 # 태그가 tag 인 NPC 를 모든 월드에서 지우고 지운 수를 돌려준다
 function npcClear(tag: text) :: number:
 	set {_n} to 0
