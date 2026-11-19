@@ -364,7 +364,7 @@ command /matchtest [<text>]:
 		gfTestSetup(player)
 		delete {-gover}
 		set {-gmatchlbl} to "MATCH TEST"
-		set {-gpotmres} to "더미1 (3표)"
+		set {-gpotmres} to "Dummy1 (3표)"
 		delete {matchlog::0::*}
 		set {-gfinline} to true
 		set {matchlog::0::json} to gfResultJson()
