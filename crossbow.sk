@@ -24,7 +24,7 @@ on damage:
 	else:
 		set {_p} to attacker
 	if {_p} is an arrow:
-		# 화살은 활/석궁 공통으로 기본 피해 실 체력 3. 활(bow.sk)은 충전도에 따른 추가 피해({-bowextra::화살uuid}, 0~8)를 여기에 더한다(최종 3~11).
+		# 화살은 활/석궁 공통으로 기본 피해 실 체력 3. 활(bow.sk)은 충전도에 따른 추가 피해({-bowextra::화살uuid}, 0~9)를 여기에 더한다(최종 3~12).
 		set damage to hp(3)
 		set {_ex} to {-bowextra::%uuid of {_p}%}
 		if {_ex} is a number:
