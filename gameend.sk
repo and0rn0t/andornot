@@ -325,8 +325,16 @@ function gfHeaderJson() :: text:
 	set {_c4} to gfT({_h4}, "gray", false)
 	set {_c5} to gfT({_h5}, "gray", false)
 	set {_s6} to "아이템"
-	set {_p6} to gtPad(gtItemW(), {_s6})
-	set {_h6} to "%{_s6}%%{_p6}%"
+	# 아이콘 5개 칸(gtItemW) 가운데에 오도록 앞에 공백을 둔다
+	set {_lead} to round((gtItemW() - gtPx({_s6})) / 8)
+	if {_lead} < 0:
+		set {_lead} to 0
+	set {_ls} to ""
+	if {_lead} > 0:
+		set {_lr} to " " repeated {_lead} times
+		set {_ls} to "%{_lr}%"
+	set {_p6} to gtPad(gtItemW() - {_lead} * 4, {_s6})
+	set {_h6} to "%{_ls}%%{_s6}%%{_p6}%"
 	set {_c6} to gfT({_h6}, "gray", false)
 	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%]}"
 
