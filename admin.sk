@@ -74,11 +74,11 @@ function adminAction(p: player, id: text):
 			gameForceStop(name of {_p})
 	else if {_id} is "setlobby":
 		close {_p}'s inventory
-		set {gamecfg::lobby} to location of {_p}
+		gcSaveLoc("lobby", location of {_p})
 		send "&a로비 위치를 저장했습니다. (%{_p}.getWorld().getName()%)" to {_p}
 	else if {_id} is "setstage":
 		close {_p}'s inventory
-		set {gamecfg::stage} to location of {_p}
+		gcSaveLoc("stage", location of {_p})
 		send "&a결과 무대 위치를 저장했습니다. 지금 바라보는 방향이 더미가 바라볼 방향입니다. (%{_p}.getWorld().getName()%)" to {_p}
 	else if {_id} is "clearstage":
 		close {_p}'s inventory

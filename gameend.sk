@@ -11,10 +11,13 @@
 #   3초   승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고, 모두 그 앞(관전)으로 모은 뒤 결과를 채팅에 발표. 투표 시작
 #   15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
 # 결과 표시: 팀 점수(승리 팀이 맨 위), 참가자 전원의 K/D/A·가한 피해·사용한 아이템(구성 아이콘)을 텍스트 디스플레이로 승리 팀 더미 뒤에 띄운다. 투표 수는 더미 머리 위 설명에 표시.
-# 로비/결과 무대 위치는 관리자 메뉴 버튼으로 저장한 위치({gamecfg::lobby}, {gamecfg::stage})를 쓴다(멀티월드 가능). 결과 무대(더미 + 디스플레이)는 다음 게임 시작 전까지 남는다.
+# 로비/결과 무대 위치는 관리자 메뉴 버튼으로 저장한 위치({gamecfg::loc::lobby|stage::world|x|y|z|yaw|pitch}, 월드 이름 + 좌표)를 쓴다(멀티월드 가능). 결과 무대(더미 + 디스플레이)는 다음 게임 시작 전까지 남는다.
 # 미검증: 마네킹 소환/스킨(ResolvableProfile, SPIGOT-8084), 마네킹 이름표/설명, PlayerInteractEntityEvent 로 마네킹 클릭, 무적 더미 좌클릭 이벤트, TextDisplay#text/setLineWidth, 디스플레이 크기/위치.
 
 import:
+	org.bukkit.Bukkit
+	org.bukkit.Location
+	org.bukkit.WorldCreator
 	net.kyori.adventure.text.Component
 	net.kyori.adventure.text.event.ClickEvent
 	net.kyori.adventure.text.event.HoverEvent
@@ -26,10 +29,46 @@ import:
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 
 # ===== 맵 연결 자리(멀티월드) =====
-# 로비 위치와 결과 무대 위치는 관리자 메뉴(admin.sk)의 버튼으로 서 있는 자리에서 저장한다({gamecfg::lobby}, {gamecfg::stage}, 월드 포함 위치).
+# 로비 위치와 결과 무대 위치는 관리자 메뉴(admin.sk)의 버튼으로 서 있는 자리에서 저장한다({gamecfg::loc::lobby}, {gamecfg::loc::stage}: 월드 이름 + 좌표. 예전 위치 변수 {gamecfg::lobby}/{gamecfg::stage} 는 대체로만 읽는다).
 # 저장이 없으면 접속 중인 아무 월드의 스폰을 쓴다. 월드가 달라도 teleport 는 그대로 된다(월드가 불러와져 있어야 함).
 # 무대 위치의 방향(yaw)은 더미가 바라보는 쪽 = 구경하는 사람이 서는 쪽이다. 저장할 때 구경꾼 쪽을 바라보고 서면 된다.
+# 위치는 Skript 의 위치 변수가 아니라 월드 이름 + 좌표로 따로 저장한다({gamecfg::loc::키::world|x|y|z|yaw|pitch}).
+#   위치 변수는 서버를 켤 때 그 월드가 아직 안 올라와 있으면 비어 버리기 때문이다. 쓸 때 월드를 불러온다(gcWorld).
+# 월드가 안 올라와 있으면 불러오고(없던 폴더면 새로 만든다), 이름만으로 월드를 돌려준다.
+function gcWorld(n: text) :: world:
+	set {_w} to Bukkit.getWorld({_n})
+	if {_w} is not set:
+		set {_w} to Bukkit.createWorld(new WorldCreator({_n}))
+	return {_w}
+
+# 위치 저장(키: lobby, stage). 관리자 메뉴 버튼이 부른다.
+function gcSaveLoc(key: text, l: location):
+	set {_w} to {_l}.getWorld()
+	set {gamecfg::loc::%{_key}%::world} to {_w}.getName()
+	set {gamecfg::loc::%{_key}%::x} to {_l}.getX()
+	set {gamecfg::loc::%{_key}%::y} to {_l}.getY()
+	set {gamecfg::loc::%{_key}%::z} to {_l}.getZ()
+	set {gamecfg::loc::%{_key}%::yaw} to {_l}.getYaw()
+	set {gamecfg::loc::%{_key}%::pitch} to {_l}.getPitch()
+	delete {gamecfg::%{_key}%}
+
+# 저장된 위치를 읽는다. 저장이 없거나 월드를 못 불러오면 값 없음.
+function gcLoadLoc(key: text) :: location:
+	set {_wn} to {gamecfg::loc::%{_key}%::world}
+	if {_wn} is not set:
+		return {_none}
+	set {_w} to gcWorld({_wn})
+	if {_w} is not set:
+		return {_none}
+	set {_l} to new Location({_w}, {gamecfg::loc::%{_key}%::x}, {gamecfg::loc::%{_key}%::y}, {gamecfg::loc::%{_key}%::z})
+	{_l}.setYaw({gamecfg::loc::%{_key}%::yaw})
+	{_l}.setPitch({gamecfg::loc::%{_key}%::pitch})
+	return {_l}
+
 function gameLobbyLoc() :: location:
+	set {_sv} to gcLoadLoc("lobby")
+	if {_sv} is set:
+		return {_sv}
 	if {gamecfg::lobby} is set:
 		return {gamecfg::lobby}
 	loop all players:
@@ -38,6 +77,9 @@ function gameLobbyLoc() :: location:
 
 # 결과 무대(승리 팀 더미들의 가운데). 기본은 월드 스폰에서 방향 180 도(남쪽 -> 북쪽을 바라보는 더미).
 function gameStageLoc() :: location:
+	set {_sv} to gcLoadLoc("stage")
+	if {_sv} is set:
+		return {_sv}
 	if {gamecfg::stage} is set:
 		return {gamecfg::stage}
 	set {_l0} to gameLobbyLoc()
