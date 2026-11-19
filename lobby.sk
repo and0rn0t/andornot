@@ -68,14 +68,15 @@ on damage with priority lowest:
 	send action bar "&c로비 근처에서는 PvP 를 할 수 없습니다." to {_a}
 
 # ===== 훈련장 =====
-# 이 플레이어가 지금 게임에 묶여 있는지: 진행 중인 게임(또는 종료 연출 중)의 참가자. 이동 NPC 와 /lobby 가 이걸로 막는다.
+# 이 플레이어가 지금 로비/훈련장으로 이동하면 안 되는지. 이동 NPC 와 /lobby 가 이걸로 막는다.
+#   - 게임 종료 연출 중(결과 무대, POTM 투표 포함)에는 참가자가 아니어도 모두 막는다.
+#   - 그 밖에 진행 중인 게임에서는 참가자만 막는다.
 function inGameNow(p: player) :: boolean:
-	set {_busy} to false
-	if {-ingame} is true:
-		set {_busy} to true
 	if {-gfinale} is true:
-		set {_busy} to true
-	if {_busy} is false:
+		return true
+	if {-gover} is true:
+		return true
+	if {-ingame} is not true:
 		return false
 	if {-gplist::*} contains {_p}:
 		return true
