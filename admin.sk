@@ -104,12 +104,12 @@ function adminButtonItem(id: text) :: itemtype:
 		set lore of {_i} to "&7설치된 로비 NPC 를", "&7모든 월드에서 지워요", "", "&e▶ 클릭해서 치우기"
 		return {_i}
 	if {_id} is "shelfadd":
-		set {_i} to bookshelf named "&f매치 책장 등록"
-		set lore of {_i} to "&7바라보는 책장을 지난 매치 책장으로 등록해요", "&7(우클릭하면 지난 매치 목록이 열려요)", "", "&e▶ 책장을 보고 클릭"
+		set {_i} to lectern named "&f매치 독서대 등록"
+		set lore of {_i} to "&7바라보는 독서대를 지난 매치 독서대로 등록해요", "&7(우클릭하면 지난 매치 목록이 열려요)", "", "&e▶ 독서대를 보고 클릭"
 		return {_i}
 	if {_id} is "shelfdel":
-		set {_i} to red wool named "&c매치 책장 해제"
-		set lore of {_i} to "&7바라보는 책장의 등록을 해제해요", "", "&e▶ 책장을 보고 클릭"
+		set {_i} to red wool named "&c매치 독서대 해제"
+		set lore of {_i} to "&7바라보는 독서대의 등록을 해제해요", "", "&e▶ 독서대를 보고 클릭"
 		return {_i}
 	if {_id} is "lock":
 		if adminLockOn() is true:
