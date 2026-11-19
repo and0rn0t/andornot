@@ -908,6 +908,82 @@ function gfTestCleanup():
 	delete {-gtarget}
 	delete {-gftest}
 
+# /finaletest, /matchtest 공용: 가짜 게임 데이터(3인씩 3팀 9명, 1팀 승리)를 실제 게임 변수에 채운다. 끝나면 gfTestCleanup() 으로 되돌릴 것. 실행자 p 가 1팀의 실제 참가자.
+function gfTestSetup(p: player):
+	set {-gftest} to true
+	set {-gworld} to {_p}.getWorld().getName()
+	set {-gftester} to {_p}
+	set {-gftuuid} to "%uuid of {_p}%"
+	set {-gfoldteam} to {-team::%uuid of {_p}%}
+	set {-team::%uuid of {_p}%} to "1팀"
+	set {-gmode} to "bounty"
+	set {-gtarget} to 20
+	set {-gteams} to 3
+	set {-gteamlist::1} to "1팀"
+	set {-gteamlist::2} to "2팀"
+	set {-gteamlist::3} to "3팀"
+	set {-gname::1팀} to "1팀"
+	set {-gname::2팀} to "2팀"
+	set {-gname::3팀} to "3팀"
+	set {-gscore::1팀} to 20
+	set {-gscore::2팀} to 13
+	set {-gscore::3팀} to 9
+	set {-gplist::1} to {_p}
+	set {-gk::%uuid of {_p}%} to 9
+	set {-gd::%uuid of {_p}%} to 4
+	set {-ga::%uuid of {_p}%} to 3
+	set {-gdmg::%uuid of {_p}%} to 46
+	set {-gfake::fake1} to "더미1"
+	set {-gfake::fake2} to "더미2"
+	set {-gfake::fake3} to "더미3"
+	set {-gfake::fake4} to "더미4"
+	set {-gfake::fake5} to "더미5"
+	set {-gfake::fake6} to "더미6"
+	set {-gfake::fake7} to "더미7"
+	set {-gfake::fake8} to "더미8"
+	set {-gfteam::fake1} to "1팀"
+	set {-gfteam::fake2} to "1팀"
+	set {-gfteam::fake3} to "2팀"
+	set {-gfteam::fake4} to "2팀"
+	set {-gfteam::fake5} to "2팀"
+	set {-gfteam::fake6} to "3팀"
+	set {-gfteam::fake7} to "3팀"
+	set {-gfteam::fake8} to "3팀"
+	set {-gk::fake1} to 7
+	set {-gd::fake1} to 3
+	set {-ga::fake1} to 4
+	set {-gdmg::fake1} to 38
+	set {-gk::fake2} to 4
+	set {-gd::fake2} to 2
+	set {-ga::fake2} to 6
+	set {-gdmg::fake2} to 27.5
+	set {-gk::fake3} to 6
+	set {-gd::fake3} to 5
+	set {-ga::fake3} to 2
+	set {-gdmg::fake3} to 33
+	set {-gk::fake4} to 4
+	set {-gd::fake4} to 6
+	set {-ga::fake4} to 3
+	set {-gdmg::fake4} to 24
+	set {-gk::fake5} to 3
+	set {-gd::fake5} to 7
+	set {-ga::fake5} to 1
+	set {-gdmg::fake5} to 16.5
+	set {-gk::fake6} to 3
+	set {-gd::fake6} to 6
+	set {-ga::fake6} to 2
+	set {-gdmg::fake6} to 19
+	set {-gk::fake7} to 2
+	set {-gd::fake7} to 7
+	set {-ga::fake7} to 4
+	set {-gdmg::fake7} to 14
+	set {-gk::fake8} to 4
+	set {-gd::fake8} to 8
+	set {-ga::fake8} to 0
+	set {-gdmg::fake8} to 21
+	set {-gwinner} to "1팀"
+	set {-gover} to true
+
 # 관리자 전용: 마지막 킬 연출(실행자가 죽는 연출을 모두 관전)부터 종료 연출까지 전체를 재생한다. 3인씩 3팀(총 9명): 실행자 + 가짜 참가자 더미1~8. 1팀(실행자, 더미1, 더미2)이 바운티를 이겼다는 설정.
 # 승리 팀 3명이라 무대에 더미 3개(가짜 팀원은 실행자의 모습)가 선다. 실제 게임 변수를 빌려 쓰므로 게임/연출이 진행 중이면 거부하고, 끝나면 전부 되돌린다. 마지막 킬 연출은 포함하지 않는다.
 command /finaletest:
@@ -928,79 +1004,7 @@ command /finaletest:
 		if size of {-kc::*} > 0:
 			send "&c킬 연출이 진행 중입니다. 끝난 뒤 다시 시도해 주십시오."
 			stop
-		set {-gftest} to true
-		set {-gworld} to player.getWorld().getName()
-		set {-gftester} to player
-		set {-gftuuid} to "%uuid of player%"
-		set {-gfoldteam} to {-team::%uuid of player%}
-		set {-team::%uuid of player%} to "1팀"
-		set {-gmode} to "bounty"
-		set {-gtarget} to 20
-		set {-gteams} to 3
-		set {-gteamlist::1} to "1팀"
-		set {-gteamlist::2} to "2팀"
-		set {-gteamlist::3} to "3팀"
-		set {-gname::1팀} to "1팀"
-		set {-gname::2팀} to "2팀"
-		set {-gname::3팀} to "3팀"
-		set {-gscore::1팀} to 20
-		set {-gscore::2팀} to 13
-		set {-gscore::3팀} to 9
-		set {-gplist::1} to player
-		set {-gk::%uuid of player%} to 9
-		set {-gd::%uuid of player%} to 4
-		set {-ga::%uuid of player%} to 3
-		set {-gdmg::%uuid of player%} to 46
-		set {-gfake::fake1} to "더미1"
-		set {-gfake::fake2} to "더미2"
-		set {-gfake::fake3} to "더미3"
-		set {-gfake::fake4} to "더미4"
-		set {-gfake::fake5} to "더미5"
-		set {-gfake::fake6} to "더미6"
-		set {-gfake::fake7} to "더미7"
-		set {-gfake::fake8} to "더미8"
-		set {-gfteam::fake1} to "1팀"
-		set {-gfteam::fake2} to "1팀"
-		set {-gfteam::fake3} to "2팀"
-		set {-gfteam::fake4} to "2팀"
-		set {-gfteam::fake5} to "2팀"
-		set {-gfteam::fake6} to "3팀"
-		set {-gfteam::fake7} to "3팀"
-		set {-gfteam::fake8} to "3팀"
-		set {-gk::fake1} to 7
-		set {-gd::fake1} to 3
-		set {-ga::fake1} to 4
-		set {-gdmg::fake1} to 38
-		set {-gk::fake2} to 4
-		set {-gd::fake2} to 2
-		set {-ga::fake2} to 6
-		set {-gdmg::fake2} to 27.5
-		set {-gk::fake3} to 6
-		set {-gd::fake3} to 5
-		set {-ga::fake3} to 2
-		set {-gdmg::fake3} to 33
-		set {-gk::fake4} to 4
-		set {-gd::fake4} to 6
-		set {-ga::fake4} to 3
-		set {-gdmg::fake4} to 24
-		set {-gk::fake5} to 3
-		set {-gd::fake5} to 7
-		set {-ga::fake5} to 1
-		set {-gdmg::fake5} to 16.5
-		set {-gk::fake6} to 3
-		set {-gd::fake6} to 6
-		set {-ga::fake6} to 2
-		set {-gdmg::fake6} to 19
-		set {-gk::fake7} to 2
-		set {-gd::fake7} to 7
-		set {-ga::fake7} to 4
-		set {-gdmg::fake7} to 14
-		set {-gk::fake8} to 4
-		set {-gd::fake8} to 8
-		set {-ga::fake8} to 0
-		set {-gdmg::fake8} to 21
-		set {-gwinner} to "1팀"
-		set {-gover} to true
+		gfTestSetup(player)
 		# 실제 마지막 킬과 같은 순서: 승패가 난 상태({-gover})에서 실행자가 치명타를 받으면 킬 연출(killcine.sk)이 돌고, 연출이 끝나면 killcine.sk 가 gameFinale() 을 부른다.
 		# 킬 연출은 생존/모험 모드에서만 돌아서 모험 모드로 바꾼 뒤 치명 피해를 준다(공격자는 없음). 종료 연출이 끝나면 gfTestCleanup 이 되돌린다.
 		set {_tp} to player
