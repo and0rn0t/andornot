@@ -43,7 +43,7 @@ function adminButtonItem(id: text) :: itemtype:
 		set lore of {_i} to "&7명령어로 플레이어의 팀을 정해요", "&7(채팅창에 사용법을 알려줘요)", "", "&e▶ 클릭"
 		return {_i}
 	if {_id} is "setlobby":
-		set {_i} to bed named "&f로비 위치 설정"
+		set {_i} to compass named "&f로비 위치 설정"
 		set lore of {_i} to "&7지금 서 있는 자리를 게임이 끝난 뒤", "&7모두가 돌아올 로비로 저장해요", "&7(월드가 달라도 돼요)", "", "&e▶ 클릭해서 저장"
 		return {_i}
 	if {_id} is "setstage":
