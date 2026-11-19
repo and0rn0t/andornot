@@ -44,8 +44,9 @@ function gtCharPx(c: number) :: number:
 		return 5
 	if {_c} is 64 or 126:
 		return 7
+	# 한글(유니폰트)은 글자당 8픽셀(결과 dialog 스크린샷의 "플레이어" 4글자 = 약 31픽셀로 확인). 예전 값 9 는 글자마다 1픽셀씩 넓게 쳐서 한글 이름 줄이 밀렸다.
 	if {_c} >= 44032:
-		return 9
+		return 8
 	return 6
 
 function gtPx(s: text) :: number:
