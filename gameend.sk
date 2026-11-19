@@ -20,6 +20,7 @@ import:
 	org.bukkit.Location
 	org.bukkit.WorldCreator
 	org.bukkit.NamespacedKey
+	org.bukkit.entity.TextDisplay$TextAlignment
 	net.kyori.adventure.text.Component
 	net.kyori.adventure.text.event.ClickEvent
 	net.kyori.adventure.text.event.HoverEvent
@@ -179,6 +180,8 @@ function gfBuildStage(stage: location) :: object:
 	# 고정: 시선을 따라 돌지 않고, 더미와 같은 방향(구경꾼이 서는 쪽)을 향해 한 자리에 붙어 있다. 글자가 거울처럼 뒤집혀 보이면 아래 {_sy} 를 {_sy} + 180 으로 바꾼다(미검증).
 	{_disp}.setRotation({_sy}, 0)
 	{_disp}.setLineWidth(600)
+	# 줄마다 실제 폭이 달라서 가운데 정렬이면 줄이 통째로 밀린다 -> 왼쪽 정렬로 두고, 가운데에 둘 줄은 gfCenter 로 앞에 공백을 넣는다(미검증: setAlignment)
+	{_disp}.setAlignment(TextAlignment.LEFT)
 	{_disp}.text(GsonComponentSerializer.gson().deserialize(gfResultJson()))
 	add {_disp} to {-gdummies::*}
 	return {_disp}
@@ -464,6 +467,15 @@ function gfPrep():
 			set {-gfnw} to {_nw}
 
 # 결과 디스플레이 내용(JSON): 제목, 모드/승리/팀 스코어, 표 머리, 참가자 줄, POTM 안내/결과. 모든 줄 폭을 같게 맞춰서 가운데 정렬이어도 열이 선다.
+# 가운데에 놓을 줄 앞에 넣을 공백 조각(JSON). plain = 그 줄의 글자(색 코드 없이), tw = 표 폭(픽셀). 왼쪽 정렬 디스플레이에서 가운데 정렬 흉내.
+function gfCenter(plain: text, tw: number) :: text:
+	set {_n} to round((({_tw} - gtPx({_plain})) / 2) / 4)
+	if {_n} < 1:
+		return gfT("", "white", false)
+	set {_r} to " " repeated {_n} times
+	set {_sp} to "%{_r}%"
+	return gfT({_sp}, "white", false)
+
 function gfResultJson() :: text:
 	gfPrep()
 	set {_nlc} to "{""text"":""\n""}"
@@ -487,7 +499,19 @@ function gfResultJson() :: text:
 	set {_tm} to gfT({_mlp}, "yellow", false)
 	set {_i1} to gfT("%gcModeName({-gmode})% · 승리 ", "yellow", false)
 	set {_wj} to gfLabelJ({-gwinner})
-	set {_ex} to "%{_t0}%,%{_tm}%,%{_t0}%,%{_nlc}%,%{_i1}%,%{_wj}%"
+	# 둘째 줄(모드 · 승리 팀 + 팀 점수)의 글자만 따로 모아 폭을 잰다
+	set {_pl} to "%gcModeName({-gmode})% · 승리 %gTeamName({-gwinner})%"
+	if {-gteams} > 0:
+		set {_pl} to "%{_pl}%    "
+		set {_pf} to true
+		loop gfTeamOrder():
+			set {_pk} to loop-value
+			if {_pf} is false:
+				set {_pl} to "%{_pl}%  |  "
+			set {_pl} to "%{_pl}%%gTeamName({_pk})% %{-gscore::%{_pk}%}%"
+			set {_pf} to false
+	set {_cp1} to gfCenter({_pl}, {_tw})
+	set {_ex} to "%{_t0}%,%{_tm}%,%{_t0}%,%{_nlc}%,%{_cp1}%,%{_i1}%,%{_wj}%"
 	if {-gteams} > 0:
 		set {_sep} to gfT("    ", "white", false)
 		set {_ex} to "%{_ex}%,%{_sep}%"
@@ -511,7 +535,8 @@ function gfResultJson() :: text:
 			set {_mt} to "%{_mt}%  ·  랜덤 아이템 모드"
 	if {_mt} is not "":
 		set {_mj} to gfT({_mt}, "gray", false)
-		set {_ex} to "%{_ex}%,%{_nlc}%,%{_mj}%"
+		set {_cp2} to gfCenter({_mt}, {_tw})
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cp2}%,%{_mj}%"
 	set {_hd} to gfHeaderJson()
 	set {_ex} to "%{_ex}%,%{_nlc}%,%{_nlc}%,%{_hd}%,%{_nlc}%"
 	loop gfTeamOrder():
@@ -520,10 +545,14 @@ function gfResultJson() :: text:
 	if {-gpotmres} is set:
 		set {_pj} to gfT("★ Player Of The Match: ", "gold", false)
 		set {_pn2} to gfT("%{-gpotmres}%", "white", false)
-		set {_ex} to "%{_ex}%,%{_nlc}%,%{_pj}%,%{_pn2}%"
+		set {_pp} to "★ Player Of The Match: %{-gpotmres}%"
+		set {_cp3} to gfCenter({_pp}, {_tw})
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cp3}%,%{_pj}%,%{_pn2}%"
 	else if {-gvote} is true:
 		set {_hint} to gfT("승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요", "gray", false)
-		set {_ex} to "%{_ex}%,%{_nlc}%,%{_hint}%"
+		set {_hp} to "승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요"
+		set {_cp4} to gfCenter({_hp}, {_tw})
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cp4}%,%{_hint}%"
 	return "{""text"":"""",""extra"":[%{_ex}%]}"
 
 # 결과 디스플레이를 다시 그린다(투표 마감 후 POTM 결과 반영)
