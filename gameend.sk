@@ -5,7 +5,7 @@
 #   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
 # 매치 기록(결과 저장/책장 GUI/리뷰)은 matchhistory.sk. {-gmatchlbl}(이번 매치 이름, 결과 맨 윗줄)
 # 명령: /finaletest(관리자, 마지막 킬 연출부터 종료 연출까지 전체 테스트), /gamestop(관리자, 게임/연출 중단)
-# 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭(또는 좌클릭)해서 한다(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 제외). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
+# 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭해서 한다(좌클릭은 무반응)(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 제외). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
 #   0초   게임 종료 + 승리 팀 타이틀/소리(3초)
@@ -576,14 +576,12 @@ on PlayerInteractEntityEvent:
 	event.setCancelled(true)
 	gfVoteClick(event.getPlayer(), {_e})
 
-# 좌클릭(공격)도 투표로 받는다. 무적 엔티티는 피해 이벤트가 안 올 수 있어서 공격 직전 이벤트(PrePlayerAttackEntityEvent)로 받고, 피해 이벤트도 같이 둔다(미검증).
-# 한 번 눌러 둘 다 오면 같은 표를 두 번 넣을 뿐이라 결과는 같다.
+# 좌클릭(공격)은 투표로 받지 않는다(우클릭 전용). 더미가 맞지 않게 공격만 취소한다.
 on PrePlayerAttackEntityEvent:
 	set {_e} to event.getAttacked()
 	if {-gdummyid::%{_e}'s uuid%} is not set:
 		stop
 	event.setCancelled(true)
-	gfVoteClick(event.getPlayer(), {_e})
 
 on damage:
 	if attacker is not a player:
@@ -591,7 +589,6 @@ on damage:
 	if {-gdummyid::%victim's uuid%} is not set:
 		stop
 	cancel event
-	gfVoteClick(attacker, victim)
 
 # ===== 더미 =====
 # 승리 팀 플레이어 한 명과 똑같이 생긴(스킨/장비) 더미를 loc 에 세운다(바라보는 방향 yaw 180 = 남쪽에서 북쪽을 봄).
