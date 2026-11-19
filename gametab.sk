@@ -142,6 +142,10 @@ function gtHeader() :: text:
 			set {_first} to false
 			set {_c1} to gtT({_nm}, {_cn})
 			set {_c2} to gtT({_sc}, "white")
+			# 바운티는 점수 뒤에 노란 별
+			if {-gmode} is "bounty":
+				set {_st} to gtT("★", "yellow")
+				set {_c2} to "%{_c2}%,%{_st}%"
 			if {_ex} is "":
 				set {_ex} to "%{_c1}%,%{_c2}%"
 			else:
@@ -184,6 +188,10 @@ function gtHeader() :: text:
 function gtFooter() :: text:
 	set {_mn} to gcModeName({-gmode})
 	set {_t} to "%{_mn}% · %{-gtarget}%"
+	if {-gmode} is "bounty":
+		set {_g1} to gtT({_t}, "gray")
+		set {_g2} to gtT("★", "yellow")
+		return "%{_g1}%,%{_g2}%"
 	return gtT({_t}, "gray")
 
 function gtRefresh():

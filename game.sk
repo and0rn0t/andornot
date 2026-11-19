@@ -806,7 +806,7 @@ function gStartFinish(sg: number):
 	if {-gmode} is "annihilation":
 		set {_sub} to "%{-gtarget}%선승"
 	if {-gmode} is "bounty":
-		set {_sub} to "%{-gtarget}%★"
+		set {_sub} to "%{-gtarget}%&e★"
 	loop all players:
 		send title "&e%gcModeName({-gmode})%" with subtitle "&7%{_sub}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "entity.ender_dragon.growl" with volume 0.6 and pitch 1.2 to loop-player
@@ -942,7 +942,7 @@ function gBountyKill(v: player, a: entity, kill: boolean):
 	set {-gstar::%{_aid}%} to {_cur} + 1
 	gStarSync({_ap})
 	loop all players:
-		send action bar colored "&f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했습니다! &e+%{_stars}%점 &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
+		send action bar colored "&f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했습니다! &e+%{_stars}%★ &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
 	if {-gscore::%{_tk}%} >= {-gtarget}:
 		gameWin({_tk})
 
