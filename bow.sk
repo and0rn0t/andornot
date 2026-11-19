@@ -1,7 +1,7 @@
-# [bow.sk] 활 스킬(당겨서 발사, 발사 후 쿨 2초): 충전 시간(최대 3초)에 비례해 데미지 4~12(실 체력: 화살 공통 기본 4 + 충전 추가 0~8), 화살 속도 증가. 최대 충전(3초)으로 쏘면 소닉붐 이펙트와 사운드.
+# [bow.sk] 활 스킬(당겨서 발사, 발사 후 쿨 2초): 충전 시간(최대 3초)에 비례해 데미지 3~11(실 체력: 화살 공통 기본 3 + 충전 추가 0~8), 화살 속도 증가. 최대 충전(3초)으로 쏘면 소닉붐 이펙트와 사운드.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수: (충전 보스바는 지역 변수) {-bowstart}(당기기 시작 시각), {-bowcd}(쿨타임 종료 시각), {-bowextra::화살uuid}(그 화살의 추가 데미지, crossbow.sk 의 화살 on damage 가 기본 4 에 더하고 지움), {-skillitems::bow}
-# 데미지 4~12 은 기획 수치(이미 밸런스 80% 반영)라 다시 곱하지 않는다. 화살 공통 기본 4(crossbow.sk)에 활 충전 추가분만 더한다.
+# 이 파일이 쓰는 변수: (충전 보스바는 지역 변수) {-bowstart}(당기기 시작 시각), {-bowcd}(쿨타임 종료 시각), {-bowextra::화살uuid}(그 화살의 추가 데미지, crossbow.sk 의 화살 on damage 가 기본 3 에 더하고 지움), {-skillitems::bow}
+# 데미지 3~11 은 기획 수치라 다시 곱하지 않는다. 화살 공통 기본 3(crossbow.sk)에 활 충전 추가분만 더한다.
 # 동작: 우클릭(당기기 시작) 때 시각을 기록 -> 놓아서 발사(on shoot)될 때 당긴 시간으로 충전도(0~1, 3초에 1)를 계산해 화살 속도와 데미지를 정한다.
 #   바닐라 활은 화살이 인벤토리에 있어야 당겨지므로, 당길 때 화살이 없으면 1개 지급한다(발사하면 소모되고 다음에 당길 때 다시 지급).
 #   쿨타임 중에는 우클릭을 취소해서 당기지 못하게 한다. 이 우클릭은 취소하지 않아야 당겨지므로 일반 skillHand 와 달리 cancel 을 쓰지 않는다.
@@ -29,7 +29,7 @@ function bowSpeed(f: number) :: number:
 		return 999
 	return 1.5 + 2.5 * {_f}
 
-# 충전도(0~1)에 따른 추가 데미지(실 체력 0~8). 화살 공통 기본 4 에 더해 최종 4~12 이 된다.
+# 충전도(0~1)에 따른 추가 데미지(실 체력 0~8). 화살 공통 기본 3 에 더해 최종 3~11 이 된다.
 function bowExtra(f: number) :: number:
 	return hp(8 * {_f})
 
@@ -142,7 +142,7 @@ on shoot:
 	set {_v} to velocity of {_pr}
 	set {_sp} to bowSpeed({_f})
 	set velocity of {_pr} to (normalized {_v}) * {_sp}
-	# 추가 피해(화살 기본 4 에 더해져 4~12). crossbow.sk 의 화살 피해 처리가 읽는다.
+	# 추가 피해(화살 기본 3 에 더해져 3~11). crossbow.sk 의 화살 피해 처리가 읽는다.
 	set {-bowextra::%uuid of {_pr}%} to bowExtra({_f})
 	set {-bowcd::%{_id}%} to now + 2 seconds
 	set item cooldown of bow for {_p} to 2 seconds
