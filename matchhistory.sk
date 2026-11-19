@@ -1,4 +1,4 @@
-# [matchhistory.sk] 지난 매치 기록: 매치가 끝나면 결과(게임 결과창 내용)를 저장하고, 관리자가 등록한 책장을 우클릭하면 지난 매치 목록 GUI 가 열린다.
+# [matchhistory.sk] 지난 매치 기록: 매치가 끝나면 결과(게임 결과창 내용)를 저장하고, 관리자가 등록한 독서대를 우클릭하면 지난 매치 목록 GUI 가 열린다.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수(저장): {matchcount}(지금까지 끝난 매치 수), {matchlog::번호::json}(그 매치의 결과창 내용 JSON, 종료 직후 POTM 까지 포함),
 #   {matchlog::번호::mode|winner|map|rand|time|potm}(목록 설명용), {matchlog::번호::rv::uuid}/{matchlog::번호::rvn::uuid}(한 줄 리뷰/작성자 이름, 사람당 1개),
@@ -134,7 +134,7 @@ function mhShelfAdd(p: player):
 		send "&c바라보는 블록이 독서대가 아닙니다." to {_p}
 		stop
 	set {matchshelf::%mhShelfKey({_b})%} to true
-	send "&a이 책장을 지난 매치 독서대로 등록했습니다. 우클릭하면 지난 매치 목록이 열립니다." to {_p}
+	send "&a이 독서대를 지난 매치 독서대로 등록했습니다. 우클릭하면 지난 매치 목록이 열립니다." to {_p}
 
 function mhShelfDel(p: player):
 	close {_p}'s inventory
