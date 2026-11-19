@@ -22,6 +22,7 @@ import:
 	org.bukkit.NamespacedKey
 	org.bukkit.entity.TextDisplay$TextAlignment
 	org.bukkit.Color
+	java.lang.Character
 	net.kyori.adventure.text.Component
 	net.kyori.adventure.text.event.ClickEvent
 	net.kyori.adventure.text.event.HoverEvent
@@ -318,6 +319,18 @@ function gfT(t: text, color: text, bold: boolean) :: text:
 		return "{""text"":""%{_t}%"",""color"":""%{_color}%"",""bold"":true}"
 	return "{""text"":""%{_t}%"",""color"":""%{_color}%"",""bold"":false}"
 
+# 칸 채움 공백. 보통은 gtPad(공백, 4픽셀). 저장용/dialog 줄({-gfinline})에서는 dialog 가 연속 공백을 한 칸으로 줄여서
+# 줄바꿈 없는 공백(NBSP, 폭 약 5픽셀, 진단으로 확인)으로 채운다. s 가 비어 있어도 되고, target 은 칸 전체 폭.
+function gfPad(target: number, s: text) :: text:
+	if {-gfinline} is not true:
+		return gtPad({_target}, {_s})
+	set {_n} to round(({_target} - gtPx({_s})) / 5)
+	if {_n} < 1:
+		set {_n} to 1
+	set {_nb} to Character.toString(160)
+	set {_r} to {_nb} repeated {_n} times
+	return "%{_r}%"
+
 # 이름 칸 폭만큼의 공백 조각(공백 한 칸 4픽셀이라 정확한 폭)
 function gfNameBlank() :: text:
 	set {_n} to round(gfNameW() / 4)
@@ -333,11 +346,11 @@ function gfHeaderJson() :: text:
 	set {_s3} to "D"
 	set {_s4} to "A"
 	set {_s5} to "피해"
-	set {_p1} to gtPad(gfNameW(), {_s1})
-	set {_p2} to gtPad(gfKdaW(), {_s2})
-	set {_p3} to gtPad(gfKdaW(), {_s3})
-	set {_p4} to gtPad(gfKdaW(), {_s4})
-	set {_p5} to gtPad(gfDmgW(), {_s5})
+	set {_p1} to gfPad(gfNameW(), {_s1})
+	set {_p2} to gfPad(gfKdaW(), {_s2})
+	set {_p3} to gfPad(gfKdaW(), {_s3})
+	set {_p4} to gfPad(gfKdaW(), {_s4})
+	set {_p5} to gfPad(gfDmgW(), {_s5})
 	set {_h1} to "%{_s1}%%{_p1}%"
 	set {_h2} to "%{_s2}%%{_p2}%"
 	set {_h3} to "%{_s3}%%{_p3}%"
@@ -359,7 +372,11 @@ function gfHeaderJson() :: text:
 	if {_lead} > 0:
 		set {_lr} to " " repeated {_lead} times
 		set {_ls} to "%{_lr}%"
-	set {_p6} to gtPad(gtItemW() - {_lead} * 4, {_s6})
+		if {-gfinline} is true:
+			set {_nb} to Character.toString(160)
+			set {_lr} to {_nb} repeated {_lead} times
+			set {_ls} to "%{_lr}%"
+	set {_p6} to gfPad(gtItemW() - {_lead} * 4, {_s6})
 	set {_h6} to "%{_ls}%%{_s6}%%{_p6}%"
 	set {_c6} to gfT({_h6}, "gray", false)
 	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%]}"
@@ -370,7 +387,7 @@ function gfCol(s: text, w: number, hi: boolean) :: text:
 	set {_col} to "gray"
 	if {_hi} is true:
 		set {_col} to "yellow"
-	set {_pd} to gtPad({_w}, {_s})
+	set {_pd} to gfPad({_w}, {_s})
 	set {_a} to gfT({_s}, {_col}, false)
 	set {_b} to gfT({_pd}, "white", false)
 	return "%{_a}%,%{_b}%"
@@ -399,7 +416,7 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	# 저장용/dialog 용(겹친 디스플레이가 없다): 이름을 줄 안에 직접 넣는다. {-gfinline} 이 true 일 때만.
 	if {-gfinline} is true:
 		set {_c1} to gfT({_nm}, {_cn}, false)
-		set {_pn} to gtPad(gfNameW(), {_nm})
+		set {_pn} to gfPad(gfNameW(), {_nm})
 		set {_c2} to gtT({_pn}, "white")
 	# 숫자는 회색. 각 항목(K/D/A/피해)에서 전체 최고값(0 초과)을 기록한 사람만 노란색 굵은 글씨
 	set {_hk} to false
