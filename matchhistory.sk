@@ -98,6 +98,8 @@ function gmDialog(p: player, n: number):
 	execute console command "dialog show %{_pn}% %{_d}%"
 
 command /matchreview <number> <text>:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
 	description: 지난 매치에 한 줄 리뷰를 남겨요 (매치 결과 창의 리뷰 등록 버튼이 쓰는 명령)
 	executable by: players
 	trigger:

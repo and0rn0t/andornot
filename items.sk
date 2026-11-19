@@ -799,6 +799,8 @@ on drop:
 			stop
 
 command /itemorder:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
 	description: 아이템 변경 GUI 의 표시 순서를 편집해요 (op 전용)
 	executable by: players
 	trigger:

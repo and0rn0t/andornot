@@ -387,6 +387,8 @@ on inventory close:
 	delete {-mapmap::%player's uuid%::*}
 
 command /admin:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
 	description: 관리자 메뉴를 열어요 (op 전용)
 	executable by: players
 	trigger:

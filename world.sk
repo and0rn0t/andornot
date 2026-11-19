@@ -80,6 +80,8 @@ function wtRenameRefs(o: text, n: text):
 		delete {gamecfg::loc::%{_ko}%::*}
 
 command /world [<text>] [<text>] [<text>]:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
 	description: 멀티월드 테스트 (관리자 전용)
 	executable by: players
 	trigger:

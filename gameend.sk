@@ -811,6 +811,8 @@ function gfTestCleanup():
 # 관리자 전용: 마지막 킬 연출(실행자가 죽는 연출을 모두 관전)부터 종료 연출까지 전체를 재생한다. 3인씩 3팀(총 9명): 실행자 + 가짜 참가자 더미1~8. 1팀(실행자, 더미1, 더미2)이 바운티를 이겼다는 설정.
 # 승리 팀 3명이라 무대에 더미 3개(가짜 팀원은 실행자의 모습)가 선다. 실제 게임 변수를 빌려 쓰므로 게임/연출이 진행 중이면 거부하고, 끝나면 전부 되돌린다. 마지막 킬 연출은 포함하지 않는다.
 command /finaletest:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
 	description: 마지막 킬 연출부터 게임 종료 연출까지 전체 테스트 (관리자 전용)
 	executable by: players
 	trigger:
@@ -909,6 +911,8 @@ command /finaletest:
 
 # 관리자 전용 게임 중단(진행 중인 게임, 종료 연출, 테스트 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
 command /gamestop:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
 	description: 게임/종료 연출 강제 중단 (관리자 전용)
 	trigger:
 		if sender is a player:
