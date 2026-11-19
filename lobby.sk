@@ -8,7 +8,7 @@
 # 훈련장 NPC 의 스킨은 trainingNpcSkin()(지금 Dream). 이미 설치한 NPC 는 스킨이 안 바뀌니 치우고 다시 설치한다.
 # /lobby 명령어도 같은 규칙으로 로비로 이동한다(게임 중인 참가자 제외).
 # 로비 NPC: 같은 방식으로 세우고, 누르면 로비(관리자 메뉴 "로비 위치 설정")로 돌아온다(스코어보드 태그 lobbynpc, 스킨은 lobbyNpcSkin(), 지금은 기본 스킨).
-# 훈련장 NPC: 관리자 메뉴 "훈련장 NPC 설치"가 서 있는 자리 앞에 마네킹 NPC 를 세운다(스코어보드 태그 trainingnpc). 우클릭/좌클릭하면 저장된 훈련장으로 이동한다.
+# 훈련장 NPC: 관리자 메뉴 "훈련장 NPC 설치"가 서 있는 자리 앞에 마네킹 NPC 를 세운다(스코어보드 태그 trainingnpc). 우클릭하면 저장된 훈련장으로 이동한다(좌클릭은 무반응).
 #   게임 참가자는 게임 중에 못 쓴다. 이동은 다른 월드여도 되게 tpSafe(gameend.sk)를 쓴다.
 # 미검증 문법: on damage with priority lowest, 마네킹 NPC(이름/설명/태그), PlayerInteractEntityEvent/PrePlayerAttackEntityEvent 로 NPC 클릭 받기, send action bar.
 
@@ -185,10 +185,14 @@ on PlayerInteractEntityEvent:
 	if npcClick(event.getPlayer(), {_e}) is true:
 		event.setCancelled(true)
 
-# 좌클릭(공격 직전 이벤트)
+# 좌클릭(공격 직전 이벤트): NPC 는 우클릭으로만 쓴다. 때려도 아무 일 없게 공격만 취소한다.
 on PrePlayerAttackEntityEvent:
 	set {_e} to event.getAttacked()
-	if npcClick(event.getPlayer(), {_e}) is true:
+	set {_t} to {_e}.getScoreboardTags().contains("trainingnpc")
+	set {_l} to {_e}.getScoreboardTags().contains("lobbynpc")
+	if {_t} is true:
+		event.setCancelled(true)
+	if {_l} is true:
 		event.setCancelled(true)
 
 # /lobby: 로비로 돌아온다(게임 중인 참가자는 못 씀. 로비 NPC 와 같은 규칙)
