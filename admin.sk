@@ -237,7 +237,7 @@ function adminOpen(p: player):
 			set {-adminmap::%{_uid}%::%{_s}%} to loop-value
 
 # ===== 맵 설정: 월드 선택 GUI =====
-# 불러온 월드와 자동으로 불러올 월드 목록({gamecfg::worldlist})의 월드를 칸마다 하나씩 보여 주고, 클릭하면 게임 맵으로 정한다(한글 이름 가능, 아직 안 불러온 월드는 그때 불러온다).
+# 불러온 월드와 자동으로 불러올 월드 목록({gamecfg::worldlist})의 월드(네더/엔드 제외)를 칸마다 하나씩 보여 주고, 클릭하면 게임 맵으로 정한다(한글 이름 가능, 아직 안 불러온 월드는 그때 불러온다).
 # 맨 아래 줄: 47번 칸 = 매 게임 랜덤 모드 켜기/끄기(켜면 게임 시작마다 후보에서 새로 뽑음), 48번 칸 = 랜덤 선택(후보 중 하나를 지금 골라 일반 선택과 똑같이 저장), 49번 칸 = 선택 해제(시작한 사람이 있는 월드에서 진행), 53번 칸 = 관리자 메뉴로 돌아가기. 월드는 최대 45개까지 보인다.
 # 선택한 맵은 {gamecfg::map}(저장 변수)에 있어서 바꾸거나 해제하기 전까지 게임이 끝나도 그대로 쓴다.
 # 랜덤 후보: 불러온 월드 + 자동 불러오기 목록에서 로비 월드와 네더/엔드(_nether, _the_end)를 뺀 것.
@@ -278,15 +278,20 @@ function mapGuiOpen(p: player):
 		set slot {_s} of {_inv} to gray stained glass pane named " "
 	delete {_names::*}
 	delete {_seen::*}
+	# 네더/엔드 월드(이름이 _nether, _the_end 로 끝남: world_nether, world_the_end 등)는 맵 목록에서 뺀다
 	loop all worlds:
 		set {_n} to loop-world.getName()
 		set {_seen::%{_n}%} to true
-		add {_n} to {_names::*}
+		if {_n} does not end with "_nether":
+			if {_n} does not end with "_the_end":
+				add {_n} to {_names::*}
 	loop {gamecfg::worldlist::*}:
 		set {_n} to "%loop-value%"
 		if {_seen::%{_n}%} is not set:
 			set {_seen::%{_n}%} to false
-			add {_n} to {_names::*}
+			if {_n} does not end with "_nether":
+				if {_n} does not end with "_the_end":
+					add {_n} to {_names::*}
 	set {_cur} to ""
 	if {gamecfg::map} is set:
 		set {_cur} to "%{gamecfg::map}%"
