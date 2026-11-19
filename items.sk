@@ -689,14 +689,12 @@ function armoryFill(p: player, inv: inventory):
 	set {_cur} to loadoutSet({_p})
 	loop integers from 1 to 3:
 		set {_n} to loop-value
-		set {_from} to ({_n} - 1) * 5 + 1
-		set {_to} to {_n} * 5
 		if {_n} is {_cur}:
 			set {_g} to lime stained glass pane named "&a%{_n}%번 로드아웃"
-			set lore of {_g} to "&a사용 중", "&7아이템 %{_from}%~%{_to}%번"
+			set lore of {_g} to "&a사용 중"
 		else:
 			set {_g} to blue stained glass pane named "&9%{_n}%번 로드아웃"
-			set lore of {_g} to "&7미사용", "&7아이템 %{_from}%~%{_to}%번", "", "&e▶ 클릭해서 이 로드아웃 사용"
+			set lore of {_g} to "&7미사용", "", "&e▶ 클릭해서 이 로드아웃 사용"
 		set {_s} to {_n} + 2
 		set slot {_s} of {_inv} to {_g}
 		set {-itemguimap::%{_uid}%::%{_s}%} to "__set%{_n}%"

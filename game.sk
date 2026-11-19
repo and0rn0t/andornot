@@ -165,13 +165,16 @@ function gJoinTeam(p: player) :: text:
 		set {_num::%{_t}%} to 0
 		set {_sum::%{_t}%} to 0
 	loop {-gplist::*}:
-		if loop-value is online:
-			if loop-value is not {_p}:
-				set {_tk} to "%{-team::%uuid of loop-value%}%"
+		set {_q} to loop-value
+		if {_q} is online:
+			if {_q} is not {_p}:
+				set {_qid} to "%uuid of {_q}%"
+				set {_tk} to "%{-team::%{_qid}%}%"
 				set {_ti} to gTeamIndex({_tk})
 				if {_num::%{_ti}%} is set:
 					add 1 to {_num::%{_ti}%}
-					add ratingOf("%uuid of loop-value%") to {_sum::%{_ti}%}
+					set {_rq} to ratingOf({_qid})
+					add {_rq} to {_sum::%{_ti}%}
 	set {_min} to 9999
 	set {_t} to 1
 	while {_t} <= {-gteams}:
@@ -299,8 +302,10 @@ function gAnnounceTeams():
 		set {_names::*} to ""
 		delete {_names::*}
 		loop {-gplist::*}:
-			if gTeamOf(loop-value) is {_k}:
-				add name of loop-value to {_names::*}
+			set {_pl} to loop-value
+			set {_tk} to gTeamOf({_pl})
+			if {_tk} is {_k}:
+				add name of {_pl} to {_names::*}
 		set {_line} to "%{_names::*}%"
 		loop all players:
 			send colored "%gTeamLabel({_k})% &7: &f%{_line}%" to loop-player
