@@ -198,10 +198,20 @@ function gameStart(by: text):
 	if size of {-gplist::*} < 1:
 		stop
 	# 게임이 진행되는 월드 = 시작한 관리자가 있는 월드(없으면 첫 참가자의 월드). 종료 연출은 이 월드의 결과 무대에서 한다.
-	# 관리자 메뉴의 맵 설정({gamecfg::map})이 있으면 그 월드가 게임 월드이고, 다른 월드에 있는 참가자는 그 월드 스폰으로 보낸다(같은 월드면 그대로).
+	# 관리자 메뉴의 맵 설정({gamecfg::map}, 또는 랜덤 모드)이 있으면 그 월드가 게임 월드이고, 다른 월드에 있는 참가자는 그 월드 스폰으로 보낸다(같은 월드면 그대로).
+	# 매 게임 랜덤 모드({gamecfg::maprandom})가 켜져 있으면 게임마다 후보 월드(mapCandidates) 중 하나를 새로 뽑는다(선택해 둔 맵 {gamecfg::map} 은 그대로 둔다).
 	set {-gworld} to ""
-	if {gamecfg::map} is set:
-		set {_mw} to gcWorld("%{gamecfg::map}%")
+	set {_target} to ""
+	if {gamecfg::maprandom} is true:
+		set {_cand::*} to mapCandidates()
+		if size of {_cand::*} > 0:
+			set {_rn} to random integer between 1 and size of {_cand::*}
+			set {_target} to {_cand::%{_rn}%}
+	if {_target} is "":
+		if {gamecfg::map} is set:
+			set {_target} to "%{gamecfg::map}%"
+	if {_target} is not "":
+		set {_mw} to gcWorld({_target})
 		if {_mw} is set:
 			set {-gworld} to {_mw}.getName()
 			set {_msp} to {_mw}.getSpawnLocation()
@@ -209,7 +219,7 @@ function gameStart(by: text):
 				if loop-value.getWorld().getName() is not {-gworld}:
 					tpSafe(loop-value, {_msp})
 		else:
-			send "[game] 설정된 맵 월드를 불러오지 못해 시작한 사람이 있는 월드로 진행합니다: %{gamecfg::map}%" to console
+			send "[game] 맵 월드를 불러오지 못해 시작한 사람이 있는 월드로 진행합니다: %{_target}%" to console
 	if {-gworld} is "":
 		loop {-gplist::*}:
 			if loop-value.getName() is {_by}:

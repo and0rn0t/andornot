@@ -64,7 +64,7 @@
 #   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
 #   {-gfinale} {-gvote} {-gpotm::투표자uuid} {-gdummies::*} {-gpotmres} {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(투표, 더미, 결과 디스플레이)   gameend
 #   {-gftest} {-gftester} {-gftuuid} {-gfoldteam} {-gfake::id} {-gfteam::id}   /finaletest 테스트용 가짜 게임 데이터(끝나면 전부 지움)   gameend
-#   {gamecfg::map} 게임 맵 월드 이름(관리자 메뉴 맵 설정, 저장 변수)  admin, game
+#   {gamecfg::map} 게임 맵 월드 이름, {gamecfg::maprandom} 매 게임 랜덤 모드(관리자 메뉴 맵 설정, 저장 변수)  admin, game
 #   {gamecfg::loc::lobby|stage_<월드>::world|x|y|z|yaw|pitch} 로비 위치/월드별 결과 무대 위치(저장 변수, 월드 이름+좌표라 월드가 안 올라와 있어도 안 사라짐)  gameend(gcSaveLoc/gcLoadLoc)
 #   {gamecfg::worldlist::이름} 서버/스크립트를 불러올 때 자동으로 불러올 월드(저장 변수)  worldtest
 #   {gamecfg::target::모드}   목표 스코어/승점(저장 변수, 대시 없음)                  gamesetup(gcTarget)
