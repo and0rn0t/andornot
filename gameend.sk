@@ -3,7 +3,7 @@
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
 #   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 #   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
-# 명령: /finaletest(관리자, 종료 연출만 테스트), /gamestop(관리자, 게임/연출 중단)
+# 명령: /finaletest(관리자, 마지막 킬 연출부터 종료 연출까지 전체 테스트), /gamestop(관리자, 게임/연출 중단)
 # 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭(또는 좌클릭)해서 한다(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 제외). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
@@ -788,10 +788,10 @@ function gfTestCleanup():
 	delete {-gtarget}
 	delete {-gftest}
 
-# 관리자 전용: 종료 연출만 따로 본다. 3인씩 3팀(총 9명): 실행자 + 가짜 참가자 더미1~8. 1팀(실행자, 더미1, 더미2)이 바운티를 이겼다는 설정.
+# 관리자 전용: 마지막 킬 연출(실행자가 죽는 연출을 모두 관전)부터 종료 연출까지 전체를 재생한다. 3인씩 3팀(총 9명): 실행자 + 가짜 참가자 더미1~8. 1팀(실행자, 더미1, 더미2)이 바운티를 이겼다는 설정.
 # 승리 팀 3명이라 무대에 더미 3개(가짜 팀원은 실행자의 모습)가 선다. 실제 게임 변수를 빌려 쓰므로 게임/연출이 진행 중이면 거부하고, 끝나면 전부 되돌린다. 마지막 킬 연출은 포함하지 않는다.
 command /finaletest:
-	description: 게임 종료 연출만 테스트 (관리자 전용)
+	description: 마지막 킬 연출부터 게임 종료 연출까지 전체 테스트 (관리자 전용)
 	executable by: players
 	trigger:
 		if player is not op:
@@ -802,6 +802,9 @@ command /finaletest:
 			stop
 		if {-gfinale} is true:
 			send "&c이미 종료 연출이 진행 중입니다."
+			stop
+		if size of {-kc::*} > 0:
+			send "&c킬 연출이 진행 중입니다. 끝난 뒤 다시 시도해 주십시오."
 			stop
 		set {-gftest} to true
 		set {-gworld} to player.getWorld().getName()
@@ -876,8 +879,13 @@ command /finaletest:
 		set {-gdmg::fake8} to 21
 		set {-gwinner} to "1팀"
 		set {-gover} to true
-		send "&6[테스트] &7종료 연출을 시작합니다. 더미1~8 에게도 투표할 수 있습니다. 중단하려면 /gamestop 을 사용하십시오."
-		gameFinale()
+		# 실제 마지막 킬과 같은 순서: 승패가 난 상태({-gover})에서 실행자가 치명타를 받으면 킬 연출(killcine.sk)이 돌고, 연출이 끝나면 killcine.sk 가 gameFinale() 을 부른다.
+		# 킬 연출은 생존/모험 모드에서만 돌아서 모험 모드로 바꾼 뒤 치명 피해를 준다(공격자는 없음). 종료 연출이 끝나면 gfTestCleanup 이 되돌린다.
+		set {_tp} to player
+		set gamemode of {_tp} to adventure
+		send "&6[테스트] &7마지막 킬 연출부터 종료 연출까지 전체를 재생합니다. 더미1~8 에게도 투표할 수 있습니다. 중단하려면 /gamestop 을 사용하십시오."
+		wait 1 tick
+		damage {_tp} by 1000 hearts
 
 # 관리자 전용 게임 중단(진행 중인 게임, 종료 연출, 테스트 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
 command /gamestop:
