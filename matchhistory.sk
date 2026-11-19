@@ -6,7 +6,7 @@
 # 이 파일이 쓰는 변수(RAM): {-mhgui::uuid}(GUI 열림), {-mhmap::uuid::칸}(칸 -> 매치 번호), {-mhpage::uuid}(현재 쪽, 0부터)
 # 기록 시점: gameFinale 마지막 단계(gmRecord). /finaletest 테스트는 기록하지 않는다. 번호는 1부터, 100 미만은 MATCH 001 처럼 3자리로 표기(matchLabel).
 # GUI: 독서대 우클릭 -> 4줄. 1~3줄 27칸 = 매치(최신이 먼저, 작성된 책), 4줄 1/9번 칸 = 이전/다음 쪽 종이(매치 28개 이상일 때만), 4줄 5번 칸 = 나가기(방벽).
-# 책을 누르면 vanilla dialog(/dialog show)로 결과창을 띄우고, 한 줄 리뷰(40자)를 남길 수 있다. 리뷰는 결과 아래에 표시된다.
+# 책을 누르면 vanilla dialog(/dialog show)로 결과창을 띄우고, 한 줄 리뷰(40자)를 남길 수 있다(입력은 채팅: dialog 입력칸은 한글이 안 들어가서). 리뷰는 결과 아래에 표시된다.
 # 관리자 메뉴 버튼: 독서대 등록/해제(바라보는 독서대 블록).
 # 미검증: dialog JSON 필드(confirmation/plain_message/text 입력/dynamic/run_command), 작성된 책 아이템, targeted block, 독서대 우클릭 이벤트, 결과 JSON 을 dialog 본문에 그대로 넣기.
 
@@ -89,25 +89,28 @@ function gmDialog(p: player, n: number):
 	set {_body} to gmResultJson({_i})
 	set {_lbl} to matchLabel({_i})
 	set {_q} to """"
-	set {_cmd} to "matchreview %{_i}% $(review)"
+	set {_cmd} to "matchreview %{_i}%"
 	set {_d} to "{""type"":""minecraft:confirmation"",""title"":{""text"":""%{_lbl}%""},"
 	set {_d} to "%{_d}%""can_close_with_escape"":true,"
 	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":%{_body}%,""width"":420}],"
-	set {_d} to "%{_d}%""inputs"":[{""type"":""minecraft:text"",""key"":""review"",""label"":{""text"":""한 줄 리뷰 (40자)"",""color"":""gray""},""width"":300,""max_length"":40,""initial"":""%{_old}%""}],"
-	set {_d} to "%{_d}%""yes"":{""label"":{""text"":""리뷰 등록"",""color"":""green""},""action"":{""type"":""minecraft:dynamic/run_command"",""template"":""%{_cmd}%""}},"
+	set {_d} to "%{_d}%""yes"":{""label"":{""text"":""리뷰 작성 (채팅으로 입력)"",""color"":""green""},""action"":{""type"":""minecraft:run_command"",""command"":""%{_cmd}%""}},"
 	set {_d} to "%{_d}%""no"":{""label"":{""text"":""닫기""}}}"
 	set {_pn} to {_p}.getName()
 	execute console command "dialog show %{_pn}% %{_d}%"
 
-command /matchreview <number> <text>:
-	permission: minecraft.command.op
-	permission message: &c권한이 없습니다.
-	description: 지난 매치에 한 줄 리뷰를 남겨요 (매치 결과 창의 리뷰 등록 버튼이 쓰는 명령)
+# 한글을 못 넣는 dialog 입력칸 대신 채팅으로 리뷰를 받는다: 이 명령(글 없이)을 부르면 다음 채팅 한 줄이 리뷰가 된다. 글을 같이 주면 바로 등록.
+# 일반 플레이어가 결과 창 버튼으로 실행하므로 권한 제한을 두지 않는다.
+command /matchreview <number> [<text>]:
+	description: 지난 매치에 한 줄 리뷰를 남겨요 (매치 결과 창의 리뷰 작성 버튼이 쓰는 명령)
 	executable by: players
 	trigger:
 		set {_n} to floor(arg-1)
 		if {matchlog::%{_n}%::json} is not set:
 			send "&c그 매치 기록이 없습니다."
+			stop
+		if arg-2 is not set:
+			set {-mhawait::%player's uuid%} to {_n}
+			send "&e채팅창에 한 줄 리뷰를 입력하십시오. &7(40자까지, 비우려면 &f-&7, 취소는 &f취소&7)"
 			stop
 		set {_t} to gmCleanReview(arg-2)
 		set {_uid} to "%player's uuid%"
@@ -328,3 +331,34 @@ command /matchtest [<text>]:
 		gfTestCleanup()
 		send "&6[테스트] &7가짜 매치 기록(0번)을 만들었습니다. 결과 dialog 를 엽니다."
 		gmDialog(player, 0)
+
+# 리뷰 입력 대기 중인 사람의 다음 채팅 한 줄을 리뷰로 받는다(채팅으로는 한글이 들어간다).
+on chat:
+	set {_uid} to "%player's uuid%"
+	if {-mhawait::%{_uid}%} is not set:
+		stop
+	cancel event
+	set {_n} to {-mhawait::%{_uid}%}
+	delete {-mhawait::%{_uid}%}
+	set {_p} to player
+	set {_msg} to message
+	if {_msg} is "취소":
+		send "&7리뷰 작성을 취소했습니다." to {_p}
+		stop
+	if {_msg} is "-":
+		set {_msg} to ""
+	set {_t} to gmCleanReview({_msg})
+	if {_t} is "":
+		delete {matchlog::%{_n}%::rv::%{_uid}%}
+		delete {matchlog::%{_n}%::rvn::%{_uid}%}
+		send "&7리뷰를 지웠습니다." to {_p}
+	else:
+		set {matchlog::%{_n}%::rv::%{_uid}%} to {_t}
+		set {matchlog::%{_n}%::rvn::%{_uid}%} to name of {_p}
+		send "&a리뷰를 남겼습니다." to {_p}
+	wait 1 tick
+	if {_p} is online:
+		gmDialog({_p}, {_n})
+
+on quit:
+	delete {-mhawait::%player's uuid%}
