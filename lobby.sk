@@ -6,6 +6,7 @@
 #   - 로비 위치가 저장돼 있지 않으면 막지 않는다. 낙사/몹 피해 등 플레이어끼리가 아닌 피해는 막지 않는다.
 #   - 피해를 주지 않는 기절/끌어당기기 같은 스킬 효과는 이 규칙으로 못 막는다(필요하면 스킬 쪽에서 따로 막아야 한다).
 # 훈련장 NPC 의 스킨은 trainingNpcSkin()(지금 Dream). 이미 설치한 NPC 는 스킨이 안 바뀌니 치우고 다시 설치한다.
+# /lobby 명령어도 같은 규칙으로 로비로 이동한다(게임 중인 참가자 제외).
 # 로비 NPC: 같은 방식으로 세우고, 누르면 로비(관리자 메뉴 "로비 위치 설정")로 돌아온다(스코어보드 태그 lobbynpc, 스킨은 lobbyNpcSkin(), 지금은 기본 스킨).
 # 훈련장 NPC: 관리자 메뉴 "훈련장 NPC 설치"가 서 있는 자리 앞에 마네킹 NPC 를 세운다(스코어보드 태그 trainingnpc). 우클릭/좌클릭하면 저장된 훈련장으로 이동한다.
 #   게임 참가자는 게임 중에 못 쓴다. 이동은 다른 월드여도 되게 tpSafe(gameend.sk)를 쓴다.
@@ -67,14 +68,26 @@ on damage with priority lowest:
 	send action bar "&c로비 근처에서는 PvP 를 할 수 없습니다." to {_a}
 
 # ===== 훈련장 =====
+# 이 플레이어가 지금 게임에 묶여 있는지: 진행 중인 게임(또는 종료 연출 중)의 참가자. 이동 NPC 와 /lobby 가 이걸로 막는다.
+function inGameNow(p: player) :: boolean:
+	set {_busy} to false
+	if {-ingame} is true:
+		set {_busy} to true
+	if {-gfinale} is true:
+		set {_busy} to true
+	if {_busy} is false:
+		return false
+	if {-gplist::*} contains {_p}:
+		return true
+	return false
+
 # 훈련장으로 이동(NPC 클릭). 게임 참가자는 게임 중에 못 쓴다.
 function trainingGo(p: player):
 	if {-kc::%{_p}'s uuid%} is set:
 		stop
-	if {-ingame} is true:
-		if {-gplist::*} contains {_p}:
-			send "&c게임 중에는 훈련장으로 이동할 수 없습니다." to {_p}
-			stop
+	if inGameNow({_p}) is true:
+		send "&c게임 중에는 훈련장으로 이동할 수 없습니다." to {_p}
+		stop
 	set {_t} to gcLoadLoc("training")
 	if {_t} is not set:
 		send "&c훈련장 위치가 설정되지 않았습니다. 관리자에게 문의해 주십시오." to {_p}
@@ -134,10 +147,9 @@ function lobbyNpcClear() :: number:
 function lobbyGo(p: player):
 	if {-kc::%{_p}'s uuid%} is set:
 		stop
-	if {-ingame} is true:
-		if {-gplist::*} contains {_p}:
-			send "&c게임 중에는 로비로 이동할 수 없습니다." to {_p}
-			stop
+	if inGameNow({_p}) is true:
+		send "&c게임 중에는 로비로 이동할 수 없습니다." to {_p}
+		stop
 	tpSafe({_p}, gameLobbyLoc())
 	play sound "entity.enderman.teleport" with volume 0.7 and pitch 1.2 to {_p}
 	send "&a로비로 이동했습니다." to {_p}
@@ -167,3 +179,10 @@ on PrePlayerAttackEntityEvent:
 	set {_e} to event.getAttacked()
 	if npcClick(event.getPlayer(), {_e}) is true:
 		event.setCancelled(true)
+
+# /lobby: 로비로 돌아온다(게임 중인 참가자는 못 씀. 로비 NPC 와 같은 규칙)
+command /lobby:
+	description: 로비로 이동
+	executable by: players
+	trigger:
+		lobbyGo(player)
