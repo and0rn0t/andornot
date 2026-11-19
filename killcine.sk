@@ -85,10 +85,10 @@ function kcClearState(v: player):
 # 카메라 위치(시체/승리자를 바라보는 방향까지 설정). 구도는 정면 하나로 통일했다.
 #   base 의 yaw 가 대상이 바라보는 방향이고, 카메라는 그 정면 앞 kcCamDist() 블럭, 높이 kcCamHeight() 에서 대상 중심(base 위 1칸)을 본다.
 function kcCamDist() :: number:
-	return 2.2
+	return 1.5
 
 function kcCamHeight() :: number:
-	return 1.4
+	return 1.25
 
 function kcCamLoc(base: location) :: location:
 	set {_yaw} to {_base}.getYaw()
