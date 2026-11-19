@@ -365,6 +365,26 @@ function mhHideTest2(p: player):
 	set {_pn} to {_p}.getName()
 	execute console command "dialog show %{_pn}% %{_d}%"
 
+# 공백/글자 실제 폭 측정용(스크린샷에서 두 | 사이 거리로 계산): 0 x20, 0 x40, NBSP x20, (NBSP+공백) x10, And_0r_Not x2, Dummy1 x3
+function mhCalib(p: player):
+	set {_nb} to Character.toString(160)
+	set {_a} to "00000000000000000000"
+	set {_b} to "%{_a}%%{_a}%"
+	set {_c} to {_nb} repeated 20 times
+	set {_d} to ""
+	loop 10 times:
+		set {_d} to "%{_d}%%{_nb}% "
+	set {_l1} to mhSpaceLine("0x20", "%{_a}%")
+	set {_l2} to mhSpaceLine("0x40", "%{_b}%")
+	set {_l3} to mhSpaceLine("NBSPx20", "%{_c}%")
+	set {_l4} to mhSpaceLine("NBSP+공백x10", {_d})
+	set {_l5} to mhSpaceLine("And_0r_Notx2", "And_0r_NotAnd_0r_Not")
+	set {_l6} to mhSpaceLine("Dummy1x3", "Dummy1Dummy1Dummy1")
+	set {_dd} to "{""type"":""minecraft:notice"",""title"":{""text"":""폭 측정""},""can_close_with_escape"":true,"
+	set {_dd} to "%{_dd}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%]},""width"":420}]}"
+	set {_pn} to {_p}.getName()
+	execute console command "dialog show %{_pn}% %{_dd}%"
+
 # ===== 테스트: 가짜 매치 기록을 만들어 매치 결과 dialog 를 띄운다(관리자 전용) =====
 # /matchtest        가짜 게임 데이터(3인씩 3팀, 1팀 승리, POTM 더미1)로 결과를 만들어 0번 기록에 저장하고 dialog 를 바로 연다. 진짜 기록 번호/개수는 건드리지 않는다.
 # /matchtest reopen 저장해 둔 0번 기록 dialog 를 다시 연다(리뷰 등록 후 반영 확인용)
@@ -380,6 +400,9 @@ command /matchtest [<text>]:
 		if arg-1 is "clear":
 			delete {matchlog::0::*}
 			send "&7테스트 기록(0번)을 지웠습니다."
+			stop
+		if arg-1 is "calib":
+			mhCalib(player)
 			stop
 		if arg-1 is "hide":
 			mhHideTest(player)
