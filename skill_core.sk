@@ -70,7 +70,7 @@
 #   {gamecfg::loc::training::world|x|y|z|yaw|pitch} 훈련장 위치(저장 변수, 월드 이름+좌표)  lobby
 #   {matchcount}, {matchlog::번호::json|mode|winner|map|rand|time|potm|rv::uuid|rvn::uuid}, {matchshelf::월드_x_y_z} 매치 기록/리뷰/등록 독서대(저장 변수)  matchhistory
 #   {gamecfg::unlock}  관리자 설정 잠금 해제 표시(저장 변수, true 면 잠금 꺼짐, 없으면 잠금 켜짐)  admin
-#   {gamecfg::worldlist::이름} 서버/스크립트를 불러올 때 자동으로 불러올 월드(저장 변수)  worldtest
+#   {gamecfg::worldlist::이름} 서버/스크립트를 불러올 때 자동으로 불러올 월드(저장 변수)  world
 #   {gamecfg::target::모드}   목표 스코어/승점(저장 변수, 대시 없음)                  gamesetup(gcTarget)
 #   {-ingame}                게임 진행 여부(true 면 무기고 해제). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
 #   {itemorder::*}           아이템 GUI 표시 순서(저장 변수, 대시 없음)           items
@@ -132,10 +132,11 @@
 #   - fishing.sk    : 낚싯대 스킬
 #   - gamesetup.sk  : 게임 사전 설정 GUI(팀 수/게임모드/랜덤 아이템, 변경 시 전체 알림). 게임 시스템은 gcTeams()/gcMode()/gcRandom() 로 읽는다
 #   - admin.sk      : /admin 관리자 메뉴(6줄 GUI, op 전용). 앞으로 관리자 전용 기능은 이 메뉴에 버튼으로 추가한다(추가법은 admin.sk 맨 위)
-#   - worldtest.sk  : 멀티월드 테스트 명령(/worldtest list|create|tp|info, 관리자 전용). 게임 로직과 무관
+#   - world.sk      : 월드 관리 명령(/world list|create|rename|forget|tp|info, 관리자 전용). 게임 로직과 무관
 #   - lobby.sk      : 로비 근처 PvP 금지(반경 lobbyPvpRadius()=50), 훈련장 위치({gamecfg::loc::training}), 훈련장 이동 NPC(관리자 메뉴 버튼으로 설치)
 #   - killcine.sk   : 킬 연출(치명타 취소 -> 킬 처리 -> 고정 방향 스켈레톤+정면 가까운 관전 카메라 -> 폭발 -> 5초 뒤 리스폰, 섬멸전 라운드를 끝내는 킬은 전원 관람 + 승리자 더미 클로즈업 + 타이틀). 새 스킬에 on death 정리를 만들면 kcClearState 에도 추가
 #   - killlog.sk    : 킬로그(killLogShow 함수를 killcine 도 호출)
+#   - blockguard.sk : 블럭 상호작용 차단(부수기/설치/블럭 사용/양동이, 크리에이티브 관리자만 예외)
 #   - matchhistory.sk: 지난 매치 기록(종료 때 결과창 JSON 저장, 관리자 메뉴로 등록한 독서대 우클릭 -> 4줄 GUI, 작성된 책 클릭 -> dialog 결과창 + 한 줄 리뷰, 번호 MATCH 001 형식)
 #   - gameend.sk    : 게임 종료 연출(마지막 킬 연출을 모두 관전 -> 승리 팀 알림 -> 승리 팀 더미 + 채팅 결과 발표 + 투표 /potm -> 15초 뒤 로비).  관리자 명령 /gamestop(게임/연출 중단), /finaletest(종료 연출만 테스트), 결과는 승리 팀 더미 뒤 텍스트 디스플레이로 표시(로비 위치/월드별 결과 무대 위치는 관리자 메뉴 버튼으로 저장. 종료 연출은 게임이 진행된 월드의 무대에서 하고 POTM 투표까지 거기서 끝낸 뒤, 로비 월드 무대에도 더미/결과를 놓는다. 무대는 다음 게임 시작 전까지 유지), POTM 투표는 승리 팀 더미 우클릭(득표는 별 개수)
 #   - gametab.sk    : 게임 중 탭리스트(헤더에 팀 스코어와 K D A DMG ITEM, 플레이어 줄 전적 + 구성 아이템 아이콘 전부(로비 탭리스트와 같음), 팀 순서 정렬). 칸 너비는 gtNameW 등 한 곳에서 조절
