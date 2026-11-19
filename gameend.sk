@@ -3,6 +3,7 @@
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
 #   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 #   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
+# 매치 기록(결과 저장/책장 GUI/리뷰)은 matchhistory.sk. {-gmatchlbl}(이번 매치 이름, 결과 맨 윗줄)
 # 명령: /finaletest(관리자, 마지막 킬 연출부터 종료 연출까지 전체 테스트), /gamestop(관리자, 게임/연출 중단)
 # 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭(또는 좌클릭)해서 한다(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 제외). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
@@ -465,10 +466,20 @@ function gfResultJson() :: text:
 	while {_en} > 0:
 		set {_eq} to "%{_eq}%="
 		remove 1 from {_en}
+	set {_ml} to {-gmatchlbl}
+	if {_ml} is not set:
+		set {_ml} to "MATCH"
+	set {_mlp} to " %{_ml}% "
+	set {_en} to floor((({_tw} - gtPx({_mlp})) / 2) / 6)
+	set {_eq} to ""
+	while {_en} > 0:
+		set {_eq} to "%{_eq}%="
+		remove 1 from {_en}
 	set {_t0} to gfT({_eq}, "gold", false)
+	set {_tm} to gfT({_mlp}, "yellow", false)
 	set {_i1} to gfT("%gcModeName({-gmode})% · 승리 ", "yellow", false)
 	set {_wj} to gfLabelJ({-gwinner})
-	set {_ex} to "%{_t0}%,%{_nlc}%,%{_i1}%,%{_wj}%"
+	set {_ex} to "%{_t0}%,%{_tm}%,%{_t0}%,%{_nlc}%,%{_i1}%,%{_wj}%"
 	if {-gteams} > 0:
 		set {_sep} to gfT("    ", "white", false)
 		set {_ex} to "%{_ex}%,%{_sep}%"
@@ -641,6 +652,11 @@ function gameFinale():
 	if {-gover} is not true:
 		stop
 	set {-gfinale} to true
+	# 이번 매치 번호(결과창 맨 윗줄에 표시). 테스트는 TEST, 저장은 gmRecord
+	if {-gftest} is true:
+		set {-gmatchlbl} to "MATCH TEST"
+	else:
+		set {-gmatchlbl} to matchLabel(mhCount() + 1)
 	# 강제 종료(gfAbort)가 {-gfgen} 을 올리면 대기 뒤에 이 연출은 멈춘다
 	add 1 to {-gfgen}
 	set {_gen} to {-gfgen}
@@ -709,9 +725,11 @@ function gameFinale():
 			loop all players:
 				if loop-player is op:
 					send "&e로비 월드(%{_lw}%)에 결과 무대가 저장되어 있지 않아 로비에는 더미를 놓지 못했습니다. 관리자 메뉴의 결과 무대 위치 설정을 로비에서 눌러 주세요." to loop-player
+	gmRecord()
 	delete {-gvote}
 	delete {-gpotm::*}
 	delete {-gpotmres}
+	delete {-gmatchlbl}
 	set {_pl::*} to {-gplist::*}
 	gameCleanup()
 	gfTestCleanup()
