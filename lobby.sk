@@ -1,0 +1,124 @@
+# [lobby.sk] 로비 규칙: 로비 근처 PvP 금지, 훈련장 위치, 훈련장 이동 NPC.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {gamecfg::loc::training::world|x|y|z|yaw|pitch}(훈련장 위치, 저장 변수. gameend.sk 의 gcSaveLoc/gcLoadLoc 로 읽고 쓴다)
+# 로비 PvP 금지: 로비 위치(관리자 메뉴 "로비 위치 설정")에서 lobbyPvpRadius() 칸 안에 공격자나 피해자가 있으면 플레이어끼리의 피해를 취소한다(같은 월드일 때만).
+#   - 진행 중인 게임의 참가자끼리는 막지 않는다(게임 월드가 로비 월드와 같아도 게임이 돌아가게).
+#   - 로비 위치가 저장돼 있지 않으면 막지 않는다. 낙사/몹 피해 등 플레이어끼리가 아닌 피해는 막지 않는다.
+#   - 피해를 주지 않는 기절/끌어당기기 같은 스킬 효과는 이 규칙으로 못 막는다(필요하면 스킬 쪽에서 따로 막아야 한다).
+# 훈련장 NPC: 관리자 메뉴 "훈련장 NPC 설치"가 서 있는 자리 앞에 마네킹 NPC 를 세운다(스코어보드 태그 trainingnpc). 우클릭/좌클릭하면 저장된 훈련장으로 이동한다.
+#   게임 참가자는 게임 중에 못 쓴다. 이동은 다른 월드여도 되게 tpSafe(gameend.sk)를 쓴다.
+# 미검증 문법: on damage with priority lowest, 마네킹 NPC(이름/설명/태그), PlayerInteractEntityEvent/PrePlayerAttackEntityEvent 로 NPC 클릭 받기, send action bar.
+
+import:
+	org.bukkit.entity.EntityType
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+# 로비 PvP 금지 반경(칸)
+function lobbyPvpRadius() :: number:
+	return 50
+
+# 이 위치가 로비 PvP 금지 구역 안인지
+function inLobbyZone(l: location, lobby: location) :: boolean:
+	set {_w1} to {_l}.getWorld()
+	set {_w2} to {_lobby}.getWorld()
+	if {_w1} is not {_w2}:
+		return false
+	set {_d} to distance between {_l} and {_lobby}
+	if {_d} <= lobbyPvpRadius():
+		return true
+	return false
+
+# 플레이어끼리의 피해를 먼저 걸러 낸다(우선순위 가장 낮게: 취소된 이벤트는 다른 스크립트의 피해 보정이 처리하지 않는다).
+on damage with priority lowest:
+	if victim is not a player:
+		stop
+	if attacker is not a player:
+		stop
+	if attacker is victim:
+		stop
+	set {_a} to attacker
+	set {_v} to victim
+	# 진행 중인 게임의 참가자끼리는 막지 않는다
+	if {-ingame} is true:
+		if {-gplist::*} contains {_v}:
+			if {-gplist::*} contains {_a}:
+				stop
+	set {_lobby} to gcLoadLoc("lobby")
+	if {_lobby} is not set:
+		if {gamecfg::lobby} is set:
+			set {_lobby} to {gamecfg::lobby}
+		else:
+			stop
+	set {_vl} to {_v}.getLocation()
+	set {_al} to {_a}.getLocation()
+	set {_hit} to false
+	if inLobbyZone({_vl}, {_lobby}) is true:
+		set {_hit} to true
+	if inLobbyZone({_al}, {_lobby}) is true:
+		set {_hit} to true
+	if {_hit} is false:
+		stop
+	cancel event
+	send action bar "&c로비 근처에서는 PvP 를 할 수 없습니다." to {_a}
+
+# ===== 훈련장 =====
+# 훈련장으로 이동(NPC 클릭). 게임 참가자는 게임 중에 못 쓴다.
+function trainingGo(p: player):
+	if {-kc::%{_p}'s uuid%} is set:
+		stop
+	if {-ingame} is true:
+		if {-gplist::*} contains {_p}:
+			send "&c게임 중에는 훈련장으로 이동할 수 없습니다." to {_p}
+			stop
+	set {_t} to gcLoadLoc("training")
+	if {_t} is not set:
+		send "&c훈련장 위치가 설정되지 않았습니다. 관리자에게 문의해 주십시오." to {_p}
+		stop
+	tpSafe({_p}, {_t})
+	play sound "entity.enderman.teleport" with volume 0.7 and pitch 1.2 to {_p}
+	send "&a훈련장으로 이동했습니다." to {_p}
+
+# 훈련장 NPC 를 loc 에 yaw 방향으로 세운다(마네킹, 움직이지 않음, 무적, 스코어보드 태그 trainingnpc)
+function trainingNpcSpawn(loc: location, yaw: number):
+	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
+	{_m}.setImmovable(true)
+	{_m}.setInvulnerable(true)
+	{_m}.setSilent(true)
+	{_m}.setRotation({_yaw}, 0)
+	{_m}.addScoreboardTag("trainingnpc")
+	set {_nj} to "{""text"":""훈련장"",""color"":""green"",""bold"":true}"
+	set {_dj} to "{""text"":""클릭해서 이동"",""color"":""gray""}"
+	{_m}.customName(GsonComponentSerializer.gson().deserialize({_nj}))
+	{_m}.setCustomNameVisible(true)
+	{_m}.setDescription(GsonComponentSerializer.gson().deserialize({_dj}))
+
+# 훈련장 NPC 를 모두 지우고 지운 수를 돌려준다
+function trainingNpcClear() :: number:
+	set {_n} to 0
+	loop all entities:
+		set {_e} to loop-entity
+		set {_has} to {_e}.getScoreboardTags().contains("trainingnpc")
+		if {_has} is true:
+			{_e}.remove()
+			add 1 to {_n}
+	return {_n}
+
+# 우클릭
+on PlayerInteractEntityEvent:
+	if event.getHand().name() is not "HAND":
+		stop
+	set {_e} to event.getRightClicked()
+	set {_has} to {_e}.getScoreboardTags().contains("trainingnpc")
+	if {_has} is not true:
+		stop
+	event.setCancelled(true)
+	trainingGo(event.getPlayer())
+
+# 좌클릭(공격 직전 이벤트)
+on PrePlayerAttackEntityEvent:
+	set {_e} to event.getAttacked()
+	set {_has} to {_e}.getScoreboardTags().contains("trainingnpc")
+	if {_has} is not true:
+		stop
+	event.setCancelled(true)
+	trainingGo(event.getPlayer())
