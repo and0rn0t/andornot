@@ -19,7 +19,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "gamestart", "gamestop", "itemorder" and "team"
+	return "gamesetup", "gamestart", "gamestop", "itemorder", "team", "setlobby", "setstage" and "clearstage"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -42,6 +42,18 @@ function adminButtonItem(id: text) :: itemtype:
 		set {_i} to white banner named "&f팀 설정"
 		set lore of {_i} to "&7명령어로 플레이어의 팀을 정해요", "&7(채팅창에 사용법을 알려줘요)", "", "&e▶ 클릭"
 		return {_i}
+	if {_id} is "setlobby":
+		set {_i} to bed named "&f로비 위치 설정"
+		set lore of {_i} to "&7지금 서 있는 자리를 게임이 끝난 뒤", "&7모두가 돌아올 로비로 저장해요", "&7(월드가 달라도 돼요)", "", "&e▶ 클릭해서 저장"
+		return {_i}
+	if {_id} is "setstage":
+		set {_i} to lectern named "&f결과 무대 위치 설정"
+		set lore of {_i} to "&7지금 서 있는 자리와 바라보는 방향을", "&7승리 팀 더미와 결과 디스플레이의", "&7무대로 저장해요", "&7(더미가 바라볼 쪽, 구경하는 사람이 설 쪽을 보고 서세요)", "", "&e▶ 클릭해서 저장"
+		return {_i}
+	if {_id} is "clearstage":
+		set {_i} to barrier named "&c결과 무대 치우기"
+		set lore of {_i} to "&7남아 있는 승리 팀 더미와", "&7결과 디스플레이를 지워요", "&7(다음 게임을 시작해도 지워져요)", "", "&e▶ 클릭해서 치우기"
+		return {_i}
 	set {_i} to barrier named "&c알 수 없는 버튼"
 	return {_i}
 
@@ -60,6 +72,18 @@ function adminAction(p: player, id: text):
 			send "&c진행 중인 게임이 없습니다." to {_p}
 		else:
 			gameForceStop(name of {_p})
+	else if {_id} is "setlobby":
+		close {_p}'s inventory
+		set {gamecfg::lobby} to location of {_p}
+		send "&a로비 위치를 저장했습니다. (%{_p}.getWorld().getName()%)" to {_p}
+	else if {_id} is "setstage":
+		close {_p}'s inventory
+		set {gamecfg::stage} to location of {_p}
+		send "&a결과 무대 위치를 저장했습니다. 지금 바라보는 방향이 더미가 바라볼 방향이에요. (%{_p}.getWorld().getName()%)" to {_p}
+	else if {_id} is "clearstage":
+		close {_p}'s inventory
+		gfClearStage()
+		send "&7남아 있는 결과 무대를 치웠습니다." to {_p}
 	else if {_id} is "itemorder":
 		itemGuiOpen({_p}, "order")
 	else if {_id} is "team":

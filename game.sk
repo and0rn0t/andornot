@@ -186,6 +186,8 @@ function gameRespawn(p: player):
 function gameStart(by: text):
 	if {-ingame} is true:
 		stop
+	# 이전 게임의 결과 무대(승리자 더미, 결과 디스플레이)를 치운다
+	gfClearStage()
 	set {-gmode} to gcMode()
 	set {-gtarget} to gcTarget({-gmode})
 	set {_n} to gcTeams()

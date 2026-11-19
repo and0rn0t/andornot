@@ -11,7 +11,7 @@
 #   3초   승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고, 모두 그 앞(관전)으로 모은 뒤 결과를 채팅에 발표. 투표 시작
 #   15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
 # 결과 표시: 팀 점수(승리 팀이 맨 위), 참가자 전원의 K/D/A·가한 피해·사용한 아이템(구성 아이콘)을 텍스트 디스플레이로 승리 팀 더미 뒤에 띄운다. 투표 수는 더미 머리 위 설명에 표시.
-# 맵 설정이 없어서 무대/로비 위치는 아래 두 함수(gameStageLoc, gameLobby)로 비워 뒀다. 지금은 월드 스폰을 쓴다.
+# 로비/결과 무대 위치는 관리자 메뉴 버튼으로 저장한 위치({gamecfg::lobby}, {gamecfg::stage})를 쓴다(멀티월드 가능). 결과 무대(더미 + 디스플레이)는 다음 게임 시작 전까지 남는다.
 # 미검증: 마네킹 소환/스킨(ResolvableProfile, SPIGOT-8084), 마네킹 이름표/설명, PlayerInteractEntityEvent 로 마네킹 클릭, 무적 더미 좌클릭 이벤트, TextDisplay#text/setLineWidth, 디스플레이 크기/위치.
 
 import:
@@ -22,18 +22,42 @@ import:
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	org.bukkit.entity.EntityType
 	org.bukkit.event.player.PlayerInteractEntityEvent
+	io.papermc.paper.event.player.PrePlayerAttackEntityEvent
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 
-# ===== 맵 연결 자리 =====
-# 더미를 세울 무대 위치(더미들의 가운데). 맵 설정이 생기면 여기서 돌려준다.
-function gameStageLoc() :: location:
+# ===== 맵 연결 자리(멀티월드) =====
+# 로비 위치와 결과 무대 위치는 관리자 메뉴(admin.sk)의 버튼으로 서 있는 자리에서 저장한다({gamecfg::lobby}, {gamecfg::stage}, 월드 포함 위치).
+# 저장이 없으면 접속 중인 아무 월드의 스폰을 쓴다. 월드가 달라도 teleport 는 그대로 된다(월드가 불러와져 있어야 함).
+# 무대 위치의 방향(yaw)은 더미가 바라보는 쪽 = 구경하는 사람이 서는 쪽이다. 저장할 때 구경꾼 쪽을 바라보고 서면 된다.
+function gameLobbyLoc() :: location:
+	if {gamecfg::lobby} is set:
+		return {gamecfg::lobby}
 	loop all players:
 		return loop-player.getWorld().getSpawnLocation()
 	return {-gplist::1}.getWorld().getSpawnLocation()
 
+# 결과 무대(승리 팀 더미들의 가운데). 기본은 월드 스폰에서 방향 180 도(남쪽 -> 북쪽을 바라보는 더미).
+function gameStageLoc() :: location:
+	if {gamecfg::stage} is set:
+		return {gamecfg::stage}
+	set {_l0} to gameLobbyLoc()
+	set {_l} to {_l0}.clone()
+	{_l}.setYaw(180)
+	{_l}.setPitch(0)
+	return {_l}
+
 # 게임이 완전히 끝났을 때 보낼 로비 위치
 function gameLobby(p: player):
-	teleport {_p} to {_p}.getWorld().getSpawnLocation()
+	teleport {_p} to gameLobbyLoc()
+
+# 결과 무대(더미 + 결과 디스플레이)를 치운다. 다음 게임 시작(gameStart), 강제 종료, 관리자 메뉴가 부른다.
+# 다음 게임 전까지 무대가 남아 있어야 해서 스크립트를 다시 불러와도 지우지 않으므로, 태그("gdummy")로도 찾아서 지운다.
+function gfClearStage():
+	gfClearDummies()
+	loop all entities:
+		set {_e} to loop-entity
+		if {_e}.getScoreboardTags().contains("gdummy") is true:
+			{_e}.remove()
 
 # ===== 결과 문구 만들기 =====
 function gfVotes(tid: text) :: number:
@@ -325,7 +349,7 @@ function gfResultJson() :: text:
 		set {_pn2} to gfT("%{-gpotmres}%", "white", false)
 		set {_ex} to "%{_ex}%,%{_nlc}%,%{_pj}%,%{_pn2}%"
 	else if {-gvote} is true:
-		set {_hint} to gfT("승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요", "gray", false)
+		set {_hint} to gfT("승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요", "gray", false)
 		set {_ex} to "%{_ex}%,%{_nlc}%,%{_hint}%"
 	return "{""text"":"""",""extra"":[%{_ex}%]}"
 
@@ -336,9 +360,18 @@ function gfDisplayRefresh():
 	{-gdisp}.text(GsonComponentSerializer.gson().deserialize(gfResultJson()))
 
 # ===== 더미 클릭 투표 =====
-# 더미 머리 위 설명(투표 수)을 다시 쓴다
+# 더미 머리 위 설명(투표 수를 별 ★ 개수로)을 다시 쓴다
 function gfDummyDesc(m: entity, id: text):
-	set {_dj} to gfT("▲ %gfVotes({_id})%표", "yellow", false)
+	set {_n} to gfVotes({_id})
+	set {_s} to ""
+	if {_n} > 8:
+		set {_s} to "★ x%{_n}%"
+	else:
+		set {_k} to {_n}
+		while {_k} > 0:
+			set {_s} to "%{_s}%★"
+			remove 1 from {_k}
+	set {_dj} to gfT({_s}, "yellow", false)
 	{_m}.setDescription(GsonComponentSerializer.gson().deserialize({_dj}))
 
 function gfDummyRefresh():
@@ -349,10 +382,11 @@ function gfDummyRefresh():
 
 # 플레이어 p 가 더미 e 를 눌렀다: 승리 팀 더미에게만 투표할 수 있고, 투표자는 참가자여야 하며 본인에게는 못 한다. 마감 전에는 바꿀 수 있다.
 function gfVoteClick(p: player, e: entity):
-	if {-gvote} is not true:
-		stop
 	set {_id} to {-gdummyid::%{_e}'s uuid%}
 	if {_id} is not set:
+		stop
+	if {-gvote} is not true:
+		send "&7투표가 종료되었습니다." to {_p}
 		stop
 	if {-gplist::*} does not contain {_p}:
 		send "&c이번 게임 참가자만 투표할 수 있습니다." to {_p}
@@ -377,7 +411,15 @@ on PlayerInteractEntityEvent:
 	event.setCancelled(true)
 	gfVoteClick(event.getPlayer(), {_e})
 
-# 좌클릭(공격)도 투표로 받는다. 무적 엔티티라 이벤트가 안 올 수 있음(미검증).
+# 좌클릭(공격)도 투표로 받는다. 무적 엔티티는 피해 이벤트가 안 올 수 있어서 공격 직전 이벤트(PrePlayerAttackEntityEvent)로 받고, 피해 이벤트도 같이 둔다(미검증).
+# 한 번 눌러 둘 다 오면 같은 표를 두 번 넣을 뿐이라 결과는 같다.
+on PrePlayerAttackEntityEvent:
+	set {_e} to event.getAttacked()
+	if {-gdummyid::%{_e}'s uuid%} is not set:
+		stop
+	event.setCancelled(true)
+	gfVoteClick(event.getPlayer(), {_e})
+
 on damage:
 	if attacker is not a player:
 		stop
@@ -389,13 +431,13 @@ on damage:
 # ===== 더미 =====
 # 승리 팀 플레이어 한 명과 똑같이 생긴(스킨/장비) 더미를 loc 에 세운다(바라보는 방향 yaw 180 = 남쪽에서 북쪽을 봄).
 # id 는 이 더미가 뜻하는 참가자 id(uuid 또는 테스트용 가짜 id). 이름표(팀 색)와 투표 수 설명을 달고, 클릭하면 투표 대상이 된다.
-function gfDummy(p: player, loc: location, id: text):
+function gfDummy(p: player, loc: location, id: text, yaw: number):
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
 	{_m}.setProfile(ResolvableProfile.resolvableProfile({_p}.getPlayerProfile()))
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)
 	{_m}.setSilent(true)
-	{_m}.setRotation(180, 0)
+	{_m}.setRotation({_yaw}, 0)
 	{_m}.addScoreboardTag("gdummy")
 	set {_nj} to gfT(gfName({_id}), gtColorJ(gTeamIndex({-gwinner})), true)
 	{_m}.customName(GsonComponentSerializer.gson().deserialize({_nj}))
@@ -476,15 +518,21 @@ function gameFinale():
 	delete {-gpotm::*}
 	delete {-gpotmres}
 	set {-gvote} to true
+	# 무대 방향(yaw): 더미가 바라보는 쪽(앞)에 구경꾼이 선다. 오른쪽은 더미 기준 오른쪽.
+	set {_sy} to {_stage}.getYaw()
+	set {_fx} to 0 - sin({_sy})
+	set {_fz} to cos({_sy})
+	set {_rx} to 0 - cos({_sy})
+	set {_rz} to 0 - sin({_sy})
 	set {_cnt} to size of {_win::*}
 	set {_i} to 1
 	while {_i} <= {_cnt}:
 		set {_off} to ({_i} - 1 - ({_cnt} - 1) / 2) * 1.6
-		set {_dl} to {_stage} ~ vector({_off}, 0, 0)
-		gfDummy({_win::%{_i}%}, {_dl}, {_wid::%{_i}%})
+		set {_dl} to {_stage} ~ vector({_rx} * {_off}, 0, {_rz} * {_off})
+		gfDummy({_win::%{_i}%}, {_dl}, {_wid::%{_i}%}, {_sy})
 		add 1 to {_i}
-	# 결과 디스플레이: 더미들 뒤쪽 위에 띄운다(보는 사람 쪽을 향함). 크기/위치는 아래 숫자로 조절.
-	set {_dloc} to {_stage} ~ vector(0, 3.5, 2.5)
+	# 결과 디스플레이: 더미들 뒤쪽(앞의 반대) 위에 띄운다(보는 사람 쪽을 향함). 크기/위치는 아래 숫자로 조절.
+	set {_dloc} to {_stage} ~ vector({_fx} * -2.5, 3.5, {_fz} * -2.5)
 	spawn a text display at {_dloc}:
 		set {_disp} to event-entity
 		add "gdummy" to scoreboard tags of event-entity
@@ -493,8 +541,8 @@ function gameFinale():
 	{_disp}.text(GsonComponentSerializer.gson().deserialize(gfResultJson()))
 	set {-gdisp} to {_disp}
 	add {_disp} to {-gdummies::*}
-	set {_view} to {_stage} ~ vector(0, 0, -7)
-	{_view}.setYaw(0)
+	set {_view} to {_stage} ~ vector({_fx} * 7, 0, {_fz} * 7)
+	{_view}.setYaw({_sy} + 180)
 	{_view}.setPitch(-5)
 	loop {-gplist::*}:
 		if loop-value is online:
@@ -505,7 +553,7 @@ function gameFinale():
 	play sound "block.note_block.chime" with volume 0.7 to all players
 	loop {-gplist::*}:
 		if loop-value is online:
-			send "&6[투표] &7승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요. (본인 제외)" to loop-value
+			send "&6[투표] &7승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요. (본인 제외)" to loop-value
 	# 4) 투표 시간(마지막 3초 전까지)
 	wait 12 seconds
 	if {-gfgen} is not {_gen}:
@@ -515,8 +563,7 @@ function gameFinale():
 	wait 3 seconds
 	if {-gfgen} is not {_gen}:
 		stop
-	# 5) 정리: 더미/결과 디스플레이 제거, 게임 정리, 로비로
-	gfClearDummies()
+	# 5) 정리: 게임 정리, 로비로. 더미와 결과 디스플레이는 다음 게임 시작(gameStart -> gfClearStage) 전까지 그대로 둔다.
 	delete {-gvote}
 	delete {-gpotm::*}
 	delete {-gpotmres}
@@ -558,7 +605,7 @@ function gfPotmAnnounce():
 # 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/투표 상태를 지우고 테스트 데이터도 정리. gameCleanup() 보다 뒤에 부를 것.
 function gfAbort():
 	add 1 to {-gfgen}
-	gfClearDummies()
+	gfClearStage()
 	delete {-gvote}
 	delete {-gpotm::*}
 	delete {-gpotmres}
@@ -698,7 +745,8 @@ command /gamestop:
 				stop
 		if {-ingame} is not true:
 			if {-gfinale} is not true:
-				send "&c진행 중인 게임이 없습니다."
+				gfClearStage()
+				send "&7진행 중인 게임이 없어서 남아 있는 결과 무대를 치웠습니다."
 				stop
 		gameForceStop("%name of sender%")
 
@@ -706,8 +754,5 @@ on load:
 	delete {-gfinale}
 	delete {-gvote}
 	delete {-gpin}
-	loop all entities:
-		set {_e} to loop-entity
-		if {_e}.getScoreboardTags().contains("gdummy") is true:
-			{_e}.remove()
+	# 결과 무대(더미/디스플레이)는 다음 게임 시작 전까지 남겨야 해서 여기서 지우지 않는다(다음 게임 시작/관리자 메뉴가 gfClearStage 로 치움).
 	delete {-gdummies::*}
