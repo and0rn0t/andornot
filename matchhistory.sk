@@ -340,16 +340,28 @@ function mhHideTest(p: player):
 	set {_n} to "And_0r_Not"
 	set {_m1} to "{""text"":""%{_n}%"",""color"":""white""}"
 	set {_m2} to "{""text"":""%{_n}%"",""color"":""#00FFFFFF""}"
-	set {_m3} to "{""text"":""%{_n}%"",""color"":""#FF000000"",""shadow_color"":0}"
+	set {_m3} to "{""text"":""%{_n}%"",""color"":""black"",""shadow_color"":0}"
 	set {_m4} to "{""text"":""%{_n}%"",""color"":""white"",""font"":""minecraft:does_not_exist""}"
 	set {_m5} to "{""text"":""%{_n}%"",""color"":""white"",""obfuscated"":true}"
 	set {_l1} to mhHideLine("보통", {_m1})
-	set {_l2} to mhHideLine("투명 #00FFFFFF", {_m2})
+	set {_l2} to mhHideLine("보통(비교)", {_m1})
 	set {_l3} to mhHideLine("검정+그림자0", {_m3})
 	set {_l4} to mhHideLine("없는 폰트", {_m4})
 	set {_l5} to mhHideLine("obfuscated", {_m5})
 	set {_d} to "{""type"":""minecraft:notice"",""title"":{""text"":""보이지 않는 글자 진단""},""can_close_with_escape"":true,"
 	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%]},""width"":420}]}"
+	set {_pn} to {_p}.getName()
+	execute console command "dialog show %{_pn}% %{_d}%"
+
+# #AARRGGBB 색이 되는지만 따로 본다(안 되면 서버가 에러만 내고 dialog 가 안 뜬다).
+function mhHideTest2(p: player):
+	set {_n} to "And_0r_Not"
+	set {_m1} to "{""text"":""%{_n}%"",""color"":""white""}"
+	set {_m2} to "{""text"":""%{_n}%"",""color"":""#00FFFFFF""}"
+	set {_l1} to mhHideLine("보통", {_m1})
+	set {_l2} to mhHideLine("투명 #00FFFFFF", {_m2})
+	set {_d} to "{""type"":""minecraft:notice"",""title"":{""text"":""투명 글자 진단""},""can_close_with_escape"":true,"
+	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%]},""width"":420}]}"
 	set {_pn} to {_p}.getName()
 	execute console command "dialog show %{_pn}% %{_d}%"
 
@@ -371,6 +383,9 @@ command /matchtest [<text>]:
 			stop
 		if arg-1 is "hide":
 			mhHideTest(player)
+			stop
+		if arg-1 is "hide2":
+			mhHideTest2(player)
 			stop
 		if arg-1 is "space":
 			mhSpaceTest(player)
