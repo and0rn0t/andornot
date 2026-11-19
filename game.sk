@@ -1,6 +1,6 @@
 # [game.sk] 게임 진행: 시작/종료, 팀 배정, 전적(K/D/A/가한 피해), 바운티(별/현상금 스코어), 섬멸전(목숨 1개, 라운드 승점), 승리 판정.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 아직 없는 것: 맵 설정(스폰 위치, 로비 위치). 그 자리는 gameSpawn()(게임/라운드 시작 때 각자 보낼 곳)에 비워 뒀다. 지금은 아무 데도 안 보낸다.
+# 리스폰 위치: 아래 "리스폰 위치" 절 참고(월드별 기준 위치 + 게임마다 팀별 무작위 초기 위치 {-gspawn::팀키}, RAM).
 # 이 파일이 쓰는 변수(RAM 전용):
 #   {-ingame}          게임 진행 중(true). items.sk 가 읽어서 무기고를 치운다.
 #   {-gover}           승패가 난 뒤(종연출 중)면 true. 새 킬/점수를 더 받지 않는다.
@@ -362,10 +362,89 @@ function ratingApply():
 		set {rating::%{_id}%} to round((ratingOf({_id}) + {_delta}) * 100) / 100
 		set {rating::games::%{_id}%} to {_g} + 1
 
-# ===== 맵 연결 자리 =====
-# 게임/라운드가 시작될 때 플레이어를 보낼 곳. 맵 설정이 생기면 여기서 teleport 한다(지금은 제자리).
+# ===== 리스폰 위치 =====
+# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 기준 위치를 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때 팀 수만큼(개인전은 참가자 수만큼) 그 기준 위치에서 반경 200칸 안의 무작위 위치를 뽑아
+# 이번 게임의 팀별 초기 리스폰 위치({-gspawn::팀키})로 쓴다. 기준 위치가 없는 월드는 뽑지 않고 예전처럼 동작한다(시작 때 제자리, 리스폰은 월드 스폰).
+# 섬멸전: 리스폰이 없고 초기 위치만 쓴다(게임 시작/매 라운드 시작 때 그 팀의 초기 위치로 이동).
+# 바운티: 처음에는 초기 위치, 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 초기 위치). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
+# 무작위 위치: 그 자리의 가장 높은 블럭 위, 물/용암이 아닌 곳. 기준 높이와 너무 차이 나는 곳(동굴 위/아래 등)은 버리고 다시 뽑는다. 20번 안에 못 찾으면 기준 위치를 그대로 쓴다.
+# 미검증: World#getHighestBlockYAt(x, z), Block#getType().name() 문자열 비교.
+function gcRespawnKey(wn: text) :: text:
+	return "respawn_%{_wn}%"
+
+# center 기준 반경 r 칸 안의 무작위 안전 위치. ytol 이 0 이상이면 center 높이와 그 이내로 차이 나는 곳만 쓴다(음수면 높이 제한 없음).
+function gRandomSpot(center: location, r: number, ytol: number) :: location:
+	set {_w} to {_center}.getWorld()
+	set {_cy} to {_center}.getY()
+	loop 20 times:
+		set {_ang} to random number between 0 and 360
+		set {_dist} to sqrt(random number between 0 and 1) * {_r}
+		set {_x} to floor({_center}.getX() + cos({_ang}) * {_dist})
+		set {_z} to floor({_center}.getZ() + sin({_ang}) * {_dist})
+		set {_y} to {_w}.getHighestBlockYAt({_x}, {_z})
+		set {_blk} to {_w}.getBlockAt({_x}, {_y}, {_z})
+		set {_bt} to {_blk}.getType()
+		set {_tn} to {_bt}.name()
+		set {_bad} to false
+		if {_tn}.contains("WATER"):
+			set {_bad} to true
+		if {_tn}.contains("LAVA"):
+			set {_bad} to true
+		if {_ytol} >= 0:
+			if abs({_y} + 1 - {_cy}) > {_ytol}:
+				set {_bad} to true
+		if {_bad} is false:
+			set {_l} to new Location({_w}, {_x} + 0.5, {_y} + 1, {_z} + 0.5)
+			{_l}.setYaw({_center}.getYaw())
+			return {_l}
+	return {_center}.clone()
+
+# 팀 키의 초기 리스폰 위치(없으면 지금 뽑아 저장). 기준 위치가 없는 월드면 값 없음.
+function gInitSpawn(tk: text) :: location:
+	if {-gspawn::%{_tk}%} is set:
+		return {-gspawn::%{_tk}%}
+	set {_base} to gcLoadLoc(gcRespawnKey("%{-gworld}%"))
+	if {_base} is not set:
+		return {_none}
+	set {_s} to gRandomSpot({_base}, 200, -1)
+	set {-gspawn::%{_tk}%} to {_s}
+	return {_s}
+
+# 게임 시작 때 팀마다 초기 리스폰 위치를 새로 뽑는다.
+function gGenSpawns():
+	delete {-gspawn::*}
+	loop {-gteamlist::*}:
+		set {_s} to gInitSpawn(loop-value)
+
+# 바운티 리스폰 위치: 같은 월드의 살아 있는 팀원 근처 50칸 안. 팀원이 없으면 초기 위치, 그것도 없으면 값 없음.
+function gTeamSpot(v: player) :: location:
+	set {_tk} to gTeamOf({_v})
+	set {_vw} to {_v}.getWorld()
+	set {_vwn} to {_vw}.getName()
+	delete {_mates::*}
+	if {-gteams} > 0:
+		loop {-gplist::*}:
+			if loop-value is not {_v}:
+				if gAlive(loop-value) is true:
+					if gTeamOf(loop-value) is {_tk}:
+						set {_mw} to loop-value.getWorld()
+						if {_mw}.getName() is {_vwn}:
+							add loop-value to {_mates::*}
+	if size of {_mates::*} > 0:
+		set {_rn} to random integer between 1 and size of {_mates::*}
+		set {_m} to {_mates::%{_rn}%}
+		set {_ml} to {_m}.getLocation()
+		return gRandomSpot({_ml}, 50, 12)
+	return gInitSpawn({_tk})
+
+# 게임/라운드가 시작될 때 플레이어를 보낼 곳: 그 팀의 초기 리스폰 위치(기준 위치가 없으면 제자리).
 function gameSpawn(p: player):
-	stop
+	if {-ingame} is not true:
+		stop
+	set {_s} to gInitSpawn(gTeamOf({_p}))
+	if {_s} is not set:
+		stop
+	tpSafe({_p}, {_s})
 
 # ===== 머리 위 별(바운티) =====
 function gStarText(n: number) :: text:
@@ -556,6 +635,7 @@ function gameStart(by: text):
 			gRollLoadout(loop-value)
 			loadoutClearAll(loop-value)
 	set {-ingame} to true
+	gGenSpawns()
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
 	gAnnounceTeams()

@@ -27,9 +27,16 @@ import:
 function kcEnabled() :: boolean:
 	return true
 
-# 리스폰 위치(게임 진행 틀이 생기기 전까지는 피격자가 있는 월드의 스폰)
+# 리스폰 위치: 게임 중인 참가자(바운티)는 팀원 근처 무작위 위치(game.sk 의 gTeamSpot, 없으면 초기 위치, 기준 위치도 없으면 월드 스폰). 게임 중이 아니거나 모드가 없거나 참가자가 아니면 로비.
 function kcRespawnLoc(v: player) :: location:
-	return {_v}.getWorld().getSpawnLocation()
+	if {-ingame} is true:
+		if {-gmode} is set:
+			if {-gplist::*} contains {_v}:
+				set {_t} to gTeamSpot({_v})
+				if {_t} is set:
+					return {_t}
+				return {_v}.getWorld().getSpawnLocation()
+	return gameLobbyLoc()
 
 # 킬 점수를 올리는 자리(게임 진행 틀이 생기면 여기서 팀 점수/KDA 를 올린다). 지금은 아무 일도 안 한다.
 function killScoreHook(v: player, a: entity):
