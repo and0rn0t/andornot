@@ -183,6 +183,12 @@ function gameRespawn(p: player):
 	loadoutGive({_p})
 	gameSpawn({_p})
 
+# 랜덤 아이템 모드: 카탈로그에서 서로 다른 아이템 5개를 뽑아 이번 게임 구성({-grand::uuid::1~5})으로 정한다(게임 시작 때 한 번. 리스폰해도 같은 구성).
+function gRollLoadout(p: player):
+	set {_ids::*} to shuffled itemIds()
+	loop integers from 1 to 5:
+		set {-grand::%{_p}'s uuid%::%loop-value%} to {_ids::%loop-value%}
+
 function gameStart(by: text):
 	if {-ingame} is true:
 		stop
@@ -277,6 +283,14 @@ function gameStart(by: text):
 		set {-gstar::%{_id}%} to gStarBase()
 	delete {-groundend}
 	delete {-gover}
+	# 게임 설정의 랜덤 아이템 모드(gcRandom): 참가자마다 아이템 5개를 새로 뽑고, 지금 들고 있는 구성 아이템은 치운다(저장된 구성은 그대로, 게임이 끝나면 돌려줌).
+	delete {-grand::*}
+	set {-grandon} to false
+	if gcRandom() is true:
+		set {-grandon} to true
+		loop {-gplist::*}:
+			gRollLoadout(loop-value)
+			loadoutClearAll(loop-value)
 	set {-ingame} to true
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
@@ -285,6 +299,8 @@ function gameStart(by: text):
 		play sound "entity.ender_dragon.growl" with volume 0.6 and pitch 1.2 to loop-player
 		send colored "&e%gcModeName({-gmode})% &7게임을 시작했습니다. (목표 %{-gtarget}%)" to loop-player
 		send colored "&7맵: &f%{-gworld}%" to loop-player
+		if {-grandon} is true:
+			send colored "&7랜덤 아이템 모드: &f아이템 5개를 새로 뽑았습니다." to loop-player
 
 # 연출 없이 게임을 정리한다(관리자 강제 종료, 연출이 끝난 뒤 로비로 돌아갈 때).
 function gameCleanup():
@@ -302,6 +318,12 @@ function gameCleanup():
 			set gamemode of {_pl} to adventure
 			{_pl}.setInvulnerable(false)
 			{_pl}.clearTitle()
+			# 랜덤 아이템 모드였으면 뽑았던 구성 아이템을 치우고 저장된 구성을 다시 지급한다({-ingame} 가 false 라 loadoutGet 이 저장된 구성을 읽음)
+			if {-grandon} is true:
+				loadoutClearAll({_pl})
+				loadoutGive({_pl})
+	delete {-grand::*}
+	delete {-grandon}
 	set {_empty} to GsonComponentSerializer.gson().deserialize("{""text"":""""}")
 	loop all players:
 		set {_pl2} to loop-player

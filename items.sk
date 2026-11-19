@@ -3,7 +3,7 @@
 # 이 파일이 쓰는 변수: {-ingame}(게임 진행 여부, 지금은 아무도 안 켬. 게임 설계 때 true/false 로 사용),
 #   {loadout::uuid::1~5}(플레이어별 아이템 구성 id, 앞에 대시가 없어서 재시작해도 유지됨. 최초 접속 시 itemDefaults() 로 초기화),
 #   {itemorder::*}(GUI 표시 순서, 저장됨), {-itemgui::uuid}(열린 GUI 종류 armory/select/order), {-itemguislot::uuid}(변경 중인 구성 번호 1~5),
-#   {-itemguimap::uuid::칸}(GUI 칸 -> armory 는 구성 번호, select/order 는 아이템 id), {-itemguipick::uuid}(순서 편집에서 고른 칸)
+#   {-itemguimap::uuid::칸}(GUI 칸 -> armory 는 구성 번호, select/order 는 아이템 id), {-itemguipick::uuid}(순서 편집에서 고른 칸), {-grand::uuid::1~5}(랜덤 아이템 모드로 게임 중 뽑은 구성, loadoutGet 이 게임 중에만 우선해서 읽음)
 #
 # ===== 사용법 =====
 #   - 게임 중이 아닐 때({-ingame} 가 true 가 아닐 때) 핫바 9번 슬롯은 "무기고" 상자로 고정된다(1초마다 확인해서 되돌림. 못 옮기고 못 버리고 못 놓음).
@@ -463,6 +463,11 @@ function itemDefaults() :: texts:
 
 # 플레이어의 구성 k 번(1~5) 아이템 id. 저장값이 없거나 카탈로그에서 사라진 id 면 기본값.
 function loadoutGet(p: player, k: number) :: text:
+	# 랜덤 아이템 모드로 진행 중인 게임이면 그 게임에서 뽑은 구성({-grand}, game.sk 의 gRollLoadout)이 우선한다. 저장된 구성({loadout})은 건드리지 않는다.
+	if {-ingame} is true:
+		set {_g} to {-grand::%{_p}'s uuid%::%{_k}%}
+		if {_g} is set:
+			return {_g}
 	set {_id} to {loadout::%{_p}'s uuid%::%{_k}%}
 	set {_ids::*} to itemIds()
 	if {_id} is set:
@@ -470,6 +475,12 @@ function loadoutGet(p: player, k: number) :: text:
 			return {_id}
 	set {_d::*} to itemDefaults()
 	return {_d::%{_k}%}
+
+# 인벤토리(0~35칸)에서 카탈로그 아이템(itemIdAt 이 알아보는 것)을 전부 치운다. 랜덤 아이템 모드가 시작/끝날 때 구성을 갈아 끼우려고 쓴다.
+function loadoutClearAll(p: player):
+	loop integers from 0 to 35:
+		if itemIdAt({_p}, loop-value) is not "":
+			set slot loop-value of {_p}'s inventory to air
 
 # 최초 접속 시 구성 초기화(저장값이 없는 칸만 채움)
 function loadoutInit(p: player):
