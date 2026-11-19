@@ -11,7 +11,6 @@
 # 미검증: dialog JSON 필드(confirmation/plain_message/text 입력/dynamic/run_command), 작성된 책 아이템, targeted block, 독서대 우클릭 이벤트, 결과 JSON 을 dialog 본문에 그대로 넣기.
 
 import:
-	java.lang.Character
 	org.bukkit.Bukkit
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 
@@ -283,113 +282,10 @@ on quit:
 	delete {-mhmap::%player's uuid%::*}
 	delete {-mhpage::%player's uuid%}
 
-# dialog 안에서 공백이 줄어드는지 확인하는 진단. 같은 자리에 | 두 개를 두고 사이를 종류별 공백으로 채운다(보이는 간격이 같은 폭이어야 정상).
-function mhSpaceLine(label: text, fill: text) :: text:
-	set {_a} to "{""text"":""%{_label}%  |"",""color"":""gray""}"
-	set {_b} to "{""text"":""%{_fill}%"",""color"":""white""}"
-	set {_c} to "{""text"":""|\n"",""color"":""gray""}"
-	return "%{_a}%,%{_b}%,%{_c}%"
-
-function mhSpaceTest(p: player):
-	set {_s4} to " " repeated 4 times
-	set {_s12} to " " repeated 12 times
-	set {_z} to Character.toString(8203)
-	set {_zw} to Character.toString(8204)
-	set {_nb} to Character.toString(160)
-	set {_id} to Character.toString(12288)
-	set {_em} to Character.toString(8195)
-	set {_br} to Character.toString(10240)
-	set {_f1} to "%{_s4}%"
-	set {_f2} to "%{_s12}%"
-	set {_f3} to ""
-	set {_f4} to ""
-	set {_f5} to ""
-	set {_f6} to ""
-	set {_f7} to ""
-	set {_f8} to ""
-	loop 6 times:
-		set {_f3} to "%{_f3}% %{_z}%"
-		set {_f4} to "%{_f4}% %{_zw}%"
-	loop 12 times:
-		set {_f5} to "%{_f5}%%{_nb}%"
-	loop 3 times:
-		set {_f6} to "%{_f6}%%{_id}%"
-		set {_f7} to "%{_f7}%%{_em}%"
-	loop 6 times:
-		set {_f8} to "%{_f8}%%{_br}%"
-	set {_l1} to mhSpaceLine("공백 4개", {_f1})
-	set {_l2} to mhSpaceLine("공백 12개", {_f2})
-	set {_l3} to mhSpaceLine("공백+ZWSP x6", {_f3})
-	set {_l4} to mhSpaceLine("공백+ZWNJ x6", {_f4})
-	set {_l5} to mhSpaceLine("NBSP x12", {_f5})
-	set {_l6} to mhSpaceLine("전각공백 x3", {_f6})
-	set {_l7} to mhSpaceLine("EM공백 x3", {_f7})
-	set {_l8} to mhSpaceLine("점자공백 x6", {_f8})
-	set {_d} to "{""type"":""minecraft:notice"",""title"":{""text"":""공백 폭 진단""},""can_close_with_escape"":true,"
-	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%,%{_l7}%,%{_l8}%]},""width"":420}]}"
-	set {_pn} to {_p}.getName()
-	execute console command "dialog show %{_pn}% %{_d}%"
-
-# 폭은 차지하지만 보이지 않는 글자가 가능한지 확인하는 진단(이름 폭 때문에 열이 밀리는 문제를 없애려고, 줄 오른쪽에 같은 이름을 안 보이게 두는 방법).
-function mhHideLine(label: text, mid: text) :: text:
-	set {_a} to "{""text"":""%{_label}%  |"",""color"":""gray""}"
-	set {_c} to "{""text"":""|\n"",""color"":""gray""}"
-	return "%{_a}%,%{_mid}%,%{_c}%"
-
-function mhHideTest(p: player):
-	set {_n} to "And_0r_Not"
-	set {_m1} to "{""text"":""%{_n}%"",""color"":""white""}"
-	set {_m2} to "{""text"":""%{_n}%"",""color"":""#00FFFFFF""}"
-	set {_m3} to "{""text"":""%{_n}%"",""color"":""black"",""shadow_color"":0}"
-	set {_m4} to "{""text"":""%{_n}%"",""color"":""white"",""font"":""minecraft:does_not_exist""}"
-	set {_m5} to "{""text"":""%{_n}%"",""color"":""white"",""obfuscated"":true}"
-	set {_l1} to mhHideLine("보통", {_m1})
-	set {_l2} to mhHideLine("보통(비교)", {_m1})
-	set {_l3} to mhHideLine("검정+그림자0", {_m3})
-	set {_l4} to mhHideLine("없는 폰트", {_m4})
-	set {_l5} to mhHideLine("obfuscated", {_m5})
-	set {_d} to "{""type"":""minecraft:notice"",""title"":{""text"":""보이지 않는 글자 진단""},""can_close_with_escape"":true,"
-	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%]},""width"":420}]}"
-	set {_pn} to {_p}.getName()
-	execute console command "dialog show %{_pn}% %{_d}%"
-
-# #AARRGGBB 색이 되는지만 따로 본다(안 되면 서버가 에러만 내고 dialog 가 안 뜬다).
-function mhHideTest2(p: player):
-	set {_n} to "And_0r_Not"
-	set {_m1} to "{""text"":""%{_n}%"",""color"":""white""}"
-	set {_m2} to "{""text"":""%{_n}%"",""color"":""#00FFFFFF""}"
-	set {_l1} to mhHideLine("보통", {_m1})
-	set {_l2} to mhHideLine("투명 #00FFFFFF", {_m2})
-	set {_d} to "{""type"":""minecraft:notice"",""title"":{""text"":""투명 글자 진단""},""can_close_with_escape"":true,"
-	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%]},""width"":420}]}"
-	set {_pn} to {_p}.getName()
-	execute console command "dialog show %{_pn}% %{_d}%"
-
-# 공백/글자 실제 폭 측정용(스크린샷에서 두 | 사이 거리로 계산): 0 x20, 0 x40, NBSP x20, (NBSP+공백) x10, And_0r_Not x2, Dummy1 x3
-function mhCalib(p: player):
-	set {_nb} to Character.toString(160)
-	set {_a} to "00000000000000000000"
-	set {_b} to "%{_a}%%{_a}%"
-	set {_c} to {_nb} repeated 20 times
-	set {_d} to ""
-	loop 10 times:
-		set {_d} to "%{_d}%%{_nb}% "
-	set {_l1} to mhSpaceLine("0x20", "%{_a}%")
-	set {_l2} to mhSpaceLine("0x40", "%{_b}%")
-	set {_l3} to mhSpaceLine("NBSPx20", "%{_c}%")
-	set {_l4} to mhSpaceLine("NBSP+공백x10", {_d})
-	set {_l5} to mhSpaceLine("And_0r_Notx2", "And_0r_NotAnd_0r_Not")
-	set {_l6} to mhSpaceLine("Dummy1x3", "Dummy1Dummy1Dummy1")
-	set {_dd} to "{""type"":""minecraft:notice"",""title"":{""text"":""폭 측정""},""can_close_with_escape"":true,"
-	set {_dd} to "%{_dd}%""body"":[{""type"":""minecraft:plain_message"",""contents"":{""text"":"""",""extra"":[%{_l1}%,%{_l2}%,%{_l3}%,%{_l4}%,%{_l5}%,%{_l6}%]},""width"":420}]}"
-	set {_pn} to {_p}.getName()
-	execute console command "dialog show %{_pn}% %{_dd}%"
-
 # ===== 테스트: 가짜 매치 기록을 만들어 매치 결과 dialog 를 띄운다(관리자 전용) =====
 # /matchtest        가짜 게임 데이터(3인씩 3팀, 1팀 승리, POTM 더미1)로 결과를 만들어 0번 기록에 저장하고 dialog 를 바로 연다. 진짜 기록 번호/개수는 건드리지 않는다.
 # /matchtest reopen 저장해 둔 0번 기록 dialog 를 다시 연다(리뷰 등록 후 반영 확인용)
 # /matchtest clear  0번 기록(리뷰 포함)을 지운다
-# /matchtest space  dialog 에서 공백 폭이 어떻게 그려지는지 보는 진단(여러 종류의 공백으로 같은 칸 수를 채워 본다)
 # 0번은 책장 목록 GUI 에 나오지 않는다(목록은 1번부터). 책장/목록/쪽 넘김은 실제 매치로 확인할 것.
 command /matchtest [<text>]:
 	permission: minecraft.command.op
@@ -400,18 +296,6 @@ command /matchtest [<text>]:
 		if arg-1 is "clear":
 			delete {matchlog::0::*}
 			send "&7테스트 기록(0번)을 지웠습니다."
-			stop
-		if arg-1 is "calib":
-			mhCalib(player)
-			stop
-		if arg-1 is "hide":
-			mhHideTest(player)
-			stop
-		if arg-1 is "hide2":
-			mhHideTest2(player)
-			stop
-		if arg-1 is "space":
-			mhSpaceTest(player)
 			stop
 		if arg-1 is "reopen":
 			gmDialog(player, 0)
