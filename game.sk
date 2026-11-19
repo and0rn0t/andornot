@@ -112,14 +112,15 @@ function ratingOf(id: text) :: number:
 
 # 팀 구성. mode "random": 섞어서 돌아가며 배정. mode "mmr"(매튜 렁): 승점 높은 순(동점은 섞음)으로 보면서,
 # 인원 상한(올림(인원/팀수))이 안 찬 팀 중 현재 승점 합이 가장 낮은 팀에 넣는다(미검증 알고리즘: 탐욕법이라 최적은 아닐 수 있음).
-function gBuildTeams(n: number, mode: text):
-	set {_sh::*} to shuffled {-gplist::*}
+# ids = 참가자 uuid 텍스트 목록(테스트에서 가짜 id 로도 부를 수 있게 플레이어 대신 id 를 받는다).
+function gBuildTeams(ids: texts, n: number, mode: text):
+	set {_sh::*} to shuffled {_ids::*}
 	set {_cnt} to size of {_sh::*}
 	if {_mode} is "random":
 		set {_i} to 0
 		while {_i} < {_cnt}:
 			add 1 to {_i}
-			set {-team::%uuid of {_sh::%{_i}%}%} to "%mod({_i} - 1, {_n}) + 1%팀"
+			set {-team::%{_sh::%{_i}%}%} to "%mod({_i} - 1, {_n}) + 1%팀"
 		stop
 	set {_cap} to ceil({_cnt} / {_n})
 	# 승점 높은 순 정렬(선택 정렬)
@@ -128,7 +129,9 @@ function gBuildTeams(n: number, mode: text):
 		set {_best} to {_a}
 		set {_b} to {_a} + 1
 		while {_b} <= {_cnt}:
-			if ratingOf("%uuid of {_sh::%{_b}%}%") > ratingOf("%uuid of {_sh::%{_best}%}%"):
+			set {_rb} to ratingOf({_sh::%{_b}%})
+			set {_rbest} to ratingOf({_sh::%{_best}%})
+			if {_rb} > {_rbest}:
 				set {_best} to {_b}
 			add 1 to {_b}
 		set {_tmp} to {_sh::%{_a}%}
@@ -142,7 +145,7 @@ function gBuildTeams(n: number, mode: text):
 		add 1 to {_t}
 	set {_a} to 1
 	while {_a} <= {_cnt}:
-		set {_pid} to "%uuid of {_sh::%{_a}%}%"
+		set {_pid} to {_sh::%{_a}%}
 		set {_pick} to 0
 		set {_t} to 1
 		while {_t} <= {_n}:
@@ -158,30 +161,29 @@ function gBuildTeams(n: number, mode: text):
 		add 1 to {_a}
 
 # 중간 참가자를 넣을 팀: 인원이 가장 적은 팀(최우선) 중, 넣었을 때 팀 간 승점 합 격차(최대-최소)가 가장 작아지는 팀(차선). 접속 중인 참가자만 센다.
-function gJoinTeam(p: player) :: text:
+# pid = 들어오는 사람의 uuid 텍스트, ids = 지금 접속 중인 다른 참가자들의 uuid 텍스트(테스트에서 가짜 id 로도 부를 수 있게 id 를 받는다).
+function gJoinTeam(pid: text, ids: texts) :: text:
 	set {_t} to 0
 	while {_t} < {-gteams}:
 		add 1 to {_t}
 		set {_num::%{_t}%} to 0
 		set {_sum::%{_t}%} to 0
-	loop {-gplist::*}:
+	loop {_ids::*}:
 		set {_q} to loop-value
-		if {_q} is online:
-			if {_q} is not {_p}:
-				set {_qid} to "%uuid of {_q}%"
-				set {_tk} to "%{-team::%{_qid}%}%"
-				set {_ti} to gTeamIndex({_tk})
-				if {_num::%{_ti}%} is set:
-					add 1 to {_num::%{_ti}%}
-					set {_rq} to ratingOf({_qid})
-					add {_rq} to {_sum::%{_ti}%}
+		set {_tk} to "%{-team::%{_q}%}%"
+		replace "팀" in {_tk} with ""
+		set {_ti} to {_tk} parsed as number
+		if {_num::%{_ti}%} is set:
+			add 1 to {_num::%{_ti}%}
+			set {_rq} to ratingOf({_q})
+			add {_rq} to {_sum::%{_ti}%}
 	set {_min} to 9999
 	set {_t} to 1
 	while {_t} <= {-gteams}:
 		if {_num::%{_t}%} < {_min}:
 			set {_min} to {_num::%{_t}%}
 		add 1 to {_t}
-	set {_r} to ratingOf("%uuid of {_p}%")
+	set {_r} to ratingOf({_pid})
 	set {_best} to 0
 	set {_bs} to 999999
 	set {_t} to 1
@@ -210,7 +212,13 @@ function gJoinTeam(p: player) :: text:
 function gJoinMid(p: player):
 	set {_id} to "%uuid of {_p}%"
 	if {-gteams} > 0:
-		set {-team::%{_id}%} to gJoinTeam({_p})
+		delete {_oids::*}
+		loop {-gplist::*}:
+			set {_q} to loop-value
+			if {_q} is online:
+				if {_q} is not {_p}:
+					add "%uuid of {_q}%" to {_oids::*}
+		set {-team::%{_id}%} to gJoinTeam({_id}, {_oids::*})
 	set {_k} to gTeamOf({_p})
 	set {-gpteam::%{_id}%} to {_k}
 	set {-gpname::%{_id}%} to name of {_p}
@@ -484,7 +492,10 @@ function gameStart(by: text):
 	loop {-gplist::*}:
 		delete {-team::%uuid of loop-value%}
 	if {_n} > 0:
-		gBuildTeams({_n}, gcTeamMode())
+		delete {_bids::*}
+		loop {-gplist::*}:
+			add "%uuid of loop-value%" to {_bids::*}
+		gBuildTeams({_bids::*}, {_n}, gcTeamMode())
 	# 팀 키 목록/표시 이름/스코어
 	delete {-gteamlist::*}
 	delete {-gscore::*}

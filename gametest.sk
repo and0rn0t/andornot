@@ -1,0 +1,240 @@
+# [gametest.sk] 혼자서 검수하는 모의 게임 테스트(op 전용). 가짜 참가자(id gt_1, gt_2 ...)로 팀 구성/승점/중간 참가 로직을 돌려 보고 결과를 채팅으로 보여 준다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+#   /gametest team <인원> <팀수>  : 가짜 승점(60~140)으로 매튜 렁/랜덤 팀 구성을 돌려 팀별 인원/승점 합/격차를 비교(각 10번 평균)
+#   /gametest rating              : 승점 변동 계산 검수(2/3/4팀, 첫 10경기 2배, 동점)를 기대값과 비교해 PASS/FAIL
+#   /gametest join                : 중간 참가 팀 선택 검수(인원이 적은 팀 우선, 그 다음 승점 균형)
+#   /gametest sim <경기수>        : 실력이 정해진 가짜 8명이 2팀 매칭을 반복하면서 승점이 실력 순서로 수렴하는지 확인
+#   /gametest all                 : 위 네 가지를 차례로
+# 실제 게임이 진행 중이면 게임 변수를 건드리지 않도록 실행하지 않는다. 가짜 데이터는 {rating::gt_*}, {-team::gt_*}, {-gteams} 등을 쓰고 끝나면 전부 지운다.
+# 진짜 게임 전체(참가자가 플레이어여야 하는 gameStart, 접속 처리, /참가)는 혼자서 /gamestart 로 직접 돌려 볼 것. 결과 연출은 /finaletest.
+
+function gtClean():
+	loop integers from 1 to 40:
+		delete {rating::gt_%loop-value%}
+		delete {rating::games::gt_%loop-value%}
+		delete {-team::gt_%loop-value%}
+	delete {-gteamlist::*}
+	delete {-gscore::*}
+	delete {-gpteam::*}
+	delete {-gwinner}
+	delete {-gteams}
+
+# 팀 구성 비교: 인원 cnt, 팀 수 n
+function gtTeam(p: player, cnt: number, n: number):
+	set {_ids::*} to ""
+	delete {_ids::*}
+	loop integers from 1 to {_cnt}:
+		add "gt_%loop-value%" to {_ids::*}
+	send "&6[테스트] 팀 구성 비교: %{_cnt}%명 %{_n}%팀, 가짜 승점 60~140, 방식당 10번" to {_p}
+	loop 2 times:
+		set {_mode} to "mmr"
+		if loop-value is 2:
+			set {_mode} to "random"
+		set {_tot} to 0
+		set {_last} to ""
+		loop 10 times:
+			loop {_ids::*}:
+				set {rating::%loop-value%} to random integer between 60 and 140
+			gBuildTeams({_ids::*}, {_n}, {_mode})
+			set {_t} to 0
+			while {_t} < {_n}:
+				add 1 to {_t}
+				set {_sum::%{_t}%} to 0
+				set {_num::%{_t}%} to 0
+			loop {_ids::*}:
+				set {_id} to loop-value
+				set {_tk} to "%{-team::%{_id}%}%"
+				replace "팀" in {_tk} with ""
+				set {_ti} to {_tk} parsed as number
+				add ratingOf({_id}) to {_sum::%{_ti}%}
+				add 1 to {_num::%{_ti}%}
+			set {_mx} to -999999
+			set {_mn} to 999999
+			set {_line} to ""
+			set {_t} to 1
+			while {_t} <= {_n}:
+				if {_sum::%{_t}%} > {_mx}:
+					set {_mx} to {_sum::%{_t}%}
+				if {_sum::%{_t}%} < {_mn}:
+					set {_mn} to {_sum::%{_t}%}
+				set {_line} to "%{_line}% %{_t}%팀(%{_num::%{_t}%}%명/%{_sum::%{_t}%}%)"
+				add 1 to {_t}
+			add {_mx} - {_mn} to {_tot}
+			set {_last} to {_line}
+		set {_avg} to round({_tot} / 10 * 10) / 10
+		send "&7%{_mode}%: 팀 승점 합 격차 평균 &e%{_avg}% &7| 마지막 판:&f%{_last}%" to {_p}
+	send "&7매튜 렁의 격차 평균이 랜덤보다 확실히 작고, 팀 인원이 최대 1명 차이면 정상입니다." to {_p}
+	gtClean()
+
+function gtOk(b: boolean) :: text:
+	if {_b} is true:
+		return "&aPASS"
+	return "&cFAIL"
+
+# 승점 변동 한 건: scores = "3,2,1"(팀 점수, 1팀이 승리 팀), games = 이 판 전에 치른 경기 수, exp = "5,0,-5"(첫 10경기 이후 기대 변동). 팀마다 1명.
+function gtRatingCase(p: player, label: text, scores: text, games: number, exp: text):
+	gtClean()
+	set {_s::*} to {_scores} split at ","
+	set {_e::*} to {_exp} split at ","
+	set {_n} to size of {_s::*}
+	set {_i} to 0
+	while {_i} < {_n}:
+		add 1 to {_i}
+		add "%{_i}%팀" to {-gteamlist::*}
+		set {_sc} to {_s::%{_i}%} parsed as number
+		set {-gscore::%{_i}%팀} to {_sc}
+		set {-gpteam::gt_%{_i}%} to "%{_i}%팀"
+		set {rating::gt_%{_i}%} to 100
+		set {rating::games::gt_%{_i}%} to {_games}
+	set {-gwinner} to "1팀"
+	ratingApply()
+	set {_mult} to 1
+	if {_games} < 10:
+		set {_mult} to 2
+	set {_ok} to true
+	set {_out} to ""
+	set {_i} to 0
+	while {_i} < {_n}:
+		add 1 to {_i}
+		set {_got} to {rating::gt_%{_i}%} - 100
+		set {_want} to ({_e::%{_i}%} parsed as number) * {_mult}
+		if abs({_got} - {_want}) > 0.011:
+			set {_ok} to false
+		set {_out} to "%{_out}% %{_got}%"
+	send "&7%{_label}%(이전 %{_games}%경기, 기대 x%{_mult}%): 변동%{_out}% %gtOk({_ok})%" to {_p}
+	gtClean()
+
+function gtRating(p: player):
+	send "&6[테스트] 승점 변동 검수(시작 100점)" to {_p}
+	gtRatingCase({_p}, "2팀", "3,1", 0, "5,-5")
+	gtRatingCase({_p}, "2팀", "3,1", 10, "5,-5")
+	gtRatingCase({_p}, "3팀", "3,2,1", 10, "5,0,-5")
+	gtRatingCase({_p}, "3팀", "3,2,1", 3, "5,0,-5")
+	gtRatingCase({_p}, "4팀", "3,2,1,0", 20, "5,1.67,-1.67,-5")
+	gtRatingCase({_p}, "4팀 동점(2,3위)", "3,1,1,0", 20, "5,0,0,-5")
+	gtRatingCase({_p}, "2팀 무승부(승리 팀 우선)", "2,2", 20, "5,-5")
+
+# 중간 참가 한 건: members = "1:100,1:100,2:120,..."(팀:승점), newr = 들어오는 사람 승점, want = 기대 팀 번호
+function gtJoinCase(p: player, label: text, teams: number, members: text, newr: number, want: number):
+	gtClean()
+	set {-gteams} to {_teams}
+	set {_m::*} to {_members} split at ","
+	delete {_ids::*}
+	set {_i} to 0
+	loop {_m::*}:
+		add 1 to {_i}
+		set {_pair::*} to loop-value split at ":"
+		set {-team::gt_%{_i}%} to "%{_pair::1}%팀"
+		set {rating::gt_%{_i}%} to {_pair::2} parsed as number
+		add "gt_%{_i}%" to {_ids::*}
+	set {rating::gt_99} to {_newr}
+	set {_got} to gJoinTeam("gt_99", {_ids::*})
+	set {_wt} to "%{_want}%팀"
+	set {_ok} to false
+	if {_got} is {_wt}:
+		set {_ok} to true
+	send "&7%{_label}%: 선택 %{_got}% (기대 %{_wt}%) %gtOk({_ok})%" to {_p}
+	delete {rating::gt_99}
+	gtClean()
+
+function gtJoin(p: player):
+	send "&6[테스트] 중간 참가 팀 선택 검수" to {_p}
+	gtJoinCase({_p}, "인원 우선(1팀 2명, 2팀 2명, 3팀 1명)", 3, "1:100,1:100,2:120,2:120,3:80", 100, 3)
+	gtJoinCase({_p}, "인원 같으면 승점 균형(팀 합 200/240/160, 신규 130)", 3, "1:100,1:100,2:120,2:120,3:80,3:80", 130, 3)
+	gtJoinCase({_p}, "인원 같고 신규가 낮음(합 200/240/160, 신규 60)", 3, "1:100,1:100,2:120,2:120,3:80,3:80", 60, 3)
+	gtJoinCase({_p}, "2팀 인원 같음, 한쪽이 강함(합 260/140, 신규 120)", 2, "1:130,1:130,2:70,2:70", 120, 2)
+
+# 실력 시뮬레이션: 가짜 8명(실력 10~80), 2팀 매튜 렁 매칭 -> 팀 실력 합 + 흔들림으로 승패 -> ratingApply. games 경기 반복.
+function gtSim(p: player, games: number):
+	gtClean()
+	set {_ids::*} to ""
+	delete {_ids::*}
+	loop integers from 1 to 8:
+		add "gt_%loop-value%" to {_ids::*}
+	set {_gap} to 0
+	loop {_games} times:
+		gBuildTeams({_ids::*}, 2, "mmr")
+		set {_s1} to 0
+		set {_s2} to 0
+		loop {_ids::*}:
+			set {_id} to loop-value
+			set {_k} to {-team::%{_id}%}
+			set {_idx} to {_id}
+			replace "gt_" in {_idx} with ""
+			set {_sk} to ({_idx} parsed as number) * 10
+			if {_k} is "1팀":
+				add {_sk} to {_s1}
+			else:
+				add {_sk} to {_s2}
+		add abs({_s1} - {_s2}) to {_gap}
+		set {_sc1} to {_s1} + random number between -15 and 15
+		set {_sc2} to {_s2} + random number between -15 and 15
+		delete {-gteamlist::*}
+		add "1팀" to {-gteamlist::*}
+		add "2팀" to {-gteamlist::*}
+		set {-gscore::1팀} to {_sc1}
+		set {-gscore::2팀} to {_sc2}
+		set {-gwinner} to "1팀"
+		if {_sc2} > {_sc1}:
+			set {-gwinner} to "2팀"
+		delete {-gpteam::*}
+		loop {_ids::*}:
+			set {-gpteam::%loop-value%} to "%{-team::%loop-value%}%"
+		ratingApply()
+	send "&6[테스트] 시뮬레이션 %{_games}%경기 (실력 10~80, 2팀 매튜 렁 매칭)" to {_p}
+	set {_avg} to round({_gap} / {_games} * 10) / 10
+	send "&7팀 실력 합 격차 평균: &e%{_avg}% &7(8명 실력 합 360, 랜덤이면 평균 약 30 안팎)" to {_p}
+	loop integers from 1 to 8:
+		set {_id} to "gt_%loop-value%"
+		set {_r} to ratingOf({_id})
+		send "&7실력 &f%loop-value * 10% &7→ 승점 &e%{_r}%" to {_p}
+	send "&7실력이 높을수록 승점이 높게 나뉘면 정상입니다(경기가 적으면 흔들림)." to {_p}
+	gtClean()
+
+command /gametest <text> [<number>] [<number>]:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
+	description: 가짜 참가자로 팀 구성/승점/중간 참가 로직을 검수해요 (op 전용)
+	usage: /gametest team|rating|join|sim|all
+	executable by: players
+	trigger:
+		if {-ingame} is true:
+			send "&c게임이 진행 중이라 실행하지 않습니다. (게임 변수를 건드립니다)"
+			stop
+		if arg-1 is "team":
+			set {_c} to 9
+			set {_n} to 3
+			if arg-2 is set:
+				set {_c} to arg-2
+			if arg-3 is set:
+				set {_n} to arg-3
+			if {_n} < 2:
+				send "&c팀 수는 2 이상이어야 합니다."
+				stop
+			if {_c} < {_n}:
+				send "&c인원이 팀 수보다 적습니다."
+				stop
+			if {_c} > 40:
+				send "&c인원은 40명까지입니다."
+				stop
+			gtTeam(player, {_c}, {_n})
+		else if arg-1 is "rating":
+			gtRating(player)
+		else if arg-1 is "join":
+			gtJoin(player)
+		else if arg-1 is "sim":
+			set {_g} to 30
+			if arg-2 is set:
+				set {_g} to arg-2
+			if {_g} < 1:
+				set {_g} to 1
+			if {_g} > 500:
+				set {_g} to 500
+			gtSim(player, {_g})
+		else if arg-1 is "all":
+			gtTeam(player, 9, 3)
+			gtRating(player)
+			gtJoin(player)
+			gtSim(player, 30)
+		else:
+			send "&e/gametest team <인원> <팀수> | rating | join | sim <경기수> | all"
