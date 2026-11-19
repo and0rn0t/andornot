@@ -39,7 +39,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "team", "setlobby", "setstage", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
+	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -66,10 +66,6 @@ function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "itemorder":
 		set {_i} to writable book named "&f아이템 순서 편집"
 		set lore of {_i} to "&7아이템 변경 GUI 에 나오는", "&7같은 분류 안의 순서를 바꿔요", "", "&e▶ 클릭해서 열기"
-		return {_i}
-	if {_id} is "team":
-		set {_i} to white banner named "&f팀 설정"
-		set lore of {_i} to "&7명령어로 플레이어의 팀을 정해요", "&7(채팅창에 사용법을 알려줘요)", "", "&e▶ 클릭"
 		return {_i}
 	if {_id} is "setlobby":
 		set {_i} to compass named "&f로비 위치 설정"
@@ -223,10 +219,6 @@ function adminAction(p: player, id: text):
 		mhShelfDel({_p})
 	else if {_id} is "itemorder":
 		itemGuiOpen({_p}, "order")
-	else if {_id} is "team":
-		close {_p}'s inventory
-		send "&e/team <플레이어> <팀이름> &7: 팀 설정(같은 이름이면 아군)" to {_p}
-		send "&e/team <플레이어> none &7: 팀 해제" to {_p}
 
 function adminOpen(p: player):
 	set {_uid} to "%{_p}'s uuid%"

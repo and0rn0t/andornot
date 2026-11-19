@@ -654,6 +654,9 @@ function gameFinale():
 		set {-gmatchlbl} to "MATCH TEST"
 	else:
 		set {-gmatchlbl} to matchLabel(mhCount() + 1)
+	# 내부 승점 갱신(테스트 /finaletest 는 제외)
+	if {-gftest} is not true:
+		ratingApply()
 	# 강제 종료(gfAbort)가 {-gfgen} 을 올리면 대기 뒤에 이 연출은 멈춘다
 	add 1 to {-gfgen}
 	set {_gen} to {-gfgen}

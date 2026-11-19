@@ -58,7 +58,7 @@
 #   {-pickexp::uuid}         곡괭이 중첩 만료 시각(타격마다 +3초)       main(접속 시 삭제)
 #   {-atkcd::uuid}           공격 쿨다운 충전도 0~1(매 틱 기록)        main(기록/접속 시 삭제), cooldownScale 이 읽음
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
-#   {gamecfg::teams|mode|random} 게임 사전 설정(저장 변수, 대시 없음. 팀 수 0=개인전)  gamesetup
+#   {gamecfg::teams|mode|random|teammode} 게임 사전 설정(teammode: mmr=매튜 렁/random), {rating::uuid}·{rating::games::uuid} 내부 승점/경기 수(저장, 비공개, /rating)(저장 변수, 대시 없음. 팀 수 0=개인전)  gamesetup
 #   {-kc::uuid}              킬 연출 중 표시(연출 끝/접속 시 삭제)                killcine
 #   {-kcorig::uuid} {-groundwin}   라운드 종료 연출 중 원래 위치 / 라운드 승리 팀 키   killcine, game
 #   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
@@ -88,7 +88,7 @@
 #   {-ccshown::uuid}         cc 타이틀을 보여주는 중(끝나면 clearTitle)   main(접속 시 삭제)
 #   {-nscd::uuid}            네더의 별 쿨타임 종료 시각               netherstar
 #   {-obcd::uuid}            불길한 병 쿨타임 종료 시각               ominousbottle
-#   {-team::uuid}            소속 팀 이름(텍스트). 같으면 아군. 팀 설정은 team.sk 의 /team 명령(게임 설계 확정 후 대체)   isAlly 로 읽기, tnt
+#   {-team::uuid}            소속 팀 이름(텍스트). 같으면 아군. 게임 시작 때 gBuildTeams(game.sk)가 채움   isAlly 로 읽기, tnt
 #   {-potcd::uuid::종류}     포션 쿨타임 종료 시각(종류: heal, stamina, invis)  potions
 #   {-invis::uuid}          투명 포션 효과 종료 시각(피해를 주고받으면 풀림)    potions
 #   {-exhaust::uuid}         불길한 병 탈진 종료 시각(탈진 중 stcap +1)   ominousbottle

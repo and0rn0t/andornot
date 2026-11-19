@@ -1,6 +1,6 @@
 # [gamesetup.sk] 게임 사전 설정 메뉴(관리자 메뉴 /admin 의 "게임 설정" 버튼으로 연다, op 전용): 팀 수, 게임모드, 랜덤 아이템 on/off.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수(저장 변수, 대시 없음이라 재시작해도 유지): {gamecfg::teams}(팀 수. 0 = 개인전, 2~gcTeamMax()), {gamecfg::mode}(게임모드 id), {gamecfg::random}(랜덤 아이템 true/false)
+# 이 파일이 쓰는 변수(저장 변수, 대시 없음이라 재시작해도 유지): {gamecfg::teams}(팀 수. 0 = 개인전, 2~gcTeamMax()), {gamecfg::mode}(게임모드 id), {gamecfg::random}(랜덤 아이템 true/false), {gamecfg::teammode}(팀 구성 방식 "mmr"=매튜 렁(내부 승점으로 비슷한 팀) / "random"=랜덤)
 #   GUI 상태(RAM): {-gamecfggui::uuid}
 # 게임 시스템이 설정을 읽을 때는 아래 getter 함수를 쓴다: gcTeams(), gcMode(), gcRandom().
 # 설정을 바꿀 때마다 접속한 모든 유저에게 채팅 알림 + 소리가 간다(gcAnnounce).
@@ -61,6 +61,17 @@ function gcMode() :: text:
 			return {gamecfg::mode}
 	return {_ids::1}
 
+# 팀 구성 방식: mmr(매튜 렁, 내부 승점 균형) / random. 기본 mmr.
+function gcTeamMode() :: text:
+	if {gamecfg::teammode} is "random":
+		return "random"
+	return "mmr"
+
+function gcTeamModeName(id: text) :: text:
+	if {_id} is "random":
+		return "랜덤"
+	return "매튜 렁"
+
 function gcRandom() :: boolean:
 	if {gamecfg::random} is true:
 		return true
@@ -113,6 +124,20 @@ function gcFill(inv: inventory):
 	set {_i} to dispenser named "&f랜덤 아이템으로 플레이"
 	set lore of {_i} to "&7현재: %{_st}%", "&7켜면 정해진 구성 대신 랜덤 아이템으로 플레이해요", "", "&e▶ 클릭: on/off"
 	set slot 15 of {_inv} to {_i}
+	# 팀 구성 방식(칸 20)
+	set {_tm} to gcTeamMode()
+	set {_l::*} to "&7현재: &e%gcTeamModeName({_tm})%", ""
+	if {_tm} is "mmr":
+		add "&e▶ 매튜 렁 &7: 내부 승점으로 비슷한 수준의 팀을 만들어요" to {_l::*}
+		add "&8  랜덤" to {_l::*}
+	else:
+		add "&8  매튜 렁" to {_l::*}
+		add "&e▶ 랜덤 &7: 무작위로 팀을 나눠요" to {_l::*}
+	add "" to {_l::*}
+	add "&e▶ 클릭: 변경" to {_l::*}
+	set {_i} to name tag named "&f팀 구성 방식"
+	set lore of {_i} to {_l::*}
+	set slot 20 of {_inv} to {_i}
 	# 뒤로가기(칸 22)
 	set {_i} to arrow named "&f관리자 메뉴로"
 	set slot 22 of {_inv} to {_i}
@@ -210,6 +235,13 @@ on inventory click:
 		else:
 			set {gamecfg::random} to true
 			gcAnnounce({_who}, "랜덤 아이템으로 플레이를 &aON&7으로 변경했습니다.")
+		gcFill({_p}'s current inventory)
+	else if {_raw} is 20:
+		if gcTeamMode() is "mmr":
+			set {gamecfg::teammode} to "random"
+		else:
+			set {gamecfg::teammode} to "mmr"
+		gcAnnounce({_who}, "팀 구성 방식을 &e%gcTeamModeName(gcTeamMode())%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 22:
 		adminOpen({_p})

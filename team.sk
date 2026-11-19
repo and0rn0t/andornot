@@ -20,5 +20,20 @@ command /team <player> <text>:
 			set {-team::%uuid of arg-1%} to arg-2
 			send "&7%arg-1% 의 팀을 %arg-2% 로 설정했습니다."
 
+# op 전용: 내부 승점 확인(일반 플레이어에게는 공개하지 않음)
+command /rating <offlineplayer>:
+	description: 내부 승점 확인 (op 전용)
+	executable by: players and console
+	trigger:
+		if sender is a player:
+			if player is not op:
+				send "&c권한이 없습니다."
+				stop
+		set {_id} to "%uuid of arg-1%"
+		set {_g} to 0
+		if {rating::games::%{_id}%} is a number:
+			set {_g} to {rating::games::%{_id}%}
+		send "&7%arg-1% 내부 승점: &e%ratingOf({_id})% &7(%{_g}%경기)"
+
 on quit:
 	delete {-team::%uuid of player%}
