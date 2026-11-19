@@ -452,7 +452,7 @@ function gameSpawn(p: player):
 
 # ===== 상공 낙하(겉날개) =====
 # 리스폰/초기 위치는 그 지점 위 Y=170 높이(월드 높이 제한까지)에서 시작하고, 겉날개를 입혀 활강시킨다. 땅에 닿으면 겉날개를 벗기고 원래 가슴 방어구를 돌려준다.
-# 시작할 때 느린 낙하 3초를 건다. 낙하 중에는 낙하/벽 충돌 피해만 받지 않는다(착지 때 죽지 않게). 변수(RAM): {-gdropon::uuid}(낙하 중), {-gdropchest::uuid}(원래 가슴 방어구), {-gdropgen::uuid}(낙하 세대, 새 낙하/종료 때 올려서 이전 감시를 끝냄), {-gdropflag::uuid}(kcRespawnLoc 가 상공 위치를 돌려줬다는 표시)
+# 시작할 때 느린 낙하 2초를 건다. 낙하 중에는 낙하/벽 충돌 피해만 받지 않는다(착지 때 죽지 않게). 변수(RAM): {-gdropon::uuid}(낙하 중), {-gdropchest::uuid}(원래 가슴 방어구), {-gdropgen::uuid}(낙하 세대, 새 낙하/종료 때 올려서 이전 감시를 끝냄), {-gdropflag::uuid}(kcRespawnLoc 가 상공 위치를 돌려줬다는 표시)
 # 미검증: chestplate 설정/삭제, setGliding, isOnGround, 낙하/벽 충돌 피해 원인 이름(FALL, FLY_INTO_WALL, 이벤트의 getCause 로 비교).
 function gDropLoc(l: location) :: location:
 	set {_w} to {_l}.getWorld()
@@ -491,7 +491,7 @@ function gDropStart(p: player):
 	set {_gen} to {-gdropgen::%{_id}%}
 	set chestplate of {_p} to elytra named "&f낙하용 겉날개"
 	{_p}.setGliding(true)
-	apply slow falling potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 3 seconds replacing the existing effect
+	apply slow falling potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 2 seconds replacing the existing effect
 	wait 1 second
 	set {_t} to 0
 	while {_t} < 400:
@@ -739,10 +739,10 @@ function gStartIntro(sg: number):
 				if {_pl} is online:
 					if {_step} is {_total}:
 						set {_lab} to gTeamLabel(gTeamOf({_pl}))
-						send title colored "%{_lab}%" with subtitle colored "&7당신은..." to {_pl} for 5 seconds with fadein 0 ticks and fade out 10 ticks
+						send title colored "%{_lab}%" with subtitle colored "&7당신의 팀은..." to {_pl} for 5 seconds with fadein 0 ticks and fade out 10 ticks
 						play sound "block.lever.click" with volume 1 and pitch 1 to {_pl}
 					else:
-						send title colored "%{_roll}%" with subtitle colored "&7당신은..." to {_pl} for 10 ticks with fadein 0 ticks and fade out 0 ticks
+						send title colored "%{_roll}%" with subtitle colored "&7당신의 팀은..." to {_pl} for 10 ticks with fadein 0 ticks and fade out 0 ticks
 						play sound "block.note_block.hat" with volume 0.5 and pitch 1.4 to {_pl}
 			if {_step} <= 12:
 				wait 2 ticks
