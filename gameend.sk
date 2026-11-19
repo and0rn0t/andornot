@@ -1,7 +1,7 @@
 # [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 투표 -> 15초 뒤 정리하고 로비로.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
-#   {-gfmaxk}/{-gfmaxd}(결과 표 금색 표시용 최고 킬/피해), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
+#   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 #   테스트(/finaletest)용: {-gftest}, {-gftester}, {-gftuuid}, {-gfoldteam}, {-gfake::id}(가짜 참가자 이름), {-gfteam::id}(가짜 참가자 팀 키)
 # 명령: /finaletest(관리자, 종료 연출만 테스트), /gamestop(관리자, 게임/연출 중단)
 # 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭(또는 좌클릭)해서 한다(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 제외). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
@@ -18,6 +18,7 @@ import:
 	org.bukkit.Bukkit
 	org.bukkit.Location
 	org.bukkit.WorldCreator
+	org.bukkit.NamespacedKey
 	net.kyori.adventure.text.Component
 	net.kyori.adventure.text.event.ClickEvent
 	net.kyori.adventure.text.event.HoverEvent
@@ -35,10 +36,19 @@ import:
 # 위치는 Skript 의 위치 변수가 아니라 월드 이름 + 좌표로 따로 저장한다({gamecfg::loc::키::world|x|y|z|yaw|pitch}).
 #   위치 변수는 서버를 켤 때 그 월드가 아직 안 올라와 있으면 비어 버리기 때문이다. 쓸 때 월드를 불러온다(gcWorld).
 # 월드가 안 올라와 있으면 불러오고(없던 폴더면 새로 만든다), 이름만으로 월드를 돌려준다.
+# 월드 생성기. 월드 이름에서 만들어지는 내부 키는 소문자/숫자/_.- 만 쓸 수 있어서, 한글 등 다른 글자가 든 이름은 이름의 해시로 안전한 키를 따로 붙인다(폴더/월드 이름은 한글 그대로).
+# 미검증: WorldCreator.ofNameAndKey(이름, 키) 호출(Paper 1.21 API).
+function gcCreator(n: text) :: object:
+	if {_n} matches "[a-z0-9_.-]+":
+		return new WorldCreator({_n})
+	set {_h} to {_n}.hashCode()
+	set {_key} to new NamespacedKey("andornot", "w_%{_h}%")
+	return WorldCreator.ofNameAndKey({_n}, {_key})
+
 function gcWorld(n: text) :: world:
 	set {_w} to Bukkit.getWorld({_n})
 	if {_w} is not set:
-		set {_w} to Bukkit.createWorld(new WorldCreator({_n}))
+		set {_w} to Bukkit.createWorld(gcCreator({_n}))
 	return {_w}
 
 # 위치 저장(키: lobby, stage). 관리자 메뉴 버튼이 부른다.
@@ -317,8 +327,21 @@ function gfHeaderJson() :: text:
 	set {_c6} to gfT({_h6}, "gray", false)
 	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%]}"
 
+# 숫자 한 칸(JSON 조각 두 개: 숫자 + 채움 공백). 기본 회색, hi 이면 노란색 굵은 글씨. 굵은 글씨는 글자마다 1픽셀 넓고 공백도 5픽셀이라
+# 숫자와 공백을 다른 조각으로 만들고, 굵은 만큼 공백을 덜 채워서 뒤 칸이 밀리지 않게 한다.
+function gfCol(s: text, w: number, hi: boolean) :: text:
+	set {_bonus} to 0
+	set {_col} to "gray"
+	if {_hi} is true:
+		set {_bonus} to {_s}.length()
+		set {_col} to "yellow"
+	set {_pd} to gtPad({_w} - {_bonus}, {_s})
+	set {_a} to gfT({_s}, {_col}, {_hi})
+	set {_b} to gfT({_pd}, "white", false)
+	return "%{_a}%,%{_b}%"
+
 # 참가자 한 명의 결과 줄(JSON): 이름(팀 색) / K / D / A / 피해 / 사용한 아이템 아이콘. 칸 너비를 맞춰서 세로로 줄이 선다.
-# K(초록) D(빨강) A(노랑) 피해(하늘색). 게임에서 가장 높은 킬/피해는 금색 굵은 글씨(전체 최고값 {-gfmaxk}/{-gfmaxd} 는 gfRender 가 계산).
+# 숫자는 회색, 각 항목의 전체 최고값({-gfmaxk} {-gfmaxdt} {-gfmaxa} {-gfmaxd}, gfPrep 가 계산)만 노란색 굵은 글씨.
 # id 는 전적 변수 키(uuid 또는 가짜 id), ci 는 팀 번호, src 는 아이템 구성을 읽어 올 플레이어(가짜 참가자는 테스트 실행자의 구성을 빌린다).
 function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_k} to {-gk::%{_id}%}
@@ -338,43 +361,32 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_c1} to gfT({_nm}, {_cn}, false)
 	set {_pn} to gtPad(gfNameW(), {_nm})
 	set {_c2} to gtT({_pn}, "white")
-	set {_kcol} to "green"
-	set {_kb} to false
+	# 숫자는 회색. 각 항목(K/D/A/피해)에서 전체 최고값(0 초과)을 기록한 사람만 노란색 굵은 글씨
+	set {_hk} to false
 	if {_k} > 0:
 		if {_k} >= {-gfmaxk}:
-			set {_kcol} to "gold"
-			set {_kb} to true
-	set {_dcol} to "aqua"
-	set {_db} to false
+			set {_hk} to true
+	set {_hd} to false
+	if {_d} > 0:
+		if {_d} >= {-gfmaxdt}:
+			set {_hd} to true
+	set {_ha} to false
+	if {_a} > 0:
+		if {_a} >= {-gfmaxa}:
+			set {_ha} to true
+	set {_hm} to false
 	if {_dmr} > 0:
 		if {_dmr} >= {-gfmaxd}:
-			set {_dcol} to "gold"
-			set {_db} to true
+			set {_hm} to true
 	set {_ks} to "%{_k}%"
 	set {_ds} to "%{_d}%"
 	set {_as} to "%{_a}%"
 	set {_ms} to "%{_dmr}%"
-	# 굵은 글씨는 글자마다 1픽셀씩 넓어서 그만큼 공백을 덜 채운다(뒤 칸이 밀리지 않게)
-	set {_kpb} to 0
-	if {_kb} is true:
-		set {_kpb} to {_ks}.length()
-	set {_mpb} to 0
-	if {_db} is true:
-		set {_mpb} to {_ms}.length()
-	set {_pk} to gtPad(gfKdaW() - {_kpb}, {_ks})
-	set {_pd} to gtPad(gfKdaW(), {_ds})
-	set {_pa} to gtPad(gfKdaW(), {_as})
-	set {_pm} to gtPad(gfDmgW() - {_mpb}, {_ms})
-	# 숫자와 채움 공백은 따로 만든다(굵은 글씨의 공백은 5픽셀이라 같은 조각에 넣으면 칸이 밀린다)
-	set {_c3} to gfT({_ks}, {_kcol}, {_kb})
-	set {_c3p} to gfT({_pk}, "white", false)
-	set {_c4} to gfT({_ds}, "red", false)
-	set {_c4p} to gfT({_pd}, "white", false)
-	set {_c5} to gfT({_as}, "yellow", false)
-	set {_c5p} to gfT({_pa}, "white", false)
-	set {_c6} to gfT({_ms}, {_dcol}, {_db})
-	set {_c6p} to gfT({_pm}, "white", false)
-	set {_ex} to "%{_c1}%,%{_c2}%,%{_c3}%,%{_c3p}%,%{_c4}%,%{_c4p}%,%{_c5}%,%{_c5p}%,%{_c6}%,%{_c6p}%"
+	set {_ck} to gfCol({_ks}, gfKdaW(), {_hk})
+	set {_cd} to gfCol({_ds}, gfKdaW(), {_hd})
+	set {_ca} to gfCol({_as}, gfKdaW(), {_ha})
+	set {_cm} to gfCol({_ms}, gfDmgW(), {_hm})
+	set {_ex} to "%{_c1}%,%{_c2}%,%{_ck}%,%{_cd}%,%{_ca}%,%{_cm}%"
 	# 사용한 아이템: 구성 1~5번 아이템 아이콘(탭리스트와 같은 정렬 순서)
 	delete {_ld::*}
 	loop integers from 1 to 5:
@@ -414,12 +426,22 @@ function gfTeamRowsJ(tk: text, nlc: text) :: text:
 # 결과 표를 그리기 전에 최고 킬/피해(금색 표시용)와 이름 칸 너비를 계산해 둔다.
 function gfPrep():
 	set {-gfmaxk} to 0
+	set {-gfmaxdt} to 0
+	set {-gfmaxa} to 0
 	set {-gfmaxd} to 0
 	loop gfIds():
 		set {_kk} to {-gk::%loop-value%}
 		if {_kk} is a number:
 			if {_kk} > {-gfmaxk}:
 				set {-gfmaxk} to {_kk}
+		set {_dt} to {-gd::%loop-value%}
+		if {_dt} is a number:
+			if {_dt} > {-gfmaxdt}:
+				set {-gfmaxdt} to {_dt}
+		set {_aa} to {-ga::%loop-value%}
+		if {_aa} is a number:
+			if {_aa} > {-gfmaxa}:
+				set {-gfmaxa} to {_aa}
 		set {_dd} to {-gdmg::%loop-value%}
 		if {_dd} is a number:
 			if round({_dd}) > {-gfmaxd}:
