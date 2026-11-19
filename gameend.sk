@@ -372,7 +372,9 @@ function gfHeaderJson() :: text:
 	set {_h5} to "%{_s5}%%{_p5}%"
 	set {_c1} to gfNameBlank()
 	if {-gfinline} is true:
-		set {_c1} to gfT({_h1}, "gray", false)
+		set {_gap} to Character.toString(160) repeated 2 times
+		set {_hn} to "%{_s1}%%{_gap}%"
+		set {_c1} to gfT({_hn}, "gray", false)
 	set {_c2} to gfT({_h2}, "gray", false)
 	set {_c3} to gfT({_h3}, "gray", false)
 	set {_c4} to gfT({_h4}, "gray", false)
@@ -393,7 +395,13 @@ function gfHeaderJson() :: text:
 	set {_p6} to gfPad(gtItemW() - {_lead} * 4, {_s6})
 	set {_h6} to "%{_ls}%%{_s6}%%{_p6}%"
 	set {_c6} to gfT({_h6}, "gray", false)
-	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%]}"
+	set {_all} to "%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%"
+	if {-gfinline} is true:
+		# 줄 오른쪽 끝에 같은 글자를 검정색(그림자 없음)으로 한 번 더: 줄 가운데 정렬 때문에 이름 폭이 열 위치에 영향을 못 주게 한다(이름이 열 앞에 오른쪽 정렬로 붙음)
+		set {_mr} to gfT({_s1}, "black", false)
+		set {_mr} to {_mr}.replace("""bold"":false}", """bold"":false,""shadow_color"":0}")
+		set {_all} to "%{_all}%,%{_mr}%"
+	return "{""text"":"""",""extra"":[%{_all}%]}"
 
 # 숫자 한 칸(JSON 조각 두 개: 숫자 + 채움 공백). 기본 회색, hi 이면 노란색 굵은 글씨. 굵은 글씨는 글자마다 1픽셀 넓고 공백도 5픽셀이라
 # 숫자와 공백을 다른 조각으로 만들고, 굵은 만큼 공백을 덜 채워서 뒤 칸이 밀리지 않게 한다.
@@ -430,7 +438,8 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	# 저장용/dialog 용(겹친 디스플레이가 없다): 이름을 줄 안에 직접 넣는다. {-gfinline} 이 true 일 때만.
 	if {-gfinline} is true:
 		set {_c1} to gfT({_nm}, {_cn}, false)
-		set {_pn} to gfPad(gfNameW(), {_nm})
+		set {_gap} to Character.toString(160) repeated 2 times
+		set {_pn} to "%{_gap}%"
 		set {_c2} to gtT({_pn}, "white")
 	# 숫자는 회색. 각 항목(K/D/A/피해)에서 전체 최고값(0 초과)을 기록한 사람만 노란색 굵은 글씨
 	set {_hk} to false
@@ -477,6 +486,10 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 		remove 1 from {_rn}
 	set {_cp} to gfT({_rsp}, "white", false)
 	set {_ex} to "%{_ex}%,%{_cp}%"
+	if {-gfinline} is true:
+		set {_mr} to gfT({_nm}, "black", false)
+		set {_mr} to {_mr}.replace("""bold"":false}", """bold"":false,""shadow_color"":0}")
+		set {_ex} to "%{_ex}%,%{_mr}%"
 	return "{""text"":"""",""extra"":[%{_ex}%]}"
 
 # ===== 결과 디스플레이(승리 팀 더미 뒤) =====
