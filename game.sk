@@ -104,11 +104,11 @@ function gPickTeam(n: number) :: text:
 	return {_best}
 
 # ===== 팀 구성 / 내부 승점 =====
-# 내부 승점 {rating::uuid}(저장 변수, 기본 0)와 치른 경기 수 {rating::games::uuid}. 일반 플레이어에게는 보여주지 않는다(op 는 /rating).
+# 내부 승점 {rating::uuid}(저장 변수, 기본 100)와 치른 경기 수 {rating::games::uuid}. 일반 플레이어에게는 보여주지 않는다(op 는 /rating).
 function ratingOf(id: text) :: number:
 	if {rating::%{_id}%} is a number:
 		return {rating::%{_id}%}
-	return 0
+	return 100
 
 # 팀 구성. mode "random": 섞어서 돌아가며 배정. mode "mmr"(매튜 렁): 승점 높은 순(동점은 섞음)으로 보면서,
 # 인원 상한(올림(인원/팀수))이 안 찬 팀 중 현재 승점 합이 가장 낮은 팀에 넣는다(미검증 알고리즘: 탐욕법이라 최적은 아닐 수 있음).
