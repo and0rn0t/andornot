@@ -68,12 +68,13 @@ command /worldtest [<text>] [<text>]:
 			set {_p} to player
 			set {_loc} to {_w}.getSpawnLocation()
 			{_loc}.getChunk()
-			set {_ok} to {_p}.teleport({_loc})
+			# tpSafe(gameend.sk): 올라탄 체력바/상태 표시를 치우고 이동한다(그대로면 다른 월드로 이동이 거부돼 false 가 나왔다).
+			tpSafe({_p}, {_loc})
 			wait 2 ticks
 			set {_aw} to {_p}.getWorld()
 			set {_awn} to {_aw}.getName()
 			set {_t} to wtLocText({_p}.getLocation())
-			send "&6[월드 테스트] &7이동 요청 결과: &f%{_ok}% &7/ 지금 위치: %{_t}%"
+			send "&6[월드 테스트] &7이동 결과: 지금 위치: %{_t}%"
 			stop
 		if {_sub} is "info":
 			send "&6[월드 테스트] &7저장된 위치"

@@ -46,9 +46,20 @@ function gameStageLoc() :: location:
 	{_l}.setPitch(0)
 	return {_l}
 
+# 안전한 이동: 체력바/상태 표시 디스플레이는 플레이어에 올라타(passenger) 있어서, 그대로 다른 월드로 이동하면 서버가 이동을 거부한다(teleport 가 false, 멀티월드 테스트에서 확인).
+# 그래서 이동 전에 올라탄 표시를 치우고 이동한 뒤 상태 표시만 다시 단다(체력바는 healthbar.sk 의 주기 갱신이 다시 단다). 플레이어를 월드가 다른 곳으로 보낼 수 있는 모든 이동은 이 함수를 쓴다.
+function tpSafe(p: player, loc: location):
+	set {_id} to "%uuid of {_p}%"
+	hpbar_remove({_id})
+	stagRemove({_id})
+	{_p}.eject()
+	{_p}.leaveVehicle()
+	teleport {_p} to {_loc}
+	stagUpdate({_p})
+
 # 게임이 완전히 끝났을 때 보낼 로비 위치
 function gameLobby(p: player):
-	teleport {_p} to gameLobbyLoc()
+	tpSafe({_p}, gameLobbyLoc())
 
 # 결과 무대(더미 + 결과 디스플레이)를 치운다. 다음 게임 시작(gameStart), 강제 종료, 관리자 메뉴가 부른다.
 # 다음 게임 전까지 무대가 남아 있어야 해서 스크립트를 다시 불러와도 지우지 않으므로, 태그("gdummy")로도 찾아서 지운다.
@@ -555,7 +566,7 @@ function gameFinale():
 		if loop-value is online:
 			set gamemode of loop-value to adventure
 			loop-value.setInvulnerable(true)
-			teleport loop-value to {_view}
+			tpSafe(loop-value, {_view})
 	# 3) 투표 시작 안내
 	play sound "block.note_block.chime" with volume 0.7 to all players
 	loop {-gplist::*}:

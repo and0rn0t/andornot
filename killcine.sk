@@ -121,7 +121,7 @@ function kcRoundEnd():
 		if loop-value is online:
 			set gamemode of loop-value to adventure
 			if {-kcorig::%uuid of loop-value%} is set:
-				teleport loop-value to {-kcorig::%uuid of loop-value%}
+				tpSafe(loop-value, {-kcorig::%uuid of loop-value%})
 	delete {-kcorig::*}
 	gRoundNext()
 
@@ -225,7 +225,7 @@ on damage with priority highest:
 	# 4) 피격자를 관전 모드로 바꾸고 카메라에 시점을 붙인다
 	set {_bl} to {_loc} ~ vector(0, 1, 0)
 	set gamemode of {_v} to spectator
-	teleport {_v} to {_cl}
+	tpSafe({_v}, {_cl})
 	wait 1 tick
 	{_v}.setSpectatorTarget({_cam})
 	play sound "entity.iron_golem.repair" with volume 2 and pitch 1 to {_v}
@@ -237,7 +237,7 @@ on damage with priority highest:
 					if {_rnd} is true:
 						set {-kcorig::%uuid of {_o}%} to {_o}.getLocation()
 					set gamemode of {_o} to spectator
-					teleport {_o} to {_cl}
+					tpSafe({_o}, {_cl})
 	if {_rnd} is true:
 		set {-kcorig::%{_vid}%} to {_loc}
 	# 5) 35틱 동안 시체를 보여준다(매 틱 시점이 풀렸으면 다시 붙임)
@@ -304,7 +304,7 @@ on damage with priority highest:
 			{_cam2}.setSilent(true)
 			loop {-gplist::*}:
 				if loop-value is online:
-					teleport loop-value to {_cl2}
+					tpSafe(loop-value, {_cl2})
 			wait 1 tick
 			loop {-gplist::*}:
 				if loop-value is online:
@@ -364,7 +364,7 @@ on damage with priority highest:
 		delete {-kc::%{_vid}%}
 		stop
 	set gamemode of {_v} to adventure
-	teleport {_v} to kcRespawnLoc({_v})
+	tpSafe({_v}, kcRespawnLoc({_v}))
 	set {_mh} to {_v}'s max health
 	set {_v}'s health to {_mh}
 	set {-st::%{_vid}%} to 100
@@ -376,7 +376,7 @@ on damage with priority highest:
 on quit:
 	if {-kc::%player's uuid%} is set:
 		set gamemode of player to adventure
-		teleport player to kcRespawnLoc(player)
+		tpSafe(player, kcRespawnLoc(player))
 		set {_mh} to player's max health
 		set player's health to {_mh}
 		delete {-kc::%player's uuid%}
