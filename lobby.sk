@@ -89,7 +89,7 @@ function trainingNpcSkin() :: text:
 
 # 로비 NPC 가 입을 스킨(계정 이름). 빈 글자면 기본 스킨.
 function lobbyNpcSkin() :: text:
-	return ""
+	return "Dream"
 
 # NPC(마네킹)를 loc 에 yaw 방향으로 세운다: 움직이지 않고 무적이며 스코어보드 태그 tag 를 단다. 이름은 이름표(색 color, 굵게), desc 는 이름 아래 설명. skin 이 빈 글자가 아니면 그 계정의 스킨을 입힌다.
 function npcSpawn(loc: location, yaw: number, tag: text, name: text, color: text, desc: text, skin: text):
