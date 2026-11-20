@@ -2,15 +2,17 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 사용(op 전용): 가짜 신분이 된 뒤에는 /nick skin <스킨 계정> | /nick skin default 로 스킨만 바꿀 수 있다(이름/UUID 는 영구, 바뀐 스킨은 저장돼 다음 접속에도 유지, 적용은 Player#setPlayerProfile 로 바로 시도 - 미검증). /nick <이름> [스킨 계정] 로 신청 -> 경고가 나오면 /nick confirm 으로 확정. 확정하면 곧바로 접속이 끊기고, 다시 접속하면 가짜 신분이다. 이름/UUID 는 한 번 정해지면 바꾸거나 되돌릴 수 없다(스킨만 위 명령으로 변경 가능).
 #   이름은 영문/숫자/_ 3~16자. 이 서버에 한 번이라도 들어온 적이 있는 사람 이름과 이미 쓰인 가짜 이름은 못 쓴다(다른 사람 행세 방지). 스킨 계정은 선택(없으면 기본 스킨). 스킨 계정도 이 서버 사람 이름이면 못 쓴다.
-# 동작: 저장된 매핑({nick::map::진짜uuid}) 이 있으면 AsyncPlayerPreLoginEvent 에서 Paper 의 setPlayerProfile 로 가짜 프로필(새 UUID, 가짜 이름, 저장해 둔 스킨 속성)로 바꾼다.
-#   UUID 가 새 것이라 스크립트 변수({-gk::uuid}, {rating::uuid} 등), 플레이어 데이터(인벤토리 등), 승점, 매치 기록 전부 가짜 신분의 것이 새로 시작된다(진짜 신분 데이터는 이어지지 않는다).
+# 동작: 저장된 매핑({nick::map::uuid}) 이 있으면 AsyncPlayerPreLoginEvent 에서 Paper 의 setPlayerProfile 로 가짜 프로필(같은 UUID, 가짜 이름, 저장해 둔 스킨 속성)로 바꾼다.
+#   UUID 는 못 바꾼다: 1.19+ 클라이언트의 채팅 서명 키는 진짜 UUID 에 묶여 있어서, 접속 뒤 UUID 가 다르면 서버가 "프로필 공개 키가 잘못되었습니다"로 끊는다(서버 설정으로 못 끔, 실제로 겪음). 그래서 UUID 는 그대로 두고 이름/스킨만 바꾼다.
+#   UUID 는 일반 플레이어 화면에 안 보이지만 op 의 /data 명령, ops.json, 서버 파일에는 보인다(진짜 계정의 UUID 그대로).
+#   확정할 때 진짜 신분의 데이터를 지우므로(아래) 스크립트 변수({rating::uuid} 등), 플레이어 데이터, 승점, 아이템 구성은 가짜 신분으로 새로 시작된다.
 #   확정하면 진짜 신분의 데이터를 전부 지운다(접속을 끊은 2초 뒤): 저장 변수 {rating::id} {rating::games::id} {ratingsince::id} {loadout::id::*} {loadoutset::id}, 매치 기록 속 그 사람의 리뷰, 모든 월드 폴더의 playerdata/stats/advancements 파일.
 #   매치 기록의 결과 JSON/우승/POTM/리뷰 작성자 이름 속 진짜 이름은 가짜 이름으로 바꾼다(정규식 경계로 다른 사람 이름은 안 건드림). RAM 변수({-...::id})는 지우지 않는다(대부분 접속 종료 때 정리되고 서버를 켜면 사라진다).
-#   op 는 접속할 때마다 setOp(true) 로 유지한다(ops.json 은 UUID 기준이라 새 UUID 에 직접 줘야 함).
+#   op 는 UUID 가 같아서 그대로 유지된다(join 때 혹시 풀렸으면 setOp(true)).
 # 숨기는 범위: 다른 플레이어에게 보이는 모든 곳(이름표, 탭, 채팅, 접속/퇴장 메시지, 킬로그, /tp 등 명령 대상)이 가짜 이름이다. 확정 직후 접속을 끊을 때의 퇴장 메시지는 숨긴다.
 #   못 숨기는 것: 서버 콘솔/로그, 서버 파일(variables.csv 의 매핑, usercache, playerdata), 서버 소유자. 확정하기 전에 다른 사람이 이미 본 진짜 이름, 같은 시각에 나가고 들어오는 타이밍으로 눈치채는 것도 막을 수 없다.
 #   프로필 교체가 안 먹혀서 진짜 신분으로 들어왔다면(매핑이 있는데 진짜 UUID 로 접속) 접속 메시지를 숨기고 바로 접속을 끊는다.
-# 저장 변수: {nick::map::진짜uuid}(가짜 이름) {nick::uuid::진짜uuid}(가짜 uuid) {nick::real::가짜uuid}(진짜 uuid, 가짜 신분인지 판별) {nick::names::소문자이름}(쓰인 가짜 이름) {nick::tex::진짜uuid::value|sig}(스킨 속성)
+# 저장 변수: {nick::map::uuid}(가짜 이름, 있으면 가짜 신분) {nick::names::소문자이름}(쓰인 가짜 이름) {nick::tex::uuid::value|sig}(스킨 속성)
 # RAM 변수: {-nickpend::uuid}(확정 대기 이름) {-nickpskin::uuid}(확정 대기 스킨 계정) {-nickquiet::uuid}(퇴장 메시지 숨김)
 # 미검증: AsyncPlayerPreLoginEvent#setPlayerProfile 이 이름/UUID 까지 바꾸는지(Paper), 비동기 이벤트에서 Skript 변수 읽기, ProfileProperty 생성, PlayerProfile#complete(true) 로 스킨 가져오기,
 #   Array.getLength/Array.get 으로 Bukkit.getOfflinePlayers() 순회, getProperties().iterator(), String#replaceAll/new File(부모, 이름), PlayerJoinEvent#joinMessage(null)/PlayerQuitEvent#quitMessage(null), Player#setOp.
@@ -56,13 +58,13 @@ command /nick [<text>] [<text>]:
 		if player is not op:
 			send "&c권한이 없습니다."
 			stop
-		if {nick::real::%{_id}%} is set:
+		if {nick::map::%{_id}%} is set:
 			# 가짜 신분은 이름/UUID 는 못 바꾸고 스킨만 바꿀 수 있다: /nick skin <스킨 계정> | /nick skin default
 			if arg-1 is "skin":
 				if arg-2 is not set:
 					send "&7사용법: /nick skin <스킨 계정>  또는  /nick skin default(기본 스킨)"
 					stop
-				set {_ru} to {nick::real::%{_id}%}
+				set {_ru} to {_id}
 				if arg-2 is "default":
 					delete {nick::tex::%{_ru}%::*}
 					set {_np} to Bukkit.createProfile({_p}.getUniqueId(), {_p}.getName())
@@ -108,7 +110,6 @@ command /nick [<text>] [<text>]:
 				delete {-nickpskin::%{_id}%}
 				send "&c그 사이 이름 '%{_nm}%' 을(를) 쓸 수 없게 되었습니다. 다른 이름으로 다시 신청하세요."
 				stop
-			set {_fu} to UUID.randomUUID().toString()
 			set {_sk} to {-nickpskin::%{_id}%}
 			delete {nick::tex::%{_id}%::*}
 			if {_sk} is set:
@@ -124,8 +125,6 @@ command /nick [<text>] [<text>]:
 				else:
 					send "&e스킨 계정을 찾지 못해 기본 스킨으로 진행합니다."
 			set {nick::map::%{_id}%} to {_nm}
-			set {nick::uuid::%{_id}%} to {_fu}
-			set {nick::real::%{_fu}%} to {_id}
 			set {_low} to {_nm}.toLowerCase()
 			set {nick::names::%{_low}%} to true
 			delete {-nickpend::%{_id}%}
@@ -200,8 +199,8 @@ on AsyncPlayerPreLoginEvent:
 	set {_ru} to "%{_u}%"
 	set {_fn} to {nick::map::%{_ru}%}
 	if {_fn} is set:
-		set {_fu} to UUID.fromString({nick::uuid::%{_ru}%})
-		set {_np} to Bukkit.createProfile({_fu}, {_fn})
+		# UUID 는 진짜 그대로 둔다(1.19+ 채팅 서명 키가 UUID 에 묶여 있어 바꾸면 "프로필 공개 키가 잘못되었습니다"로 접속이 거부됨)
+		set {_np} to Bukkit.createProfile({_u}, {_fn})
 		set {_tv} to {nick::tex::%{_ru}%::value}
 		if {_tv} is set:
 			set {_ts} to {nick::tex::%{_ru}%::sig}
@@ -213,14 +212,16 @@ on AsyncPlayerPreLoginEvent:
 
 on join:
 	set {_id} to "%uuid of player%"
-	# 매핑이 있는데 진짜 UUID 로 들어왔다 = 프로필 교체 실패. 진짜 신분이 드러나기 전에 끊는다
-	if {nick::map::%{_id}%} is set:
-		event.joinMessage(null)
-		set {-nickquiet::%{_id}%} to true
-		kick player due to "신분 전환에 실패했습니다. 관리자에게 알려 주세요."
-		stop
-	# 가짜 신분이면 op 유지
-	if {nick::real::%{_id}%} is set:
+	# 매핑이 있는데 이름이 가짜 이름이 아니다 = 프로필 교체 실패. 진짜 이름이 드러나기 전에 끊는다
+	set {_fn} to {nick::map::%{_id}%}
+	if {_fn} is set:
+		set {_cur} to player.getName()
+		if {_cur} is not {_fn}:
+			event.joinMessage(null)
+			set {-nickquiet::%{_id}%} to true
+			kick player due to "신분 전환에 실패했습니다. 관리자에게 알려 주세요."
+			stop
+		# UUID 는 그대로라 op 도 그대로지만 혹시 풀렸으면 다시 준다
 		player.setOp(true)
 
 on quit:
