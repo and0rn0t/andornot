@@ -153,7 +153,8 @@
 #   - windburst.sk  : 연막탄 스킬(반구 모양, 블럭에 막히면 번지지 않음)
 #   - startcine.sk  : 게임 시작 연출(시작 카메라 + 음악 gamestart + 맵 이름, 팀 더미 라인업 3구도 + 팀 이름, "강하를 준비하세요", 19초)과 음악 함수 bgmPlay/bgmStopAll
 #                     리소스팩 mck_pack: resourcepack/mck_pack(원본) + build_pack.py(zip/SHA-1 생성). 소리는 mck:gamestart(ogg -6dB, 재생 음량 bgmVolume()), mck:knockout(킬 연출 시작, 피격자와 공격자, -6dB)과 mck:killsound(더미 부서질 때 공격자에게만, -9.5dB)(killcine.sk, 피격자는 예전 바닐라 소리 3개). 섬멸전 라운드 시작(game.sk gRoundNext)은 5초 카운트다운(소리 없음, roundstart 음악은 제거됨)
-#   - nick.sk       : op 전용 영구 가짜 신분(/nick <이름> [스킨 계정] -> /nick confirm). 접속 때(AsyncPlayerPreLoginEvent) 프로필을 같은 UUID+가짜 이름+스킨으로 교체(UUID 는 못 바꿈: 1.19+ 채팅 서명 키 검증에 걸림), 이름/UUID 는 한 번 정하면 못 바꿈(스킨만 /nick skin 으로 변경 가능), op 유지. 매핑은 저장 변수 {nick::*}. 한계와 미검증 목록은 nick.sk 맨 위 주석 참고(진짜 신분은 서버 콘솔/파일/타이밍으로는 드러날 수 있음)
+#   - nick.sk       : op 전용 영구 가짜 신분(/nick <이름> [스킨 계정] -> /nick confirm, 이후 /nick name <새 이름> 닉네임 변경, /nick skin). 접속 때(AsyncPlayerPreLoginEvent) 프로필을 같은 UUID+가짜 이름+스킨으로 교체(서버 안 UUID 는 못 바꿈: 1.19+ 채팅 서명 키 검증)하고 패킷용 가짜 UUID 표({-umr2f}/{-umf2r})를 채움. nickProfile(p) 는 마네킹용 가짜 UUID 프로필(gameend/startcine 사용). 헤더 주석 참고, 전부 미검증
+#   - uuidmask.sk   : ProtocolLib 로 다른 사람에게 가는 패킷(PLAYER_INFO/SPAWN_ENTITY/CHAT 등) 속 진짜 UUID 를 nick.sk 의 가짜 UUID 로 교체(핵 클라이언트 대비). ProtocolLib 1.21.11 호환 빌드 필요, /uuidmask status|kill|revive, 전부 미검증
 #   - tier.sk       : 티어 시스템(승점 -> 브론즈~챌린저, 닉네임 앞 아이콘 + 로마 숫자. 탭리스트/게임 결과/매치 기록에만 표시, 채팅/킬로그 제외)
 #   - flintsteel.sk : 부싯돌과 부시 스킬(취약 + 불태움)
 #   - totem.sk      : 불사의 토템 스킬

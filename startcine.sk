@@ -200,7 +200,8 @@ function gsShotLoc(shot: number, t: number) :: location:
 # ===== 보여주기용 더미 =====
 function gsDummy(p: player, loc: location, yaw: number) :: object:
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
-	{_m}.setProfile(ResolvableProfile.resolvableProfile({_p}.getPlayerProfile()))
+	set {_pf} to nickProfile({_p})
+	{_m}.setProfile(ResolvableProfile.resolvableProfile({_pf}))
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)
 	{_m}.setSilent(true)
