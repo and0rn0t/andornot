@@ -2,9 +2,9 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {ratingsince::uuid}(저장: 지금 승점에 도달한 시각, 밀리초. 동 레이팅 순위에서 먼저 달성한 사람이 앞서게 함. game.sk 의 ratingApply 가 기록)
 # 티어 체계(낮은 순): 브론즈(구리 주괴) - 실버(철 주괴) - 골드(금 주괴) - 에메랄드(초록색 철 주괴) - 다이아몬드(푸른색 철 주괴) - 마스터(보라색 네더의 별) - 그랜드마스터(붉은색 네더의 별) - 챌린저(네더의 별).
-#   다이아몬드까지는 세부 티어 I/II/III. 15점마다 세부 티어 하나씩 오르고, 승점 120 = 골드 I 이다. 그러려면 번호 = floor(승점/15) - 2 (0 미만이면 0)로 놓아야 해서
-#   브론즈 I 는 0~44점(세 칸 폭), 브론즈 II 45~59, III 60~74, 실버 I 75~89 ... 골드 I 120~134 ... 다이아몬드 III 240~254, 마스터 255점 이상.
-#   마스터 이상은 세부 티어를 표기하지 않고 승점과 순위로 정한다: 승점 255 이상인 사람 중 서버 순위 1위 = 챌린저, 2~5위 = 그랜드마스터, 나머지 = 마스터.
+#   다이아몬드까지는 세부 티어 I/II/III. 15점마다 세부 티어 하나씩 오르고, 승점 90 = 골드 I 이다. 번호 = floor(승점/15) 이고
+#   브론즈 I 0~14, II 15~29, III 30~44, 실버 I 45~59 ... 골드 I 90~104 ... 다이아몬드 III 210~224, 마스터 225점 이상.
+#   마스터 이상은 세부 티어를 표기하지 않고 승점과 순위로 정한다: 승점 225 이상인 사람 중 서버 순위 1위 = 챌린저, 2~5위 = 그랜드마스터, 나머지 = 마스터.
 #   순위는 승점 내림차순, 동점이면 {ratingsince} 가 이른 사람이 앞선다. 순위는 그때그때 계산하므로 밀려나면 바로 강등 표기가 된다.
 # 표기 원칙: 아이콘 + 로마 숫자 + 닉네임. 탭리스트(로비/게임 중), 게임 결과, 매치 기록에만 쓰고 채팅과 킬로그에는 쓰지 않는다.
 # 미검증: 아이콘 색(JSON 의 color 로 스프라이트 색조, 포션 아이콘과 같은 방식), System.currentTimeMillis().
@@ -19,7 +19,7 @@ function tierNowMs() :: number:
 # 서버 순위(마스터 이상 대상): 승점이 더 높거나, 같은데 먼저 달성한 사람 수 + 1. 승점 240 미만이면 0.
 function tierRank(id: text) :: number:
 	set {_r} to ratingOf({_id})
-	if {_r} < 255:
+	if {_r} < 225:
 		return 0
 	set {_my} to {ratingsince::%{_id}%}
 	if {_my} is not a number:
@@ -29,7 +29,7 @@ function tierRank(id: text) :: number:
 		set {_oid} to loop-index
 		if {_oid} is not {_id}:
 			set {_or} to ratingOf({_oid})
-			if {_or} >= 255:
+			if {_or} >= 225:
 				if {_or} > {_r}:
 					add 1 to {_rank}
 				else if {_or} is {_r}:
@@ -40,14 +40,14 @@ function tierRank(id: text) :: number:
 # 티어 번호: 0~14 = 브론즈 I ~ 다이아몬드 III, 15 = 마스터, 16 = 그랜드마스터, 17 = 챌린저
 function tierIdx(id: text) :: number:
 	set {_r} to ratingOf({_id})
-	if {_r} >= 255:
+	if {_r} >= 225:
 		set {_rk} to tierRank({_id})
 		if {_rk} is 1:
 			return 17
 		if {_rk} <= 5:
 			return 16
 		return 15
-	set {_i} to floor({_r} / 15) - 2
+	set {_i} to floor({_r} / 15)
 	if {_i} < 0:
 		set {_i} to 0
 	return {_i}
