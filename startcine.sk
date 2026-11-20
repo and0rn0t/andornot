@@ -11,7 +11,7 @@
 #   라인업 자리: 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰) 주변 30칸 안에서 가장 높은 블럭 위가 줄 길이만큼 평평하고 머리 위 3칸이 비었으며 카메라가 설 앞쪽 공간이 막히지 않은 곳을 무작위로 40번까지 찾는다. 못 찾으면 더미/카메라 이동 없이 시작 카메라 화면 그대로 진행한다.
 #   개인전은 한 사람당 더미 하나(자기 것만 보인다). 더미는 마네킹(이름표: 티어 아이콘 + 로마 숫자 + 닉네임).
 # 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
-# 미검증: Player#playSound(Location, String, SoundCategory, float, float)와 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt.
+# 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt.
 
 import:
 	org.bukkit.Bukkit
@@ -26,11 +26,11 @@ import:
 function bgmVolume() :: number:
 	return 0.8
 
-# name: 소리 이름(gamestart / roundstart, 팩의 assets/mck/sounds.json). 플레이어 위치에서 재생하되, 팩에서 소리가 닿는 거리(attenuation_distance)를 2000칸으로 늘려 놔서 연출 중 멀리 옮겨져도 거의 같은 크기로 들린다.
+# name: 소리 이름(gamestart / roundstart, 팩의 assets/mck/sounds.json). Skript 기본 play sound(플레이어 위치, 다른 소리 효과들과 같은 방식)로 재생하되, 팩에서 소리가 닿는 거리(attenuation_distance)를 2000칸으로 늘려 놔서 연출 중 멀리 옮겨져도 거의 같은 크기로 들린다.
 function bgmPlay(p: player, name: text):
 	set {_sn} to "mck:%{_name}%"
-	set {_pl} to {_p}.getLocation()
-	{_p}.playSound({_pl}, {_sn}, SoundCategory.MUSIC, bgmVolume(), 1)
+	set {_v} to bgmVolume()
+	play sound {_sn} with volume {_v} and pitch 1 to {_p}
 
 function bgmStopAll():
 	loop all players:
