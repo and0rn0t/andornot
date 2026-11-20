@@ -3,8 +3,8 @@
 #   가로 이동용 공백 글자(E000~E008 = +1,+2,+4..+256 / E010~E018 = 음수)가 들어 있다. 팩은 resourcepack/ 폴더(gen_pack.py 로 생성, andornot-pack.zip).
 # 화면 위치: 보스바 글자줄은 화면 가운데 정렬이다. 지도를 줄 맨 앞에 두고 총 너비를 2L 로 고정하면(뒤에 공백을 붙임) 지도 왼쪽이 화면 가운데에서 L 만큼 왼쪽에 온다.
 #   L(GUI 픽셀)은 플레이어마다 /minimap left <값> 으로 맞춘다(저장 {mmleft::uuid}, 기본 234). 화면 폭/GUI 배율을 서버가 알 수 없어서 창 크기를 바꾸면 다시 맞춰야 한다. 정확한 구석 고정은 셰이더가 필요(미구현).
-# 지도는 4x4 조각 글자로 이어 붙인다(글자 텍스처 한 장은 256x256 이하만 가능). 지도 표시 크기 mmMapPx()=100 GUI 픽셀(4로 나눠떨어져야 함)(resourcepack/gen_pack.py 의 MAP_PX 와 같아야 한다). 지도 이미지 해상도는 bake 때 정함(기본 1000).
-# 바라보는 방향: 내 마름모 앞쪽에 노란 점 3개(반지름 8,13,18)를 찍는다.
+# 지도는 4x4 조각 글자로 이어 붙인다(글자 텍스처 한 장은 256x256 이하만 가능). 지도 표시 크기 mmMapPx()=248 GUI 픽셀(4로 나눠떨어져야 함)(resourcepack/gen_pack.py 의 MAP_PX 와 같아야 한다). 지도 이미지 해상도는 bake 때 정함(기본 1000).
+# 내 표시: 바라보는 방향으로 회전하는 네비게이션 화살표 하나(16방향, 세로 2픽셀 단위).
 # 지도: 월드마다 /minimap bake 로 위에서 본 이미지를 만들어 서버 plugins/Skript/minimap/mapN.png 에 저장 -> 팩의 textures/font/ 에 넣고 gen_pack.py 로 다시 압축.
 # 표시 조건: 게임 중, 팀전, 살아 있는 참가자, 팩 적용 완료({-mmpack}), 그 월드에 지도가 저장돼 있을 때. 팀원 점(팀 색) + 나(흰 마름모)만 보인다(적은 안 보임). 북쪽이 위.
 # 이 파일의 변수: {mmcfg::월드::slot|minx|minz|size}(저장, 지도 슬롯/범위), {mmcfg::owner::슬롯}(저장, 슬롯 주인 월드), {-mmbar::uuid}(보스바 객체), {-mmpack::uuid}(팩 적용 완료), {-mmtest::uuid}(/minimap test), {mmleft::uuid}(저장, 지도 왼쪽 거리 L), {-mmbaking}(bake 진행 중)
@@ -22,7 +22,7 @@ import:
 	javax.imageio.ImageIO
 
 function mmMapPx() :: number:
-	return 100
+	return 248
 
 function mmLeft(p: player) :: number:
 	set {_l} to {mmleft::%uuid of {_p}%}
@@ -127,21 +127,7 @@ function mmBuild(p: player) :: text:
 	set {_mz} to z-coordinate of {_p}
 	set {_qx} to mmPx({_mx}, {_minx}, {_size})
 	set {_qz} to mmPx({_mz}, {_minz}, {_size})
-	# 바라보는 방향: 노란 점 3개(yaw 0 = 남쪽(+z), 90 = 서쪽(-x), 지도는 북쪽이 위)
 	set {_yaw} to yaw of {_p}
-	set {_dx} to 0 - sin({_yaw})
-	set {_dz} to cos({_yaw})
-	set {_ylw} to "#ffff55"
-	set {_r::*} to 8, 13, 18
-	set {_k} to 1
-	while {_k} <= 3:
-		set {_rr} to {_r::%{_k}%}
-		set {_ax} to mmClamp({_qx} + {_dx} * {_rr})
-		set {_az} to mmClamp({_qz} + {_dz} * {_rr})
-		set {_d} to mmDot({_ax}, {_az}, {_c}, {_ylw})
-		set {_s} to "%{_s}%%{_d}%"
-		set {_c} to {_ax} + 3
-		add 1 to {_k}
 	# 팀원(같은 월드, 같은 팀, 생존)
 	if gInGame({_p}) is true:
 		if {-gteams} > 0:
@@ -160,11 +146,14 @@ function mmBuild(p: player) :: text:
 								set {_d} to mmDot({_px}, {_pz}, {_c}, {_hex})
 								set {_s} to "%{_s}%%{_d}%"
 								set {_c} to {_px} + 3
-	# 나(흰 마름모)
-	set {_sh} to mmShift({_qx} - 2 - {_c})
-	set {_mc} to mmChar(58112 + {_qz})
+	# 나: 바라보는 방향으로 회전한 화살표 하나(방향 16개 x 세로 2픽셀 행, 글자 E500 + 방향*128 + 행).
+	# 방향 번호 = 시계방향 각도/22.5, 각도 0 = 북쪽(지도 위). yaw 180 = 북쪽, 0 = 남쪽, 90 = 서쪽이라 각도 = yaw + 180
+	set {_dir} to mod(round(({_yaw} + 180) / 22.5), 16)
+	set {_yr} to floor({_qz} / 2)
+	set {_sh} to mmShift({_qx} - 6 - {_c})
+	set {_mc} to mmChar(58624 + {_dir} * 128 + {_yr})
 	set {_s} to "%{_s}%<color:white>%{_sh}%%{_mc}%"
-	set {_c} to {_qx} + 4
+	set {_c} to {_qx} + 8
 	# 커서를 지도 폭 뒤로 되돌리고, 총 너비가 2L 이 되도록 뒤쪽 공백을 붙인다
 	set {_back} to mmShift({_sz} - {_c})
 	set {_trail} to mmShift(2 * mmLeft({_p}) - {_sz})

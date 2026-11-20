@@ -5,7 +5,7 @@ import json, os, zipfile, hashlib, struct, zlib
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PACK = os.path.join(ROOT, "pack")
 FONT_TEX = os.path.join(PACK, "assets", "andornot", "textures", "font")
-MAP_PX = 100         # 지도 이미지 한 변(픽셀) = 화면에서 차지하는 크기(GUI 픽셀)
+MAP_PX = 248         # 지도 이미지 한 변(픽셀) = 화면에서 차지하는 크기(GUI 픽셀)
 MAP_TOP = 5          # 보스바 글자줄 윗변에서 지도 윗변까지 거리(GUI 픽셀). 보스바 1번째 줄 기준
 TEX_PX = 100        # 지도 이미지 해상도(픽셀). 화면 표시 크기(MAP_PX)와 별개
 SLOTS = 4            # 지도 슬롯 개수(월드 4개까지)
@@ -24,8 +24,27 @@ def png(path, w, h, rgba):
 W = (255, 255, 255, 255); T = (0, 0, 0, 0)
 # 점(팀원) 3x3, 내 표시(흰 마름모) 5x5
 png(os.path.join(FONT_TEX, "dot.png"), 3, 3, lambda x, y: W)
-diamond = ["..X..", ".XXX.", "XXXXX", ".XXX.", "..X.."]
-png(os.path.join(FONT_TEX, "me.png"), 5, 5, lambda x, y: W if diamond[y][x] == "X" else T)
+# 내 표시: 네비게이션 화살표 13x13, 16방향(k*22.5도, 시계방향, 0 = 위(북쪽)). 흰색 + 검은 테두리(글자 색으로 칠하면 흰 부분만 물든다)
+from PIL import Image, ImageDraw
+ARW = 13
+def arrow_img(k):
+    S = 16
+    big = ARW * S
+    def poly(scale):
+        cx = big / 2
+        pts = [(0.0, -5.0), (-4.1, 4.6), (0.0, 2.5), (4.1, 4.6)]
+        return [(cx + x * S * scale, cx + 0.0 + y * S * scale) for x, y in pts]
+    im = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.polygon(poly(1.22), fill=(0, 0, 0, 255))
+    d.polygon(poly(1.0), fill=(255, 255, 255, 255))
+    im = im.rotate(-k * 22.5, resample=Image.BICUBIC)
+    return im.resize((ARW, ARW), Image.LANCZOS)
+for k in range(16):
+    arrow_img(k).save(os.path.join(FONT_TEX, "arrow%d.png" % k))
+old_me = os.path.join(FONT_TEX, "me.png")
+if os.path.exists(old_me):
+    os.remove(old_me)
 # 지도: 글자 텍스처 한 장은 256x256 을 넘을 수 없어서(글꼴 아틀라스 한 장 크기), 원본(maps/mapN.png)을 TILES x TILES 조각으로 잘라 조각마다 글자 하나로 쓴다.
 # 원본이 없으면 회색 격자 자리표시를 쓴다. 원본은 정사각형이며 한 변이 TILES*256 을 넘으면 그 크기로 줄인다. (Pillow 필요: pip install pillow)
 from PIL import Image
@@ -73,8 +92,11 @@ for s in range(SLOTS):
 for y in range(MAP_PX):
     providers.append({"type": "bitmap", "file": "andornot:font/dot.png",
                       "ascent": 7 - (MAP_TOP + y - 1), "height": 3, "chars": [chr(0xE200 + y)]})
-    providers.append({"type": "bitmap", "file": "andornot:font/me.png",
-                      "ascent": 7 - (MAP_TOP + y - 2), "height": 5, "chars": [chr(0xE300 + y)]})
+# 화살표: 방향 16개 x 세로 2픽셀 단위 행(MAP_PX // 2 개, 최대 128). 글자 = E500 + 방향*128 + 행, 중심 세로 위치 = 행*2
+for k in range(16):
+    for yr in range(MAP_PX // 2):
+        providers.append({"type": "bitmap", "file": "andornot:font/arrow%d.png" % k,
+                          "ascent": 7 - (MAP_TOP + yr * 2 - 6), "height": ARW, "chars": [chr(0xE500 + k * 128 + yr)]})
 fd = os.path.join(PACK, "assets", "andornot", "font")
 os.makedirs(fd, exist_ok=True)
 with open(os.path.join(fd, "mm.json"), "w", encoding="utf-8") as f:
