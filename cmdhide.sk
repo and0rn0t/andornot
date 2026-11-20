@@ -1,0 +1,44 @@
+# [cmdhide.sk] op 가 아닌 사람에게 관리/가짜 신분/플러그인 관련 명령어를 숨깁니다.
+# 숨기는 두 가지 방법:
+#   1) 명령어 실행 막기: 해당 명령을 치면 없는 명령어인 것처럼 "알 수 없는 명령" 메시지만 보냅니다("권한이 없습니다" 라고 하면 명령이 있다는 걸 알려주므로).
+#   2) 탭 자동완성/명령어 목록에서 제거(PlayerCommandSendEvent): 접속할 때와 명령 목록이 다시 보내질 때 숨길 명령을 지웁니다.
+# 숨기는 명령: nick, uuidmask(이 서버의 가짜 신분/UUID 가림), protocol/packet/packetlog/protocollib(ProtocolLib), sk/skript(Skript),
+#   pl/plugins(플러그인 목록), ver/version/about/icanhasbukkit(버전/플러그인 정보). 앞에 "bukkit:", "minecraft:", "paper:" 같은 네임스페이스가 붙은 것도 같이 처리합니다.
+# 추가하려면 cmdHidden 함수의 목록에 소문자로 넣습니다. op 는 영향 없습니다.
+# 한계: 플러그인 이름은 이 명령 말고도 다른 경로(서버 응답 지연 특징, 일부 핵 클라이언트의 탐지)로 짐작될 수 있습니다. 완전한 은닉은 아닙니다.
+# 미검증: PlayerCommandSendEvent 를 skript-reflect 로 받아 getCommands() 에서 iterator.remove() 가 되는지, on command 의 command 값(슬래시 없는 라벨)
+
+import:
+	org.bukkit.event.player.PlayerCommandSendEvent
+
+function cmdHidden(c: text) :: boolean:
+	set {_x} to {_c}.toLowerCase()
+	set {_i} to {_x}.lastIndexOf(":")
+	add 1 to {_i}
+	set {_x} to {_x}.substring({_i})
+	if {_x} is "nick" or "uuidmask" or "protocol" or "packet" or "packetlog" or "protocollib":
+		return true
+	if {_x} is "sk" or "skript" or "pl" or "plugins" or "ver" or "version" or "about" or "icanhasbukkit":
+		return true
+	return false
+
+on command:
+	if player is not set:
+		stop
+	if player is op:
+		stop
+	set {_c} to command
+	if cmdHidden({_c}) is true:
+		cancel the event
+		send "&cUnknown or incomplete command, see below for error" to player
+		send "&c&o/%{_c}%&r&c&o<--[HERE]" to player
+
+on PlayerCommandSendEvent:
+	set {_pl} to event.getPlayer()
+	if {_pl}.isOp() is true:
+		stop
+	set {_it} to event.getCommands().iterator()
+	while {_it}.hasNext() is true:
+		set {_c} to {_it}.next()
+		if cmdHidden({_c}) is true:
+			{_it}.remove()
