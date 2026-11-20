@@ -363,9 +363,9 @@ function ratingApply():
 		set {rating::games::%{_id}%} to {_g} + 1
 
 # ===== 리스폰 위치 =====
-# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 리스폰 지점을 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때와 섬멸전 라운드 시작 때 모두 그 지점의 X/Z 로 간다(팀 구분 없이 같은 지점).
+# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 리스폰 지점을 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때와 섬멸전 라운드 시작 때 모두 그 지점의 X/Z 로 간다(팀 구분 없이 같은 지점 주변 반경 30칸에 한 명씩 무작위로 흩뿌린다).
 # 지점이 없는 월드는 예전처럼 동작한다(시작 때 제자리, 리스폰은 월드 스폰).
-# 리스폰은 실제로는 그 지점 위 Y=170 높이에서 시작해 겉날개로 활강한다(아래 "상공 낙하" 절). 바운티: 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 리스폰 지점). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
+# 리스폰은 실제로는 그 지점의 Y 높이에서 시작해 겉날개로 활강한다(아래 "상공 낙하" 절). 바운티: 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 리스폰 지점). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
 # 팀원 근처 무작위 위치: 그 자리의 가장 높은 블럭 위, 물/용암이 아닌 곳, 팀원과 높이 차이 12칸 이내. 20번 안에 못 찾으면 팀원 위치를 쓴다.
 # 미검증: World#getHighestBlockYAt(x, z), Block#getType().name() 문자열 비교.
 function gcRespawnKey(wn: text) :: text:
@@ -436,17 +436,28 @@ function gameSpawn(p: player):
 		if {-gstartprev::%uuid of {_p}%} is set:
 			tpSafe({_p}, {-gstartprev::%uuid of {_p}%})
 		stop
-	tpSafe({_p}, gDropLoc({_s}))
+	# 지점 주변 반경 30칸에 흩뿌린다(높이는 그대로)
+	set {_ang} to random number between 0 and 360
+	set {_dist} to sqrt(random number between 0 and 1) * 30
+	set {_sc} to {_s}.clone()
+	{_sc}.setX({_s}.getX() + cos({_ang}) * {_dist})
+	{_sc}.setZ({_s}.getZ() + sin({_ang}) * {_dist})
+	tpSafe({_p}, gDropLoc({_sc}))
 	gDropStart({_p})
 
 # ===== 상공 낙하(겉날개) =====
-# 리스폰/초기 위치는 그 지점 위 Y=170 높이(월드 높이 제한까지)에서 시작하고, 겉날개를 입혀 활강시킨다. 땅에 닿으면 겉날개를 벗기고 원래 가슴 방어구를 돌려준다.
+# 리스폰/초기 위치는 그 지점의 Y 높이(월드 높이 제한까지, 지점이 없는 월드는 170)에서 시작하고, 겉날개를 입혀 활강시킨다. 땅에 닿으면 겉날개를 벗기고 원래 가슴 방어구를 돌려준다.
 # 시작할 때 느린 낙하 1초를 건다(포션 단계는 1이 최소라 세기는 못 낮추고 시간만 줄인다). 낙하 중에는 낙하/벽 충돌 피해만 받지 않는다(착지 때 죽지 않게). 변수(RAM): {-gdropon::uuid}(낙하 중), {-gdropchest::uuid}(원래 가슴 방어구), {-gdropgen::uuid}(낙하 세대, 새 낙하/종료 때 올려서 이전 감시를 끝냄), {-gdropflag::uuid}(kcRespawnLoc 가 상공 위치를 돌려줬다는 표시)
 # 미검증: chestplate 설정/삭제, setGliding, isOnGround, 낙하/벽 충돌 피해 원인 이름(FALL, FLY_INTO_WALL, 이벤트의 getCause 로 비교).
 function gDropLoc(l: location) :: location:
 	set {_w} to {_l}.getWorld()
 	set {_top} to {_w}.getMaxHeight() - 2
+	# 높이는 관리자가 저장한 리스폰 지점의 Y(없는 월드는 170)
 	set {_y} to 170
+	set {_wn} to {_w}.getName()
+	set {_base} to gcLoadLoc(gcRespawnKey({_wn}))
+	if {_base} is set:
+		set {_y} to {_base}.getY()
 	if {_y} > {_top}:
 		set {_y} to {_top}
 	set {_r} to {_l}.clone()
