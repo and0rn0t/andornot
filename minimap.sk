@@ -85,7 +85,7 @@ function mmBuild(p: player) :: text:
 	set {_size} to {mmcfg::%{_wn}%::size}
 	set {_lead} to mmShift(265)
 	set {_mapc} to mmChar(57600 + {_slot} - 1)
-	set {_s} to "<font:andornot:mm><white>%{_lead}%%{_mapc}%"
+	set {_s} to "<font:andornot:mm><color:white>%{_lead}%%{_mapc}%"
 	set {_c} to 65
 	if gInGame({_p}) is true:
 		if {-gteams} > 0:
@@ -111,7 +111,7 @@ function mmBuild(p: player) :: text:
 	set {_qz} to mmPx({_mz}, {_minz}, {_size})
 	set {_sh} to mmShift({_qx} - 2 - {_c})
 	set {_mc} to mmChar(58112 + {_qz})
-	set {_s} to "%{_s}%<white>%{_sh}%%{_mc}%"
+	set {_s} to "%{_s}%<color:white>%{_sh}%%{_mc}%"
 	set {_c} to {_qx} + 4
 	set {_back} to mmShift(65 - {_c})
 	return "%{_s}%%{_back}%"
