@@ -96,6 +96,7 @@ function umOnSend(px: object, e: object):
 		stop
 	if {_e}.isPlayerTemporary() is true:
 		stop
+	add 1 to {-umcnt::seen}
 	set {_v} to {_e}.getPlayer().getUniqueId()
 	set {_t} to {_e}.getPacketType()
 	if {_t}.equals(PTServer.PLAYER_INFO) is true:
@@ -147,6 +148,10 @@ function umInfo(e: object, v: object):
 				set {_nd} to umMakeInfo({_d}, {_f})
 				{_out}.add({_nd})
 			else:
+				# 본인 항목은 그대로 두지만, 혼자 테스트할 때 변환 코드(PlayerInfoData 생성자 등)가 도는지 보려고 만들어만 본다(버림).
+				set {_tst} to umMakeInfo({_d}, {_f})
+				if {_tst} is set:
+					add 1 to {-umcnt::selfinfo}
 				{_out}.add({_d})
 		else:
 			{_out}.add({_d})
@@ -198,6 +203,7 @@ function umRemove(e: object, v: object):
 				set {_hit} to true
 				{_out}.add({_f})
 			else:
+				add 1 to {-umcnt::selfseen}
 				{_out}.add({_u})
 		else:
 			{_out}.add({_u})
@@ -219,6 +225,7 @@ function umUuidFirst(e: object, v: object):
 	if {_f} is not set:
 		stop
 	if {_u}.equals({_v}) is true:
+		add 1 to {-umcnt::selfseen}
 		stop
 	set {_cl} to {_pk}.shallowClone()
 	{_cl}.getUUIDs().write(0, {_f})
@@ -279,6 +286,14 @@ command /uuidmask [<text>]:
 			if {-umr2f} is set:
 				set {_c} to {-umr2f}.size()
 				send "&7가려진 접속자 표 크기: &f%{_c}%"
+				send "&7표 내용: &f%{-umr2f}%"
+			set {_a} to {-umcnt::seen} ? 0
+			set {_b} to {-umcnt::mod} ? 0
+			set {_c1} to {-umcnt::selfinfo} ? 0
+			set {_c2} to {-umcnt::selfseen} ? 0
+			send "&7처리한 패킷: &f%{_a}% &7/ 실제로 UUID 를 바꾼 패킷: &f%{_b}%"
+			send "&7[솔로 테스트] 본인 탭 항목 변환 코드 성공: &f%{_c1}% &7/ 본인 UUID 가 든 패킷을 알아본 횟수: &f%{_c2}%"
+			send "&7(본인 화면의 본인 UUID 는 원래 안 바뀌어요. 다른 계정에게 가는 패킷에서만 바뀌어요)"
 			stop
 		if arg-1 is "kill":
 			set {-umoff} to true
