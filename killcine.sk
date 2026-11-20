@@ -4,8 +4,8 @@
 # 순서(시각은 연출 시작 기준):
 #   0틱   치명타 피해 취소 -> 킬 처리(킬 점수 자리 killScoreHook, 킬로그 killLogShow) -> 죽을 때 지워지던 상태 정리(kcClearState)
 #         -> 죽은 자리에 손에 아무것도 안 든 스켈레톤(피격자의 시선과 상관없이 고정 방향, kcPickYaw) 세움 -> 피격자는 관전 모드, 정면 구도(kcCamLoc, 가까이)로 둔 카메라에 시점 고정
-#   35틱  스켈레톤 자리에 mck:killsound(더미 부서지는 소리, 예전 crit/bone_block/door 3개 대체) + 붉은 파티클, 스켈레톤 제거(엔티티 제거라 사망 메시지 없음). 이때부터 6초 실명 + 타이틀 "리스폰" / 서브타이틀 숫자(5 -> 1)
-#         연출 화면으로 전환되는 순간 mck:knockout 소리(피격자에게만, 예전 iron_golem.repair 대체)
+#   35틱  스켈레톤 자리에 더미 부서지는 소리(공격자 {_atk} 에게는 mck:killsound, 피격자에게는 예전 crit/bone_block/door 3개, 다른 사람은 무음) + 붉은 파티클, 스켈레톤 제거(엔티티 제거라 사망 메시지 없음). 이때부터 6초 실명 + 타이틀 "리스폰" / 서브타이틀 숫자(5 -> 1)
+#         연출 화면으로 전환되는 순간 mck:knockout 소리(피격자 + 공격자 {_atk}, 예전 iron_golem.repair 대체)
 #   135틱 리스폰: 어드벤처 모드로 되돌림, 리스폰 위치로 이동, 체력/스태미너 회복. 실명은 1초 남은 상태라 바닐라가 서서히 풀어 준다(미검증).
 # 게임을 끝내는 킬: 모든 참가자가 킬 연출을 관전한 뒤, 마지막 킬을 한 플레이어를 같은 구도로 한 번 클로즈업(그 자리에 세운 더미, 약 3초)하고 나서 종료 연출(gameFinale)로 넘어간다.
 # 섬멸전 라운드를 끝내는 킬: 모든 참가자가 이 연출을 관전 -> 콰직 뒤 승리 팀 살아 있는 사람 자리에 세운 더미(gfDummyAt) 중 한 명을 같은 구도로 클로즈업 + 타이틀 "라운드 승리"/팀 이름 -> 원래 자리로 복귀, 다음 라운드(gRoundNext).
@@ -175,6 +175,20 @@ on damage with priority highest:
 	if attacker is set:
 		set {_ae} to attacker
 	set {_dt} to {_ev}.getDamageSource().getDamageType().getKey().getKey()
+	# 소리를 들을 공격자 {_atk}: 피해를 준 플레이어(자기 자신 제외). 공격자 없는 죽음(낙사 등)은 최근 10초 안에 때린 적(gFallCredit)
+	delete {_atk}
+	if {_ae} is a player:
+		if {_ae} is not {_v}:
+			set {_atk} to {_ae}
+	if {_atk} is not set:
+		gFallCredit({_vid})
+		set {_cid} to {-gcredit}
+		delete {-gcredit}
+		if {_cid} is set:
+			loop {-gplist::*}:
+				set {_cp} to loop-value
+				if "%uuid of {_cp}%" is {_cid}:
+					set {_atk} to {_cp}
 	# 1) 킬 처리를 먼저: 킬 점수 -> 킬로그 -> 상태 정리
 	# 치명타 피해량(남은 체력까지)을 가한 피해로 센 뒤 킬 처리(game.sk)
 	gameDamageRecord({_v}, {_ae}, min({_fd}, {_left}))
@@ -254,6 +268,9 @@ on damage with priority highest:
 	wait 1 tick
 	{_v}.setSpectatorTarget({_cam})
 	play sound "mck:knockout" with volume 1 and pitch 1 to {_v}
+	if {_atk} is set:
+		if {_atk} is online:
+			play sound "mck:knockout" with volume 1 and pitch 1 to {_atk}
 	if {_all} is true:
 		loop {-gplist::*}:
 			set {_o} to loop-value
@@ -291,7 +308,14 @@ on damage with priority highest:
 		add 1 to {_t}
 		wait 1 tick
 	# 6) 콰직! 소리 + 붉은 조각이 튀는 파티클(레드스톤 블록 조각, reflect 로 직접 호출, 미검증), 스켈레톤 제거
-	play sound "mck:killsound" with volume 2 and pitch 1 at {_bl}
+	# 더미 부서지는 소리: 공격자는 mck:killsound, 피격자는 예전 소리 3개(다른 사람에게는 소리 없음)
+	if {_atk} is set:
+		if {_atk} is online:
+			play sound "mck:killsound" with volume 1 and pitch 1 to {_atk}
+	if {_v} is online:
+		play sound "entity.player.attack.crit" with volume 2 and pitch 0.6 to {_v}
+		play sound "block.bone_block.break" with volume 2 and pitch 0.5 to {_v}
+		play sound "entity.zombie.break_wooden_door" with volume 1.5 and pitch 0.6 to {_v}
 	{_w}.spawnParticle(Particle.BLOCK, {_bl}, 60, 0.3, 0.5, 0.3, 0.25, Bukkit.createBlockData("minecraft:redstone_block"))
 	{_m}.remove()
 	# 게임을 끝내는 킬이면 여기서 연출을 마치고 종료 연출로 넘어간다(리스폰 없이 모두 관전 상태 유지)
