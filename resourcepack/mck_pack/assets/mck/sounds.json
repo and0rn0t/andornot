@@ -1,0 +1,12 @@
+{
+  "gamestart": {
+    "sounds": [
+      { "name": "mck:gamestart", "stream": true }
+    ]
+  },
+  "roundstart": {
+    "sounds": [
+      { "name": "mck:roundstart", "stream": true }
+    ]
+  }
+}

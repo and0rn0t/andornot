@@ -1,0 +1,314 @@
+# [startcine.sk] 게임 시작 연출(19초, 음악 gamestart 길이에 맞춤)과 배경 음악 재생 함수.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
+# 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
+# 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
+#   준비  시작 카메라로 이동해 관전 상태로 시점 고정(카메라가 없는 월드는 제자리, 시점 고정 없음). 라인업 자리를 찾는다(gsPrepare).
+#   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 자신을 소리 발생원으로 재생) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
+#   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
+#   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
+#   15.5초 "강하를 준비하세요" 타이틀
+#   19초  더미를 치우고 게임 시작(gStartFinish). 음악 길이가 19.6초라 끝날 즈음에 시작한다.
+#   라인업 자리: 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰) 주변 30칸 안에서 가장 높은 블럭 위가 줄 길이만큼 평평하고 머리 위 3칸이 비었으며 카메라가 설 앞쪽 공간이 막히지 않은 곳을 무작위로 40번까지 찾는다. 못 찾으면 더미/카메라 이동 없이 시작 카메라 화면 그대로 진행한다.
+#   개인전은 한 사람당 더미 하나(자기 것만 보인다). 더미는 마네킹(이름표: 티어 아이콘 + 로마 숫자 + 닉네임).
+# 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
+# 미검증: Player#playSound(Entity, String, SoundCategory, float, float)(소리가 플레이어를 따라다님), Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt.
+
+import:
+	org.bukkit.Bukkit
+	org.bukkit.Location
+	org.bukkit.SoundCategory
+	org.bukkit.entity.EntityType
+	io.papermc.paper.datacomponent.item.ResolvableProfile
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+# ===== 배경 음악 =====
+# 재생 음량(0~1). 파일이 이미 -6dB 낮춰져 있다. 아직 크면 이 값을 줄인다.
+function bgmVolume() :: number:
+	return 0.8
+
+# name: 소리 이름(gamestart / roundstart, 팩의 assets/mck/sounds.json). 플레이어 자신이 소리 발생원이라 어디로 옮겨져도 같은 크기로 들린다.
+function bgmPlay(p: player, name: text):
+	set {_sn} to "mck:%{_name}%"
+	{_p}.playSound({_p}, {_sn}, SoundCategory.MUSIC, bgmVolume(), 1)
+
+function bgmStopAll():
+	loop all players:
+		loop-value.stopSound("mck:gamestart")
+		loop-value.stopSound("mck:roundstart")
+
+# ===== 라인업 자리 찾기 =====
+function gsSearchCenter() :: location:
+	set {_w} to gcWorld("%{-gworld}%")
+	set {_c} to gcLoadLoc(gcRespawnKey("%{-gworld}%"))
+	if {_c} is not set:
+		set {_c} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
+	if {_c} is not set:
+		set {_c} to {_w}.getSpawnLocation()
+	return {_c}
+
+# 줄(가운데 기준 n 명)과 카메라 공간이 맞는지. 가운데 아래 블럭 (bx,by,bz), 앞 방향 (fx,fz), 줄 방향 (ux,uz).
+function gsLineupOk(w: world, bx: number, by: number, bz: number, fx: number, fz: number, ux: number, uz: number, n: number, half: number, dmax: number) :: boolean:
+	# 1) 더미가 서는 칸: 그 자리 가장 높은 블럭이 같은 높이(평평), 단단한 블럭, 머리 위 3칸 비어 있음
+	set {_k} to 0
+	while {_k} < {_n}:
+		set {_j} to ({_k} - ({_n} - 1) / 2) * 1.4
+		set {_x} to floor({_bx} + 0.5 + {_ux} * {_j})
+		set {_z} to floor({_bz} + 0.5 + {_uz} * {_j})
+		set {_hy} to {_w}.getHighestBlockYAt({_x}, {_z})
+		if {_hy} is not {_by}:
+			return false
+		set {_b0} to {_w}.getBlockAt({_x}, {_by}, {_z})
+		if {_b0}.isPassable() is true:
+			return false
+		set {_h} to 1
+		while {_h} <= 3:
+			set {_b1} to {_w}.getBlockAt({_x}, {_by} + {_h}, {_z})
+			if {_b1}.isPassable() is false:
+				return false
+			add 1 to {_h}
+		add 1 to {_k}
+	# 2) 카메라가 설 앞쪽 공간(눈높이 두 칸이 비어 있어야 함)
+	set {_d} to 1
+	while {_d} <= {_dmax}:
+		set {_j2} to 0 - {_half}
+		while {_j2} <= {_half}:
+			set {_x2} to floor({_bx} + 0.5 + {_fx} * {_d} + {_ux} * {_j2})
+			set {_z2} to floor({_bz} + 0.5 + {_fz} * {_d} + {_uz} * {_j2})
+			set {_c1} to {_w}.getBlockAt({_x2}, {_by} + 1, {_z2})
+			if {_c1}.isPassable() is false:
+				return false
+			set {_c2} to {_w}.getBlockAt({_x2}, {_by} + 2, {_z2})
+			if {_c2}.isPassable() is false:
+				return false
+			add 1 to {_j2}
+		add 1 to {_d}
+	return true
+
+# 라인업 자리를 찾아 {-gsl::*} 에 저장(못 찾으면 ok 가 없다).
+function gsFindLineup(n: number, c: location):
+	delete {-gsl::*}
+	set {_w} to {_c}.getWorld()
+	set {_len} to ({_n} - 1) * 1.4
+	set {_dmax} to ceil({_len} * 0.45 + 3.5) + 1
+	set {_half} to ceil({_len} / 2 + 1.5)
+	set {_fxl::*} to 0, 0, 1, -1
+	set {_fzl::*} to 1, -1, 0, 0
+	set {_uxl::*} to 1, 1, 0, 0
+	set {_uzl::*} to 0, 0, 1, 1
+	set {_yl::*} to 0, 180, -90, 90
+	set {_try} to 0
+	while {_try} < 40:
+		add 1 to {_try}
+		set {_ang} to random number between 0 and 360
+		set {_dist} to sqrt(random number between 0 and 1) * 30
+		set {_bx} to floor({_c}.getX() + cos({_ang}) * {_dist})
+		set {_bz} to floor({_c}.getZ() + sin({_ang}) * {_dist})
+		set {_by} to {_w}.getHighestBlockYAt({_bx}, {_bz})
+		set {_v0} to random integer between 0 and 3
+		set {_v} to 0
+		while {_v} < 4:
+			set {_i} to mod({_v0} + {_v}, 4) + 1
+			add 1 to {_v}
+			set {_ok} to gsLineupOk({_w}, {_bx}, {_by}, {_bz}, {_fxl::%{_i}%}, {_fzl::%{_i}%}, {_uxl::%{_i}%}, {_uzl::%{_i}%}, {_n}, {_half}, {_dmax})
+			if {_ok} is true:
+				set {-gsl::loc} to new Location({_w}, {_bx} + 0.5, {_by} + 1, {_bz} + 0.5)
+				set {-gsl::fx} to {_fxl::%{_i}%}
+				set {-gsl::fz} to {_fzl::%{_i}%}
+				set {-gsl::ux} to {_uxl::%{_i}%}
+				set {-gsl::uz} to {_uzl::%{_i}%}
+				set {-gsl::yaw} to {_yl::%{_i}%}
+				set {-gsl::len} to {_len}
+				set {-gsl::ok} to true
+				stop
+
+# 팀(개인전은 한 사람) 단위 최대 인원을 세어 자리를 찾는다. 접속 중인 참가자만 센다.
+function gsPrepare():
+	delete {-gsl::*}
+	delete {_cnt::*}
+	set {_n} to 1
+	loop {-gplist::*}:
+		if loop-value is online:
+			set {_k} to gTeamOf(loop-value)
+			add 1 to {_cnt::%{_k}%}
+			if {_cnt::%{_k}%} > {_n}:
+				set {_n} to {_cnt::%{_k}%}
+	set {_c} to gsSearchCenter()
+	gsFindLineup({_n}, {_c})
+
+# ===== 카메라 구도 =====
+# shot 1: 정면 넓게(천천히 다가감) / 2: 가까이서 옆으로 훑기 / 3: 낮은 정면 클로즈업(천천히 물러남). t 는 0~1.
+function gsShotLoc(shot: number, t: number) :: location:
+	set {_e} to {_t} * {_t} * (3 - 2 * {_t})
+	set {_len} to {-gsl::len}
+	set {_lat} to 0
+	set {_tlat} to 0
+	if {_shot} is 1:
+		set {_d1} to {_len} * 0.45 + 3.5
+		set {_d} to {_d1} - 1.2 * {_e}
+		set {_h} to 1.7
+		set {_ty} to 1.0
+	else if {_shot} is 2:
+		set {_d} to 2.8
+		set {_h} to 1.3
+		set {_ty} to 1.2
+		set {_span} to {_len} / 2 + 1.2
+		set {_lat} to 0 - {_span} + 2 * {_span} * {_e}
+		set {_tlat} to {_lat}
+	else:
+		set {_d} to 3.2 + 1.2 * {_e}
+		set {_h} to 0.8
+		set {_ty} to 1.5
+	set {_base} to {-gsl::loc}
+	set {_cl} to {_base} ~ vector({-gsl::fx} * {_d} + {-gsl::ux} * {_lat}, {_h}, {-gsl::fz} * {_d} + {-gsl::uz} * {_lat})
+	set {_tg} to {_base} ~ vector({-gsl::ux} * {_tlat}, {_ty}, {-gsl::uz} * {_tlat})
+	{_cl}.setDirection(vector from {_cl} to {_tg})
+	return {_cl}
+
+# ===== 보여주기용 더미 =====
+function gsDummy(p: player, loc: location, yaw: number) :: object:
+	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
+	{_m}.setProfile(ResolvableProfile.resolvableProfile({_p}.getPlayerProfile()))
+	{_m}.setImmovable(true)
+	{_m}.setInvulnerable(true)
+	{_m}.setSilent(true)
+	{_m}.setDescription(GsonComponentSerializer.gson().deserialize("{""text"":""""}"))
+	{_m}.setRotation({_yaw}, 0)
+	{_m}.addScoreboardTag("gsdummy")
+	# 이름표: 티어 아이콘 + 로마 숫자 + 닉네임(팀 색, 개인전은 흰색)
+	set {_id} to "%uuid of {_p}%"
+	set {_pre} to tierPreJ({_id})
+	set {_col} to "white"
+	if {-gteams} > 0:
+		set {_col} to gtColorJ(gTeamIndex(gTeamOf({_p})))
+	set {_nm} to gfT(name of {_p}, {_col}, true)
+	set {_nj} to "{""text"":"""",""extra"":[%{_pre}%,%{_nm}%]}"
+	{_m}.customName(GsonComponentSerializer.gson().deserialize({_nj}))
+	{_m}.setCustomNameVisible(true)
+	set {_inv} to {_p}.getInventory()
+	set {_meq} to {_m}.getEquipment()
+	{_meq}.setHelmet({_inv}.getHelmet())
+	{_meq}.setChestplate({_inv}.getChestplate())
+	{_meq}.setLeggings({_inv}.getLeggings())
+	{_meq}.setBoots({_inv}.getBoots())
+	add {_m} to {-gsdummies::*}
+	return {_m}
+
+# 더미 d 를 key 팀(개인전은 본인)이 아닌 참가자에게는 숨긴다
+function gsHideOthers(d: entity, key: text):
+	set {_pg} to Bukkit.getPluginManager().getPlugin("Skript")
+	loop {-gplist::*}:
+		if loop-value is online:
+			if gTeamOf(loop-value) is not {_key}:
+				loop-value.hideEntity({_pg}, {_d})
+
+# 팀별로 일렬 더미를 세운다(자리를 못 찾았으면 아무것도 안 함). 줄 가운데가 라인업 자리.
+function gsSpawnDummies():
+	if {-gsl::ok} is not true:
+		stop
+	delete {_cnt::*}
+	delete {_ord::*}
+	loop {-gplist::*}:
+		if loop-value is online:
+			set {_k} to gTeamOf(loop-value)
+			add 1 to {_cnt::%{_k}%}
+			set {_ord::%uuid of loop-value%} to {_cnt::%{_k}%}
+	loop {-gplist::*}:
+		set {_p} to loop-value
+		if {_p} is online:
+			set {_k} to gTeamOf({_p})
+			set {_m} to {_cnt::%{_k}%}
+			set {_o} to {_ord::%uuid of {_p}%}
+			set {_j} to ({_o} - 1 - ({_m} - 1) / 2) * 1.4
+			set {_loc} to {-gsl::loc} ~ vector({-gsl::ux} * {_j}, 0, {-gsl::uz} * {_j})
+			set {_d} to gsDummy({_p}, {_loc}, {-gsl::yaw})
+			gsHideOthers({_d}, {_k})
+
+function gsClear():
+	loop {-gsdummies::*}:
+		loop-value.remove()
+	delete {-gsdummies::*}
+	delete {-gsl::*}
+
+# ===== 시작 연출 본체 =====
+function gStartIntro(sg: number):
+	# 시작 카메라: 모두 관전 상태로 이동해 시점을 고정한다(카메라 위치가 없는 월드는 제자리, 시점 고정 없음)
+	set {_cam} to gcLoadLoc(gcStartCamKey({-gworld}))
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
+			set gamemode of {_pl} to spectator
+			if {_cam} is set:
+				tpSafe({_pl}, {_cam})
+	if {_cam} is set:
+		set {_cw} to {_cam}.getWorld()
+		set {_ce} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
+		{_ce}.setGravity(false)
+		{_ce}.setInvulnerable(true)
+		{_ce}.setSilent(true)
+		set {-gstartcam} to {_ce}
+		wait 2 ticks
+		if gStartAbort({_sg}) is true:
+			stop
+		gStartKeep()
+	# 라인업 자리 찾기(한 틱 안에 끝나도록 가벼운 검사부터 한다)
+	gsPrepare()
+	# 0초: 음악 + 맵 이름 타이틀
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			bgmPlay({_pl}, "gamestart")
+			send title "&e%{-gworld}%" with subtitle "" to {_pl} for 4 seconds with fadein 10 ticks and fade out 10 ticks
+	set {_tk} to 0
+	while {_tk} < 380:
+		if gStartAbort({_sg}) is true:
+			stop
+		# 4.5초: 더미 세우기
+		if {_tk} is 90:
+			gsSpawnDummies()
+		# 5초: 라인업 시작(팀 이름 타이틀, 카메라를 라인업으로)
+		if {_tk} is 100:
+			if {-gteams} > 0:
+				loop {-gplist::*}:
+					set {_pl} to loop-value
+					if {_pl} is online:
+						set {_lab} to gTeamLabel(gTeamOf({_pl}))
+						send title colored "%{_lab}%" with subtitle colored "&7당신의 팀" to {_pl} for 3500 milliseconds with fadein 10 ticks and fade out 10 ticks
+			if {-gsl::ok} is true:
+				set {_cl0} to gsShotLoc(1, 0)
+				loop {-gplist::*}:
+					if loop-value is online:
+						tpSafe(loop-value, {_cl0})
+				if {-gstartcam} is not set:
+					set {_ce2} to {_cl0}.getWorld().spawnEntity({_cl0}, EntityType.TEXT_DISPLAY)
+					{_ce2}.setGravity(false)
+					{_ce2}.setInvulnerable(true)
+					{_ce2}.setSilent(true)
+					set {-gstartcam} to {_ce2}
+		if {_tk} >= 100:
+			if {-gsl::ok} is true:
+				if {-gstartcam} is set:
+					if {_tk} < 180:
+						set {_sh} to 1
+						set {_st} to ({_tk} - 100) / 80
+					else if {_tk} < 260:
+						set {_sh} to 2
+						set {_st} to ({_tk} - 180) / 80
+					else:
+						set {_sh} to 3
+						set {_st} to ({_tk} - 260) / 120
+					set {_cl} to gsShotLoc({_sh}, {_st})
+					teleport {-gstartcam} to {_cl}
+		# 15.5초: 강하 안내 타이틀
+		if {_tk} is 310:
+			loop {-gplist::*}:
+				set {_pl} to loop-value
+				if {_pl} is online:
+					send title "&e강하를 준비하세요" with subtitle "" to {_pl} for 3 seconds with fadein 10 ticks and fade out 10 ticks
+		if mod({_tk}, 10) is 0:
+			gStartKeep()
+		add 1 to {_tk}
+		wait 1 tick
+	if gStartAbort({_sg}) is true:
+		stop
+	gStartFinish({_sg})
