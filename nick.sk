@@ -1,0 +1,66 @@
+# [nick.sk] op 전용 가짜 신분: 이름과 스킨을 다른 사람 것으로 바꾼다(머리 위 이름, 탭리스트, 스킨, 채팅 표시 이름).
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수(RAM): {-fakeorig::uuid}(바꾸기 전 원래 프로필. 있으면 지금 가짜 신분 중)
+# 명령(op 전용): /nick <이름> [스킨 계정] 가짜 신분 적용(스킨 계정을 안 쓰면 이름과 같은 계정의 스킨, 그 계정이 없으면 기본 스킨) / /nick off 원래대로.
+#   이름은 공백 없이 16글자까지. 스킨은 Mojang 에서 가져오므로(서버 인터넷 필요) 그 순간 조금 멈출 수 있다.
+# 동작: Paper 의 Player#setPlayerProfile 로 프로필(이름 + 스킨 속성)을 바꾼다. uuid 는 그대로 두기 때문에 스크립트 변수({-gk::uuid} 등)는 안 깨진다.
+#   바뀐 뒤에는 스크립트가 쓰는 name of player 도 가짜 이름이 되어 킬로그/탭리스트/결과창/매치 기록/더미 이름표에 전부 가짜 이름이 나온다(이미 기록된 매치 기록은 그대로).
+#   접속을 끊으면 풀린다(다시 접속하면 원래 신분). 가짜 이름으로 명령어 대상 지정(/tp 이름 등)은 서버가 접속 때 이름으로 찾아서 안 될 수 있다(진짜 이름은 됨).
+# 미검증: Player#setPlayerProfile 로 이름/스킨이 바뀌는지, PlayerProfile#complete(true) 로 스킨 가져오기, setProperties, 본인 화면 갱신, name of player 가 가짜 이름으로 나오는지.
+
+import:
+	org.bukkit.Bukkit
+
+command /nick [<text>] [<text>]:
+	description: op 전용 가짜 신분 (이름/스킨)
+	usage: /nick <이름> [스킨 계정] | /nick off
+	executable by: players
+	trigger:
+		if player is not op:
+			send "&c권한이 없습니다."
+			stop
+		if arg-1 is not set:
+			send "&7사용법: /nick <이름> [스킨 계정]  /  /nick off"
+			stop
+		set {_p} to player
+		set {_id} to "%uuid of {_p}%"
+		if arg-1 is "off":
+			if {-fakeorig::%{_id}%} is not set:
+				send "&7지금은 가짜 신분이 아닙니다."
+				stop
+			set {_orig} to {-fakeorig::%{_id}%}
+			{_p}.setPlayerProfile({_orig})
+			set {_rn} to {_orig}.getName()
+			set display name of {_p} to "%{_rn}%"
+			delete {-fakeorig::%{_id}%}
+			tabUpdate({_p})
+			send "&a원래 신분으로 돌아왔습니다."
+			stop
+		set {_nm} to arg-1
+		set {_len} to {_nm}.length()
+		if {_len} > 16:
+			send "&c이름은 16글자까지입니다."
+			stop
+		if {_nm} contains " ":
+			send "&c이름에 공백을 넣을 수 없습니다."
+			stop
+		set {_skin} to {_nm}
+		if arg-2 is set:
+			set {_skin} to arg-2
+		if {-fakeorig::%{_id}%} is not set:
+			set {-fakeorig::%{_id}%} to {_p}.getPlayerProfile()
+		set {_np} to Bukkit.createProfile({_p}.getUniqueId(), {_nm})
+		set {_sp} to Bukkit.createProfile({_skin})
+		set {_ok} to {_sp}.complete(true)
+		set {_msg} to "&a스킨 '%{_skin}%' 적용"
+		if {_ok} is true:
+			{_np}.setProperties({_sp}.getProperties())
+		else:
+			set {_msg} to "&e스킨 '%{_skin}%' 계정을 찾지 못해 기본 스킨 적용"
+		{_p}.setPlayerProfile({_np})
+		set display name of {_p} to "%{_nm}%"
+		tabUpdate({_p})
+		send "&a가짜 신분 적용: 이름 &f%{_nm}% &7/ %{_msg}%&7. 해제: /nick off"
+
+on quit:
+	delete {-fakeorig::%player's uuid%}
