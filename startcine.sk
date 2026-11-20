@@ -3,6 +3,7 @@
 # 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
 #   준비  라인업 자리를 정한다(gsPrepare). 시작 카메라(없으면 라인업 첫 구도 자리)로 이동해 관전 상태로 카메라 엔티티를 관전 대상으로 걸어 위치/시점을 고정한다.
+#   준비 2초(음악 시작 전): 카메라/라인업 청크를 서버에서 먼저 불러 두고 관전 대상을 0.5초마다 강제로 다시 건다(서버/스크립트 로드 직후 첫 게임에서 클라이언트가 아직 준비 안 돼 카메라 잠금/음악이 무시되던 문제 대응). 19초는 음악을 틀기 시작한 때부터다.
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
@@ -283,10 +284,19 @@ function gStartIntro(sg: number):
 	{_ce}.setInvulnerable(true)
 	{_ce}.setSilent(true)
 	set {-gstartcam} to {_ce}
-	wait 1 tick
-	if gStartAbort({_sg}) is true:
-		stop
-	gStartKeep()
+	# 준비 시간(2초): 서버에서 카메라/라인업 자리 청크를 먼저 불러 두고(getChunk 가 동기로 불러옴), 클라이언트가 월드/청크/카메라 엔티티를 받을 시간을 준다.
+	# 서버 로드/스크립트 로드 직후 첫 게임에서는 이 준비 없이 바로 관전 대상을 걸고 음악을 틀면 클라이언트가 아직 준비가 안 돼 무시되던 문제(카메라 잠금/음악 안 나옴)를 막는다. 관전 대상은 이 동안 0.5초마다 강제로 다시 건다.
+	{_cam}.getChunk()
+	set {_lc0} to gsShotLoc(1, 0)
+	{_lc0}.getChunk()
+	set {_pre} to 0
+	while {_pre} < 40:
+		if gStartAbort({_sg}) is true:
+			stop
+		if mod({_pre}, 10) is 0:
+			gStartKeepForce()
+		add 1 to {_pre}
+		wait 1 tick
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
 		set {_pl} to loop-value
@@ -334,7 +344,9 @@ function gStartIntro(sg: number):
 				set {_pl} to loop-value
 				if {_pl} is online:
 					send title "&f강하를 준비하세요" with subtitle "" to {_pl} for 3 seconds with fadein 10 ticks and fade out 10 ticks
-		if mod({_tk}, 2) is 0:
+		if mod({_tk}, 20) is 0:
+			gStartKeepForce()
+		else if mod({_tk}, 2) is 0:
 			gStartKeep()
 		add 1 to {_tk}
 		wait 1 tick
