@@ -1,6 +1,6 @@
 # [nick.sk] op 전용 영구 가짜 신분: 접속할 때 서버가 프로필(이름 + UUID + 스킨)을 통째로 바꿔서, 그 사람은 앞으로 항상 가짜 신분으로만 접속한다.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 사용(op 전용): /nick <이름> [스킨 계정] 로 신청 -> 경고가 나오면 /nick confirm 으로 확정. 확정하면 곧바로 접속이 끊기고, 다시 접속하면 가짜 신분이다. 한 번 정해지면 바꾸거나 되돌릴 수 없다(명령 없음).
+# 사용(op 전용): 가짜 신분이 된 뒤에는 /nick skin <스킨 계정> | /nick skin default 로 스킨만 바꿀 수 있다(이름/UUID 는 영구, 바뀐 스킨은 저장돼 다음 접속에도 유지, 적용은 Player#setPlayerProfile 로 바로 시도 - 미검증). /nick <이름> [스킨 계정] 로 신청 -> 경고가 나오면 /nick confirm 으로 확정. 확정하면 곧바로 접속이 끊기고, 다시 접속하면 가짜 신분이다. 이름/UUID 는 한 번 정해지면 바꾸거나 되돌릴 수 없다(스킨만 위 명령으로 변경 가능).
 #   이름은 영문/숫자/_ 3~16자. 이 서버에 한 번이라도 들어온 적이 있는 사람 이름과 이미 쓰인 가짜 이름은 못 쓴다(다른 사람 행세 방지). 스킨 계정은 선택(없으면 기본 스킨). 스킨 계정도 이 서버 사람 이름이면 못 쓴다.
 # 동작: 저장된 매핑({nick::map::진짜uuid}) 이 있으면 AsyncPlayerPreLoginEvent 에서 Paper 의 setPlayerProfile 로 가짜 프로필(새 UUID, 가짜 이름, 저장해 둔 스킨 속성)로 바꾼다.
 #   UUID 가 새 것이라 스크립트 변수({-gk::uuid}, {rating::uuid} 등), 플레이어 데이터(인벤토리 등), 승점, 매치 기록 전부 가짜 신분의 것이 새로 시작된다(진짜 신분 데이터는 이어지지 않는다).
@@ -49,7 +49,42 @@ command /nick [<text>] [<text>]:
 			send "&c권한이 없습니다."
 			stop
 		if {nick::real::%{_id}%} is set:
-			send "&c이미 가짜 신분입니다. 한 번 정해진 신분은 바꿀 수 없습니다."
+			# 가짜 신분은 이름/UUID 는 못 바꾸고 스킨만 바꿀 수 있다: /nick skin <스킨 계정> | /nick skin default
+			if arg-1 is "skin":
+				if arg-2 is not set:
+					send "&7사용법: /nick skin <스킨 계정>  또는  /nick skin default(기본 스킨)"
+					stop
+				set {_ru} to {nick::real::%{_id}%}
+				if arg-2 is "default":
+					delete {nick::tex::%{_ru}%::*}
+					set {_np} to Bukkit.createProfile({_p}.getUniqueId(), {_p}.getName())
+					{_p}.setPlayerProfile({_np})
+					send "&a기본 스킨으로 바꿨습니다. 다른 사람 화면에는 다시 접속하거나 재접속 때 적용될 수 있습니다."
+					stop
+				if nickKnown(arg-2) is true:
+					send "&c이 서버에 있었던 사람의 스킨은 쓸 수 없습니다."
+					stop
+				set {_sp} to Bukkit.createProfile(arg-2)
+				set {_ok} to {_sp}.complete(true)
+				if {_ok} is not true:
+					send "&c스킨 계정 '%arg-2%' 을(를) 찾지 못했습니다."
+					stop
+				set {_found} to false
+				loop {_sp}.getProperties():
+					set {_pr} to loop-value
+					if {_pr}.getName() is "textures":
+						set {nick::tex::%{_ru}%::value} to {_pr}.getValue()
+						set {nick::tex::%{_ru}%::sig} to {_pr}.getSignature()
+						set {_found} to true
+				if {_found} is not true:
+					send "&c그 계정에서 스킨 정보를 가져오지 못했습니다."
+					stop
+				set {_np} to Bukkit.createProfile({_p}.getUniqueId(), {_p}.getName())
+				{_np}.setProperties({_sp}.getProperties())
+				{_p}.setPlayerProfile({_np})
+				send "&a스킨을 '%arg-2%' 계정의 것으로 바꿨습니다(다음 접속 때도 유지). 화면에 바로 안 바뀌면 다시 접속하세요."
+				stop
+			send "&c이미 가짜 신분입니다. 이름은 바꿀 수 없고 스킨만 /nick skin <스킨 계정> 으로 바꿀 수 있습니다."
 			stop
 		if arg-1 is not set:
 			send "&7사용법: /nick <이름> [스킨 계정]  ->  /nick confirm"
@@ -89,6 +124,9 @@ command /nick [<text>] [<text>]:
 			kick {_p} due to "가짜 신분 '%{_nm}%' 이(가) 적용되었습니다. 다시 접속하세요."
 			stop
 		set {_nm} to arg-1
+		if {_nm} is "skin":
+			send "&c그 이름은 쓸 수 없습니다."
+			stop
 		if {_nm} does not match "[A-Za-z0-9_]{3,16}":
 			send "&c이름은 영문/숫자/_ 3~16자여야 합니다."
 			stop
