@@ -812,9 +812,10 @@ function gStartKeep():
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
-			set {_cur} to {_pl}.getSpectatorTarget()
-			if {_cur} is not {-gstartcam}:
-				{_pl}.setSpectatorTarget({-gstartcam})
+			if gamemode of {_pl} is spectator:
+				set {_cur} to {_pl}.getSpectatorTarget()
+				if {_cur} is not {-gstartcam}:
+					{_pl}.setSpectatorTarget({-gstartcam})
 
 # 관전 대상을 풀었다가 다시 건다. 서버 로드/스크립트 로드 직후 첫 게임에서는 클라이언트가 아직 카메라 엔티티를 몰라서 처음 건 관전 요청이 무시될 수 있는데,
 # 서버는 이미 걸려 있다고 알아서 gStartKeep 이 다시 안 건다. 그래서 연출 중 주기적으로 이걸로 강제로 다시 건다.
@@ -824,14 +825,17 @@ function gStartKeepForce():
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
-			{_pl}.setSpectatorTarget(null)
-			{_pl}.setSpectatorTarget({-gstartcam})
+			if gamemode of {_pl} is spectator:
+				{_pl}.setSpectatorTarget(null)
+				{_pl}.setSpectatorTarget({-gstartcam})
 
 function gStartCamRelease():
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
-			{_pl}.setSpectatorTarget(null)
+			# 관전 상태가 아닌 사람에게 setSpectatorTarget 을 부르면 "Player must be in spectator mode" 예외가 난다(로딩 중 /gamestop 등)
+			if gamemode of {_pl} is spectator:
+				{_pl}.setSpectatorTarget(null)
 	if {-gstartcam} is set:
 		{-gstartcam}.remove()
 	delete {-gstartcam}
