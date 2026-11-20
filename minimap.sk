@@ -1,0 +1,292 @@
+# [minimap.sk] 팀원 전용 미니맵(리소스 팩 + 보스바 글자). 환경, 작업 규칙, 변수 목록은 skill_core.sk 맨 위 주석 참고.
+# 원리: 흰색 보스바 한 줄의 제목을 커스텀 폰트(andornot:mm)로 그린다. 폰트에는 지도 이미지 글자(E100~), 행마다 높이가 다른 점 글자(E200~)·내 표시 글자(E300~),
+#   가로 이동용 공백 글자(E000~E008 = +1,+2,+4..+256 / E010~E018 = 음수)가 들어 있다. 팩은 resourcepack/ 폴더(gen_pack.py 로 생성, andornot-pack.zip).
+# 화면 위치: 보스바 글자줄은 화면 가운데 정렬이라, 앞에 공백 265 를 붙여 지도가 화면 가운데에서 오른쪽 100 칸(GUI 픽셀)에 오게 한다(뒤쪽 이동은 지도 폭 65 로 되돌려 총 너비를 고정).
+# 지도: 월드마다 /minimap bake 로 위에서 본 이미지를 만들어 서버 plugins/Skript/minimap/mapN.png 에 저장 -> 팩의 textures/font/ 에 넣고 gen_pack.py 로 다시 압축.
+# 표시 조건: 게임 중, 팀전, 살아 있는 참가자, 팩 적용 완료({-mmpack}), 그 월드에 지도가 저장돼 있을 때. 팀원 점(팀 색) + 나(흰 마름모)만 보인다(적은 안 보임). 북쪽이 위.
+# 이 파일의 변수: {mmcfg::월드::slot|minx|minz|size}(저장, 지도 슬롯/범위), {mmcfg::owner::슬롯}(저장, 슬롯 주인 월드), {-mmbar::uuid}(보스바 객체), {-mmpack::uuid}(팩 적용 완료), {-mmtest::uuid}(/minimap test)
+# 미검증: Adventure BossBar 정적 호출과 중첩 클래스 import, MiniMessage <font>, 음수 ascent 글자, BlockData#getMapColor, ImageIO 저장, PlayerResourcePackStatusEvent, pack.mcmeta 형식.
+
+import:
+	net.kyori.adventure.bossbar.BossBar as AdvBar
+	net.kyori.adventure.bossbar.BossBar$Color as AdvBarColor
+	net.kyori.adventure.bossbar.BossBar$Overlay as AdvBarOverlay
+	net.kyori.adventure.text.minimessage.MiniMessage
+	org.bukkit.event.player.PlayerResourcePackStatusEvent
+	java.lang.Character
+	java.io.File
+	java.awt.image.BufferedImage
+	javax.imageio.ImageIO
+
+function mmChar(code: number) :: text:
+	return Character.toString({_code})
+
+# 가로 이동 글자열(이진 분해). 양수는 E000~, 음수는 E010~
+function mmShift(n: number) :: text:
+	set {_n} to round({_n})
+	if {_n} is 0:
+		return ""
+	set {_base} to 57344
+	if {_n} < 0:
+		set {_base} to 57360
+		set {_n} to 0 - {_n}
+	set {_s} to ""
+	set {_k} to 0
+	while {_n} > 0:
+		if mod({_n}, 2) is 1:
+			set {_c} to mmChar({_base} + {_k})
+			set {_s} to "%{_s}%%{_c}%"
+		set {_n} to floor({_n} / 2)
+		add 1 to {_k}
+	return {_s}
+
+function mmTeamHex(i: number) :: text:
+	set {_c::*} to "#ff5555", "#6677ff", "#55ff55", "#ffff55", "#ff55ff", "#55ffff", "#ffaa00", "#cc66ff"
+	return {_c::%mod({_i} - 1, 8) + 1%}
+
+# 월드 좌표 -> 지도 픽셀(0~63, 범위 밖이면 가장자리)
+function mmPx(v: number, mn: number, size: number) :: number:
+	set {_q} to floor(({_v} - {_mn}) / {_size} * 64)
+	if {_q} < 0:
+		set {_q} to 0
+	if {_q} > 63:
+		set {_q} to 63
+	return {_q}
+
+function mmWants(p: player) :: boolean:
+	if {-mmpack::%uuid of {_p}%} is not true:
+		return false
+	set {_wn} to {_p}.getWorld().getName()
+	if {mmcfg::%{_wn}%::slot} is not set:
+		return false
+	if {-mmtest::%uuid of {_p}%} is true:
+		return true
+	if {-ingame} is not true:
+		return false
+	if {-gstarting} is true:
+		return false
+	if {-gteams} is not set:
+		return false
+	if {-gteams} <= 0:
+		return false
+	if gInGame({_p}) is not true:
+		return false
+	if gAlive({_p}) is not true:
+		return false
+	return true
+
+# 보스바 제목(MiniMessage 문자열)을 만든다
+function mmBuild(p: player) :: text:
+	set {_w} to {_p}.getWorld()
+	set {_wn} to {_w}.getName()
+	set {_slot} to {mmcfg::%{_wn}%::slot}
+	set {_minx} to {mmcfg::%{_wn}%::minx}
+	set {_minz} to {mmcfg::%{_wn}%::minz}
+	set {_size} to {mmcfg::%{_wn}%::size}
+	set {_lead} to mmShift(265)
+	set {_mapc} to mmChar(57600 + {_slot} - 1)
+	set {_s} to "<font:andornot:mm><white>%{_lead}%%{_mapc}%"
+	set {_c} to 65
+	if gInGame({_p}) is true:
+		if {-gteams} > 0:
+			set {_my} to gTeamOf({_p})
+			set {_hex} to mmTeamHex(gTeamIndex({_my}))
+			loop {-gplist::*}:
+				set {_o} to loop-value
+				if {_o} is not {_p}:
+					if gAlive({_o}) is true:
+						if {_o}.getWorld().getName() is {_wn}:
+							if gTeamOf({_o}) is {_my}:
+								set {_ox} to x-coordinate of {_o}
+								set {_oz} to z-coordinate of {_o}
+								set {_px} to mmPx({_ox}, {_minx}, {_size})
+								set {_pz} to mmPx({_oz}, {_minz}, {_size})
+								set {_sh} to mmShift({_px} - 1 - {_c})
+								set {_dc} to mmChar(57856 + {_pz})
+								set {_s} to "%{_s}%<%{_hex}%>%{_sh}%%{_dc}%"
+								set {_c} to {_px} + 3
+	set {_mx} to x-coordinate of {_p}
+	set {_mz} to z-coordinate of {_p}
+	set {_qx} to mmPx({_mx}, {_minx}, {_size})
+	set {_qz} to mmPx({_mz}, {_minz}, {_size})
+	set {_sh} to mmShift({_qx} - 2 - {_c})
+	set {_mc} to mmChar(58112 + {_qz})
+	set {_s} to "%{_s}%<white>%{_sh}%%{_mc}%"
+	set {_c} to {_qx} + 4
+	set {_back} to mmShift(65 - {_c})
+	return "%{_s}%%{_back}%"
+
+function mmHide(p: player):
+	set {_b} to {-mmbar::%uuid of {_p}%}
+	if {_b} is set:
+		{_p}.hideBossBar({_b})
+	delete {-mmbar::%uuid of {_p}%}
+
+function mmUpdate(p: player):
+	if mmWants({_p}) is not true:
+		mmHide({_p})
+		stop
+	set {_str} to mmBuild({_p})
+	set {_comp} to MiniMessage.miniMessage().deserialize({_str})
+	set {_b} to {-mmbar::%uuid of {_p}%}
+	if {_b} is not set:
+		set {_b} to AdvBar.bossBar({_comp}, 1, AdvBarColor.WHITE, AdvBarOverlay.PROGRESS)
+		set {-mmbar::%uuid of {_p}%} to {_b}
+		{_p}.showBossBar({_b})
+	else:
+		{_b}.name({_comp})
+
+every 3 ticks:
+	loop all players:
+		set {_pl} to loop-player
+		mmUpdate({_pl})
+
+on PlayerResourcePackStatusEvent:
+	set {_st} to event.getStatus().name()
+	set {_p} to event.getPlayer()
+	if {_st} is "SUCCESSFULLY_LOADED":
+		set {-mmpack::%uuid of {_p}%} to true
+	else if {_st} is "DECLINED" or "FAILED_DOWNLOAD" or "INVALID_URL" or "FAILED_RELOAD" or "DISCARDED":
+		delete {-mmpack::%uuid of {_p}%}
+
+on quit:
+	delete {-mmpack::%uuid of player%}
+	delete {-mmbar::%uuid of player%}
+	delete {-mmtest::%uuid of player%}
+
+# 스크립트를 다시 불러오면 떠 있던 보스바를 걷어낸다(RAM 변수는 리로드해도 남는다)
+on load:
+	loop all players:
+		set {_pl} to loop-player
+		set {_b} to {-mmbar::%uuid of {_pl}%}
+		if {_b} is set:
+			{_pl}.hideBossBar({_b})
+		delete {-mmbar::%uuid of {_pl}%}
+
+# 지금 서 있는 곳을 중심으로 size 칸 정사각형을 위에서 본 64x64 이미지로 저장한다(블록 지도 색 + 북쪽 이웃과의 높이 차 음영).
+function mmBake(p: player, size: number, slot: number):
+	set {_w} to {_p}.getWorld()
+	set {_wn} to {_w}.getName()
+	set {_minx} to floor(x-coordinate of {_p} - {_size} / 2)
+	set {_minz} to floor(z-coordinate of {_p} - {_size} / 2)
+	set {_top} to floor(y-coordinate of {_p}) + 24
+	set {_maxh} to {_w}.getMaxHeight() - 1
+	if {_top} > {_maxh}:
+		set {_top} to {_maxh}
+	set {_minh} to {_w}.getMinHeight()
+	set {_img} to new BufferedImage(64, 64, 2)
+	set {_step} to {_size} / 64
+	set {_j} to 0
+	while {_j} < 64:
+		set {_i} to 0
+		while {_i} < 64:
+			set {_bx} to floor({_minx} + ({_i} + 0.5) * {_step})
+			set {_bz} to floor({_minz} + ({_j} + 0.5) * {_step})
+			set {_y} to {_w}.getHighestBlockYAt({_bx}, {_bz})
+			if {_y} > {_top}:
+				set {_y} to {_top}
+			set {_found} to false
+			while {_found} is false:
+				if {_y} < {_minh}:
+					exit loop
+				if {_y} < {_top} - 90:
+					exit loop
+				set {_b} to {_w}.getBlockAt({_bx}, {_y}, {_bz})
+				set {_col} to {_b}.getBlockData().getMapColor()
+				set {_r} to {_col}.getRed()
+				set {_g} to {_col}.getGreen()
+				set {_bl} to {_col}.getBlue()
+				if {_r} + {_g} + {_bl} > 0:
+					set {_found} to true
+				else:
+					subtract 1 from {_y}
+			if {_found} is true:
+				set {_f} to 1
+				if {_prev::%{_i}%} is set:
+					if {_y} > {_prev::%{_i}%}:
+						set {_f} to 1.12
+					else if {_y} < {_prev::%{_i}%}:
+						set {_f} to 0.8
+				set {_prev::%{_i}%} to {_y}
+				set {_r} to min(255, floor({_r} * {_f}))
+				set {_g} to min(255, floor({_g} * {_f}))
+				set {_bl} to min(255, floor({_bl} * {_f}))
+				set {_argb} to {_r} * 65536 + {_g} * 256 + {_bl} - 16777216
+				{_img}.setRGB({_i}, {_j}, {_argb})
+			add 1 to {_i}
+		add 1 to {_j}
+	set {_file} to new File("plugins/Skript/minimap/map%{_slot}%.png")
+	{_file}.getParentFile().mkdirs()
+	ImageIO.write({_img}, "png", {_file})
+	delete {mmcfg::owner::%{_slot}%}
+	set {mmcfg::owner::%{_slot}%} to {_wn}
+	set {mmcfg::%{_wn}%::slot} to {_slot}
+	set {mmcfg::%{_wn}%::minx} to {_minx}
+	set {mmcfg::%{_wn}%::minz} to {_minz}
+	set {mmcfg::%{_wn}%::size} to {_size}
+
+command /minimap <text> [<number>] [<number>]:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
+	description: 미니맵 관리 (op 전용)
+	usage: /minimap bake [범위] [슬롯] | info | clear | test
+	executable by: players
+	trigger:
+		set {_wn} to player's world.getName()
+		if arg-1 is "bake":
+			set {_size} to 128
+			if arg-2 is set:
+				set {_size} to arg-2
+			if {_size} < 16 or {_size} > 2048:
+				send "&c범위는 16~2048 칸입니다."
+				stop
+			set {_slot} to {mmcfg::%{_wn}%::slot}
+			if arg-3 is set:
+				set {_slot} to arg-3
+			if {_slot} is not set:
+				set {_k} to 1
+				while {_k} <= 4:
+					if {mmcfg::owner::%{_k}%} is not set:
+						set {_slot} to {_k}
+						exit loop
+					add 1 to {_k}
+			if {_slot} is not set:
+				send "&c빈 슬롯이 없습니다. 슬롯 번호(1~4)를 직접 지정해 덮어쓰세요."
+				stop
+			if {_slot} < 1 or {_slot} > 4:
+				send "&c슬롯은 1~4 입니다."
+				stop
+			if {mmcfg::owner::%{_slot}%} is set:
+				if {mmcfg::owner::%{_slot}%} is not {_wn}:
+					send "&c슬롯 %{_slot}% 은(는) 월드 %{mmcfg::owner::%{_slot}%}% 이(가) 쓰고 있습니다. 먼저 그 월드에서 /minimap clear 를 하세요."
+					stop
+			send "&7지도를 만드는 중입니다. 잠시 멈출 수 있습니다."
+			mmBake(player, {_size}, {_slot})
+			send "&a저장했습니다. 슬롯 %{_slot}%, 중심 현재 위치, 범위 %{_size}% 칸. 서버의 plugins/Skript/minimap/map%{_slot}%.png 를 팩에 넣어 주세요."
+		else if arg-1 is "info":
+			set {_k} to 1
+			while {_k} <= 4:
+				set {_o} to {mmcfg::owner::%{_k}%}
+				if {_o} is not set:
+					set {_o} to "없음"
+				send "&7슬롯 %{_k}%: %{_o}%"
+				add 1 to {_k}
+			if {mmcfg::%{_wn}%::slot} is not set:
+				send "&7이 월드: 지도 없음"
+			else:
+				send "&7이 월드: 슬롯 %{mmcfg::%{_wn}%::slot}%, 시작 %{mmcfg::%{_wn}%::minx}%, %{mmcfg::%{_wn}%::minz}%, 범위 %{mmcfg::%{_wn}%::size}%"
+		else if arg-1 is "clear":
+			set {_s} to {mmcfg::%{_wn}%::slot}
+			if {_s} is set:
+				delete {mmcfg::owner::%{_s}%}
+			delete {mmcfg::%{_wn}%::*}
+			send "&a이 월드의 미니맵 설정을 지웠습니다."
+		else if arg-1 is "test":
+			if {-mmtest::%uuid of player%} is true:
+				delete {-mmtest::%uuid of player%}
+				send "&7미니맵 테스트를 껐습니다."
+			else:
+				set {-mmtest::%uuid of player%} to true
+				send "&7미니맵 테스트를 켰습니다. 팩 적용(적용 완료)과 이 월드의 지도 설정이 있으면 내 위치가 표시됩니다."
+		else:
+			send "&c/minimap bake [범위] [슬롯] | info | clear | test"

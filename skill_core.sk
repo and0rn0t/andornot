@@ -75,6 +75,7 @@
 #   {gamecfg::unlock}  관리자 설정 잠금 해제 표시(저장 변수, true 면 잠금 꺼짐, 없으면 잠금 켜짐)  admin
 #   {gamecfg::worldlist::이름} 서버/스크립트를 불러올 때 자동으로 불러올 월드(저장 변수)  world
 #   {gamecfg::target::모드}   목표 스코어/승점(저장 변수, 대시 없음)                  gamesetup(gcTarget)
+#   {mmcfg::월드::slot|minx|minz|size}, {mmcfg::owner::슬롯} 미니맵 지도 슬롯/범위(저장 변수), {-mmbar::uuid}/{-mmpack::uuid}/{-mmtest::uuid} 보스바/팩 적용/테스트(RAM)  minimap(리소스 팩은 resourcepack/)
 #   {-ingame}                게임 진행 여부(true 면 무기고 해제). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
 #   {itemorder::*}           아이템 GUI 표시 순서(저장 변수, 대시 없음)           items
 #   {loadout::uuid::1~15} {loadoutset::uuid}  플레이어별 아이템 구성 id(3세트 x 5칸, 사용 중 세트 번호, 저장 변수, 대시 없음)       items
