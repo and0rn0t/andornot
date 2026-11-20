@@ -11,7 +11,7 @@
 # 미검증 문법: 6줄 GUI 와 클릭 처리는 items.sk 와 같은 방식(event.getRawSlot() 등).
 
 # ===== 설정 잠금(덮어쓰기 방지) =====
-# 켜져 있으면(기본값) 이미 저장된 로비 위치, 결과 무대 위치(월드별), 리스폰 지점(월드별), 시작 카메라 위치(월드별), 훈련장 위치와, 이미 설치된 훈련장/로비 NPC 를 버튼으로 덮어쓰거나 다시 설치/치우지 못한다.
+# 켜져 있으면(기본값) 이미 저장된 로비 위치, 결과 무대 위치(월드별), 리스폰 지점(월드별), 시작 카메라 위치(월드별), 월드보더(월드별), 훈련장 위치와, 이미 설치된 훈련장/로비 NPC 를 버튼으로 덮어쓰거나 다시 설치/치우지 못한다.
 # 처음 저장하는 것은 잠겨 있어도 된다. 바꾸려면 "설정 잠금" 버튼으로 끈 뒤 바꾸고 다시 켠다. 저장 변수 {gamecfg::unlock}(true 면 잠금 꺼짐, 없으면 켜짐).
 # 잠그지 않는 것: 맵 선택, 게임 설정(팀 수/모드/랜덤 아이템), 아이템 순서, 결과 무대 치우기(위치 설정이 아니라 남은 더미 청소).
 function adminLockOn() :: boolean:
@@ -39,7 +39,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
+	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "setborder", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -114,6 +114,10 @@ function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "shelfdel":
 		set {_i} to red wool named "&c매치 독서대 해제"
 		set lore of {_i} to "&7바라보는 독서대의 등록을 해제해요", "", "&e▶ 독서대를 보고 클릭"
+		return {_i}
+	if {_id} is "setborder":
+		set {_i} to barrier named "&f월드보더 설정"
+		set lore of {_i} to "&7서 있는 월드에 보이지 않는 원형 보더를 만들어요", "&7(서 있는 자리가 중심, 반경은 채팅으로 입력)", "&7(경계 밖으로는 못 나가고, 크리에이티브는 제외)", "&7(서 있는 월드마다 따로 저장돼요)", "", "&e▶ 클릭해서 설정"
 		return {_i}
 	if {_id} is "lock":
 		if adminLockOn() is true:
@@ -190,6 +194,9 @@ function adminAction(p: player, id: text):
 				stop
 		gcSaveLoc(gcStartCamKey({_cw}), location of {_p})
 		send "&a'%{_cw}%' 월드의 시작 카메라 위치를 저장했습니다. 게임 시작 카운트다운 때 모두 이 시점에서 관전합니다." to {_p}
+	else if {_id} is "setborder":
+		close {_p}'s inventory
+		borderBegin({_p})
 	else if {_id} is "clearstage":
 		close {_p}'s inventory
 		gfClearStage()

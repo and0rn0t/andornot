@@ -25,6 +25,7 @@ import:
 	org.bukkit.ChatColor
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	org.bukkit.event.player.PlayerMoveEvent
+	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
 
 # 미검증: attacker 가 투사체/커스텀 피해 출처의 주인으로 잡히는지, shuffled/sorted 문법, text display 승차(statustag.sk 와 같은 방식).
 
@@ -1126,6 +1127,24 @@ on PlayerMoveEvent:
 	set {_t} to event.getTo()
 	if distance between {_f} and {_t} > 0.0001:
 		event.setCancelled(true)
+		stop
+	# 시작 연출(팀 추첨/카운트다운) 중에는 시선도 못 돌린다(시작 카메라가 없는 월드는 카메라 고정이 없어서 여기서 막는다)
+	if {-gstarting} is true:
+		if {_f}.getYaw() is not {_t}.getYaw():
+			event.setCancelled(true)
+		else if {_f}.getPitch() is not {_t}.getPitch():
+			event.setCancelled(true)
+
+# 시작 연출 중 카메라(관전 대상)에서 내려오는 것을 막는다(웅크리기 등). 미검증: PlayerStopSpectatingEntityEvent 가 취소되는지.
+on PlayerStopSpectatingEntityEvent:
+	if {-gstarting} is true:
+		if {-gplist::*} contains event.getPlayer():
+			event.setCancelled(true)
+
+# 혹시 풀려도 매 틱 다시 카메라에 붙인다(웅크리기, 연출 단계 사이 대기 중에도)
+every tick:
+	if {-gstarting} is true:
+		gStartKeep()
 
 on quit:
 	if {-ingame} is true:

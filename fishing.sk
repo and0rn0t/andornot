@@ -70,6 +70,9 @@ on fishing line cast:
 	if isStunned(player) is true:
 		cancel event
 		stop
+	if {-gdropon::%player's uuid%} is true:
+		cancel event
+		stop
 	set {_id} to uuid of player
 	if {-hookcd::%{_id}%} is set:
 		if {-hookcd::%{_id}%} > now:
