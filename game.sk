@@ -452,7 +452,7 @@ function gameSpawn(p: player):
 
 # ===== 상공 낙하(겉날개) =====
 # 리스폰/초기 위치는 그 지점 위 Y=170 높이(월드 높이 제한까지)에서 시작하고, 겉날개를 입혀 활강시킨다. 땅에 닿으면 겉날개를 벗기고 원래 가슴 방어구를 돌려준다.
-# 시작할 때 느린 낙하 2초를 건다. 낙하 중에는 낙하/벽 충돌 피해만 받지 않는다(착지 때 죽지 않게). 변수(RAM): {-gdropon::uuid}(낙하 중), {-gdropchest::uuid}(원래 가슴 방어구), {-gdropgen::uuid}(낙하 세대, 새 낙하/종료 때 올려서 이전 감시를 끝냄), {-gdropflag::uuid}(kcRespawnLoc 가 상공 위치를 돌려줬다는 표시)
+# 시작할 때 느린 낙하 1초를 건다(포션 단계는 1이 최소라 세기는 못 낮추고 시간만 줄인다). 낙하 중에는 낙하/벽 충돌 피해만 받지 않는다(착지 때 죽지 않게). 변수(RAM): {-gdropon::uuid}(낙하 중), {-gdropchest::uuid}(원래 가슴 방어구), {-gdropgen::uuid}(낙하 세대, 새 낙하/종료 때 올려서 이전 감시를 끝냄), {-gdropflag::uuid}(kcRespawnLoc 가 상공 위치를 돌려줬다는 표시)
 # 미검증: chestplate 설정/삭제, setGliding, isOnGround, 낙하/벽 충돌 피해 원인 이름(FALL, FLY_INTO_WALL, 이벤트의 getCause 로 비교).
 function gDropLoc(l: location) :: location:
 	set {_w} to {_l}.getWorld()
@@ -491,7 +491,7 @@ function gDropStart(p: player):
 	set {_gen} to {-gdropgen::%{_id}%}
 	set chestplate of {_p} to elytra named "&f낙하용 겉날개"
 	{_p}.setGliding(true)
-	apply slow falling potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 2 seconds replacing the existing effect
+	apply slow falling potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 1 seconds replacing the existing effect
 	wait 1 second
 	set {_t} to 0
 	while {_t} < 400:
@@ -702,9 +702,8 @@ function gameStart(by: text):
 	gStartIntro({-gstartgen})
 
 # ===== 시작 연출 =====
-# 1) 팀전이면 팀 추첨: 타이틀에 팀 이름이 슬롯머신처럼 돌다가(게임 설정에 있는 팀들만) 각자의 팀에서 "찰칵" 소리와 함께 멈춘다. 5초 대기.
-# 2) 모든 참가자를 그 월드의 시작 카메라 위치(관리자 메뉴 "시작 카메라 위치 지정", 없으면 제자리)로 보내 관전 상태로 고정한다.
-# 3) 타이틀 "게임 시작까지" + 5~1 카운트다운(시계 소리) 뒤 gStartFinish 가 실제로 게임을 시작한다.
+# 1) 모든 참가자를 그 월드의 시작 카메라로 보내 관전 상태로 시점까지 고정(카메라 엔티티를 관전 대상으로 건다). 2) 팀전이면 그 카메라에서 팀 추첨: 타이틀에 팀 이름이 슬롯머신처럼 돌다가(게임 설정에 있는 팀들만) 각자의 팀에서 "찰칵" 소리와 함께 멈춘다. 5초 대기.
+# (시작 카메라는 관리자 메뉴 "시작 카메라 위치 지정", 없으면 제자리/시점 고정 없음) 3) 타이틀 "게임 시작까지" + 5~1 카운트다운(시계 소리) 뒤 gStartFinish 가 실제로 게임을 시작한다.
 # 강제 종료/정리(gameCleanup)가 {-gstartgen} 을 올리면 각 대기 뒤에 이 연출은 멈춘다. 변수(RAM): {-gstarting}(시작 연출 중), {-gstartgen}(세대), {-gstartprev::uuid}(카메라로 가기 전 위치, 리스폰 위치가 없을 때 되돌려 보낸다).
 # 미검증: 타이틀 연속 갱신 체감, 카메라 위치에서 관전 고정(이동만 막고 시선은 자유).
 function gcStartCamKey(wn: text) :: text:
@@ -717,7 +716,48 @@ function gStartAbort(sg: number) :: boolean:
 		return true
 	return false
 
+# 시작 카메라 시점 고정: 카메라 엔티티({-gstartcam})를 관전 대상으로 걸어 두면 시점(위치와 방향)을 못 바꾼다. 웅크리기 등으로 풀려도 단계마다 다시 건다.
+function gStartKeep():
+	if {-gstartcam} is not set:
+		stop
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			set {_cur} to {_pl}.getSpectatorTarget()
+			if {_cur} is not {-gstartcam}:
+				{_pl}.setSpectatorTarget({-gstartcam})
+
+function gStartCamRelease():
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			{_pl}.setSpectatorTarget(null)
+	if {-gstartcam} is set:
+		{-gstartcam}.remove()
+	delete {-gstartcam}
+
 function gStartIntro(sg: number):
+	# 시작 카메라: 모두 관전 상태로 이동해 시점을 고정한다(카메라 위치가 없는 월드는 제자리, 시점 고정 없음)
+	set {_cam} to gcLoadLoc(gcStartCamKey({-gworld}))
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
+			set gamemode of {_pl} to spectator
+			if {_cam} is set:
+				tpSafe({_pl}, {_cam})
+	if {_cam} is set:
+		set {_cw} to {_cam}.getWorld()
+		set {_ce} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
+		{_ce}.setGravity(false)
+		{_ce}.setInvulnerable(true)
+		{_ce}.setSilent(true)
+		set {-gstartcam} to {_ce}
+		wait 2 ticks
+		if gStartAbort({_sg}) is true:
+			stop
+		gStartKeep()
+	# 팀 추첨(팀전만): 시작 카메라에서 한다
 	if {-gteams} > 0:
 		set {_tl::*} to {-gteamlist::*}
 		set {_n} to size of {_tl::*}
@@ -727,6 +767,7 @@ function gStartIntro(sg: number):
 		while {_step} < {_total}:
 			if gStartAbort({_sg}) is true:
 				stop
+			gStartKeep()
 			add 1 to {_step}
 			set {_rn} to random integer between 1 and {_n}
 			if {_n} > 1:
@@ -755,19 +796,11 @@ function gStartIntro(sg: number):
 		wait 5 seconds
 		if gStartAbort({_sg}) is true:
 			stop
-	# 시작 카메라: 모두 관전 상태로 이동해 고정(이동 잠금은 아래 PlayerMoveEvent)
-	set {_cam} to gcLoadLoc(gcStartCamKey({-gworld}))
-	loop {-gplist::*}:
-		set {_pl} to loop-value
-		if {_pl} is online:
-			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
-			set gamemode of {_pl} to spectator
-			if {_cam} is set:
-				tpSafe({_pl}, {_cam})
 	set {_c} to 5
 	while {_c} > 0:
 		if gStartAbort({_sg}) is true:
 			stop
+		gStartKeep()
 		loop {-gplist::*}:
 			set {_pl} to loop-value
 			if {_pl} is online:
@@ -782,6 +815,7 @@ function gStartIntro(sg: number):
 # 카운트다운이 끝나면 실제 게임 시작: 인벤토리 초기화, 랜덤 아이템, 초기 리스폰 위치(상공 낙하), 시작 타이틀.
 function gStartFinish(sg: number):
 	delete {-gstarting}
+	gStartCamRelease()
 	# 인벤토리 완전 초기화: 메인 인벤토리, 핫바, 오프핸드, 방어구를 전부 비운다(로비에서 오프핸드 등을 이용해 구성보다 많이 가져온 아이템을 없앤다). 구성 아이템은 아래 gameRespawn -> loadoutGive 가 새로 지급한다.
 	loop {-gplist::*}:
 		loop-value.getInventory().clear()
@@ -814,6 +848,7 @@ function gameCleanup():
 	set {-ingame} to false
 	delete {-gstarting}
 	add 1 to {-gstartgen}
+	gStartCamRelease()
 	delete {-gstartprev::*}
 	delete {-gover}
 	delete {-groundend}
@@ -1055,6 +1090,9 @@ on quit:
 
 # 스크립트를 다시 불러오면 진행 중이던 게임은 끝난 것으로 본다(타이머가 사라져서). 남은 별 표시도 지운다.
 on load:
+	if {-gstartcam} is set:
+		{-gstartcam}.remove()
+	delete {-gstartcam}
 	delete {-gstarting}
 	delete {-ingame}
 	delete {-gover}
