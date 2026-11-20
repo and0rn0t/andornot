@@ -238,7 +238,10 @@ command /minimap <text> [<number>] [<number>]:
 			set {_size} to 128
 			if arg-2 is set:
 				set {_size} to arg-2
-			if {_size} < 16 or {_size} > 2048:
+			if {_size} < 16:
+				send "&c범위는 16~2048 칸입니다."
+				stop
+			if {_size} > 2048:
 				send "&c범위는 16~2048 칸입니다."
 				stop
 			set {_slot} to {mmcfg::%{_wn}%::slot}
@@ -254,7 +257,10 @@ command /minimap <text> [<number>] [<number>]:
 			if {_slot} is not set:
 				send "&c빈 슬롯이 없습니다. 슬롯 번호(1~4)를 직접 지정해 덮어쓰세요."
 				stop
-			if {_slot} < 1 or {_slot} > 4:
+			if {_slot} < 1:
+				send "&c슬롯은 1~4 입니다."
+				stop
+			if {_slot} > 4:
 				send "&c슬롯은 1~4 입니다."
 				stop
 			if {mmcfg::owner::%{_slot}%} is set:
