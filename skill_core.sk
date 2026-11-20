@@ -143,6 +143,7 @@
 #   - blockguard.sk : 블럭 상호작용 차단(부수기/설치/블럭 사용/양동이, 크리에이티브 관리자만 예외)
 #   - matchhistory.sk: 지난 매치 기록(종료 때 결과창 JSON 저장, 관리자 메뉴로 등록한 독서대 우클릭 -> 4줄 GUI, 작성된 책 클릭 -> dialog 결과창 + 한 줄 리뷰, 번호 MATCH 001 형식)
 #   - gameend.sk    : 게임 종료 연출(마지막 킬 연출을 모두 관전 -> 승리 팀 알림 -> 승리 팀 더미 + 채팅 결과 발표 + 투표 /potm -> 15초 뒤 로비).  관리자 명령 /gamestop(게임/연출 중단), 결과는 승리 팀 더미 뒤 텍스트 디스플레이로 표시(로비 위치/월드별 결과 무대 위치는 관리자 메뉴 버튼으로 저장. 종료 연출은 게임이 진행된 월드의 무대에서 하고 POTM 투표까지 거기서 끝낸 뒤, 로비 월드 무대에도 더미/결과를 놓는다. 무대는 다음 게임 시작 전까지 유지), POTM 투표는 승리 팀 더미 우클릭(득표는 별 개수)
+#   - minimap.sk    : 팀원 전용 미니맵(리소스 팩 + 보스바 글자). 자세한 구조/작업 절차/함정은 이 파일 맨 아래 "11. 미니맵" 참고. 명령 /minimap(op). 팩 원본은 resourcepack/ 폴더
 #   - gametab.sk    : 게임 중 탭리스트(헤더에 팀 스코어와 K D A DMG ITEM, 플레이어 줄 전적 + 구성 아이템 아이콘 전부(로비 탭리스트와 같음), 팀 순서 정렬). 칸 너비는 gtNameW 등 한 곳에서 조절
 #   - game.sk       : 게임 진행(시작/종료, 팀 배정, 전적 K/D/A/피해, 바운티, 섬멸전, 승리 판정). 맵 연결 자리는 gameSpawn(). 기획은 9번 아래 10번
 #   - killlog_test.sk : 킬로그 테스트용(op 가 몹을 죽이면 킬로그 형식으로 표시). 테스트가 끝나면 지워도 됨
@@ -297,6 +298,31 @@
 #     채팅으로 결과 발표(팀 스코어, 플레이어 KDA, 가한 피해, 사용한 아이템). 결과의 플레이어 닉네임 옆 화살표를 눌러 Player Of The Match 투표(본인 투표 불가).
 #     결과 발표는 채팅 상단에 고정되고 아래 몇 줄은 평소처럼 채팅이 올라온다. 15초 뒤 게임 완전 종료, 로비로 이동.
 #   - 게임 중 탭리스트: 상단에 팀 스코어(팀전), 그 아래 줄에 K D A DMG ITEM 열 제목. 플레이어 줄은 (스킨 아이콘)이름 킬 / 데스 / 어시스트 / 가한 피해 / 사용 중인 아이템 아이콘, 팀 순서대로 정렬.
+#
+# 11. 미니맵 (minimap.sk + resourcepack/, 2026-11, 사용자 요청: 리소스 팩 기반, 팀원만 표시)
+#   구현 상태: 표시는 서버에서 확인됨(로비 /minimap test 로 지도와 내 마름모가 뜸). 팀원 점(팀전 게임 중)과 게임 월드 지도는 아직 실전 검증 전.
+#   [원리] 화면 구석 고정(셰이더) 대신, 흰색 보스바(Adventure BossBar) 한 줄의 제목을 커스텀 폰트 andornot:mm 으로 그린다.
+#     - 폰트(resourcepack/pack/assets/andornot/font/mm.json, gen_pack.py 가 생성): 지도 글자 E100~E103(슬롯 1~4), 점 글자 E200~E23F(지도 행 0~63마다 ascent 가 다름),
+#       내 표시 글자 E300~E33F, 가로 이동 공백 E000~E008(+1,+2,+4..+256)과 E010~E018(음수). 점의 가로 위치는 공백 글자 조합(mmShift, 이진 분해)으로 맞춘다.
+#     - 보스바 글자는 화면 가운데 정렬이라 문자열 앞에 공백 265 를 붙여 지도가 가운데에서 오른쪽 100 칸(GUI 픽셀)에 오게 하고, 끝에서 커서를 지도 폭 65 로 되돌려 총 너비를 고정한다.
+#     - 지도 표시 크기는 64 GUI 픽셀(gen_pack.py 의 MAP_PX, minimap.sk 의 mmPx/mmBuild 의 64·65·265). 크기를 바꾸려면 두 곳의 상수와 점 좌표 계산을 같이 바꿔야 한다.
+#     - 지도 이미지 해상도는 256x256(TEX_PX, mmBake 의 {_tex})이고 표시만 64 칸으로 줄여 보여 준다. 두 값은 서로 독립.
+#     - 흰색 보스바의 기본 막대 그림은 팩에서 투명으로 덮어서(textures/gui/sprites/boss_bar/white_*.png) 글자만 보인다. 다른 보스바(효과 표시 등, 빨강/초록)와 쌓이면 지도가 19 픽셀씩 밀린다.
+#   [표시 조건] mmWants: 팩 적용 완료({-mmpack}) + 이 월드에 지도 있음 + (/minimap test 중이거나, 게임 중 팀전 살아 있는 참가자). 팀원은 같은 월드의 같은 팀 생존자만(적 안 보임), 나는 흰 마름모. 북쪽이 위.
+#   [지도 만들기] 게임 월드의 중심에서 /minimap bake [범위] [슬롯] -> plugins/Skript/minimap/map<슬롯>.png (256x256, 위에서 본 블록 지도 색 + 북쪽 이웃과 높이 차 음영)와 {mmcfg::월드::slot|minx|minz|size} 저장.
+#     월드마다 한 번씩 필요. 슬롯은 4개(월드 4개까지). 5번째 월드부터는 gen_pack.py 의 SLOTS 와 minimap.sk 의 슬롯 검사(4)를 늘려야 한다. 지붕 있는 맵은 지붕이 찍힐 수 있음(player y+24 아래에서 위로 내려 스캔).
+#   [팩 갱신 절차(AI가 한다)] 1) 사용자가 보낸 mapN.png 를 resourcepack/pack/assets/andornot/textures/font/mapN.png 로 복사(없으면 gen_pack.py 가 회색 격자 자리표시를 만든다)
+#     2) python3 resourcepack/gen_pack.py 실행 -> andornot-pack.zip 재생성 + sha1 출력(같은 입력이면 같은 해시) 3) 커밋/푸시 4) 사용자에게 server.properties 값을 안내:
+#     resource-pack=https://raw.githubusercontent.com/and0rn0t/andornot/<커밋 전체 해시>/resourcepack/andornot-pack.zip , resource-pack-sha1=<sha1>. 반드시 "커밋 해시 고정 URL"을 쓴다
+#     (main 주소는 raw.githubusercontent.com 이 약 5분 캐시해서 방금 올린 zip 대신 옛 zip 을 주면 해시 불일치로 클라이언트 다운로드가 실패한다). 서버 재시작 필요.
+#   [함정 — 실제로 겪은 것]
+#     - Skript 는 문자열 리터럴 속 <white>, <red> 같은 태그를 옛 색 코드(§)로 바꿔 넣는다 -> MiniMessage 가 "Legacy formatting codes" 로 거부. 리터럴에는 <color:white> 처럼 Skript 태그가 아닌 형태를 쓰고,
+#       실행 중 변수로 만든 "<#ff5555>" 는 Skript 가 건드리지 않아 괜찮다.
+#     - Skript 는 "a < 1 or a > 4" 처럼 부등호 두 개를 or 로 묶은 조건을 이해 못 한다 -> if 두 개로 분리.
+#     - %...% 안에 따옴표를 쓸 수 없다(기본값 ? "없음" 불가) -> 변수에 먼저 담는다.
+#     - pack.mcmeta 는 1.21.11 포맷 번호를 확인하지 못해 옛 형식(pack_format 34 + supported_formats)과 새 형식(min_format/max_format)을 모두, 넓은 범위(34~999)로 적었다.
+#   [검증 안 된 부분] 팀원 점 위치/색, 게임 월드 지도, 팩 상태 이벤트(PlayerResourcePackStatusEvent) 기반 {-mmpack} 자동 설정(/minimap test 는 강제로 켠다), 월드 5개 이상.
+#   [명령] /minimap bake [범위 16~2048, 기본 128] [슬롯 1~4] | info | clear(이 월드 설정 삭제) | test(내 미니맵 강제 표시 토글, op 전용)
 # ==============================================================================
 
 # --- 스킬 공용 함수 ---

@@ -16,3 +16,6 @@ PC에는 저장소를 `git clone` 해 둔 폴더가 있고, 그 폴더 안의 `s
 - 직접 실행(더블클릭)하면 결과를 보여주고 멈춰요. 작업 스케줄러에서는 `/quiet`를 붙여 실행해요:
   `schtasks /create /sc minute /mo 1 /tn SkriptSync /tr "powershell -NoProfile -WindowStyle Hidden -Command \"& 'C:\skript_repo\sync_local.bat' /quiet\"" /f`
 - `sync_to_server.bat`은 예전 버전이라 쓰지 않아요(저장소 파일은 PC에서 수정된 상태라 그대로 둠).
+
+## 미니맵 리소스 팩
+`resourcepack/` 폴더가 서버 리소스 팩 원본이에요(`gen_pack.py`로 `andornot-pack.zip` 생성). 구조와 갱신 절차는 `skill_core.sk` 맨 아래 "11. 미니맵"을 보세요.
