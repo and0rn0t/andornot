@@ -1,66 +1,144 @@
-# [nick.sk] op 전용 가짜 신분: 이름과 스킨을 다른 사람 것으로 바꾼다(머리 위 이름, 탭리스트, 스킨, 채팅 표시 이름).
+# [nick.sk] op 전용 영구 가짜 신분: 접속할 때 서버가 프로필(이름 + UUID + 스킨)을 통째로 바꿔서, 그 사람은 앞으로 항상 가짜 신분으로만 접속한다.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수(RAM): {-fakeorig::uuid}(바꾸기 전 원래 프로필. 있으면 지금 가짜 신분 중)
-# 명령(op 전용): /nick <이름> [스킨 계정] 가짜 신분 적용(스킨 계정을 안 쓰면 이름과 같은 계정의 스킨, 그 계정이 없으면 기본 스킨) / /nick off 원래대로.
-#   이름은 공백 없이 16글자까지. 스킨은 Mojang 에서 가져오므로(서버 인터넷 필요) 그 순간 조금 멈출 수 있다.
-# 동작: Paper 의 Player#setPlayerProfile 로 프로필(이름 + 스킨 속성)을 바꾼다. uuid 는 그대로 두기 때문에 스크립트 변수({-gk::uuid} 등)는 안 깨진다.
-#   바뀐 뒤에는 스크립트가 쓰는 name of player 도 가짜 이름이 되어 킬로그/탭리스트/결과창/매치 기록/더미 이름표에 전부 가짜 이름이 나온다(이미 기록된 매치 기록은 그대로).
-#   접속을 끊으면 풀린다(다시 접속하면 원래 신분). 가짜 이름으로 명령어 대상 지정(/tp 이름 등)은 서버가 접속 때 이름으로 찾아서 안 될 수 있다(진짜 이름은 됨).
-# 미검증: Player#setPlayerProfile 로 이름/스킨이 바뀌는지, PlayerProfile#complete(true) 로 스킨 가져오기, setProperties, 본인 화면 갱신, name of player 가 가짜 이름으로 나오는지.
+# 사용(op 전용): /nick <이름> [스킨 계정] 로 신청 -> 경고가 나오면 /nick confirm 으로 확정. 확정하면 곧바로 접속이 끊기고, 다시 접속하면 가짜 신분이다. 한 번 정해지면 바꾸거나 되돌릴 수 없다(명령 없음).
+#   이름은 영문/숫자/_ 3~16자. 이 서버에 한 번이라도 들어온 적이 있는 사람 이름과 이미 쓰인 가짜 이름은 못 쓴다(다른 사람 행세 방지). 스킨 계정은 선택(없으면 기본 스킨). 스킨 계정도 이 서버 사람 이름이면 못 쓴다.
+# 동작: 저장된 매핑({nick::map::진짜uuid}) 이 있으면 AsyncPlayerPreLoginEvent 에서 Paper 의 setPlayerProfile 로 가짜 프로필(새 UUID, 가짜 이름, 저장해 둔 스킨 속성)로 바꾼다.
+#   UUID 가 새 것이라 스크립트 변수({-gk::uuid}, {rating::uuid} 등), 플레이어 데이터(인벤토리 등), 승점, 매치 기록 전부 가짜 신분의 것이 새로 시작된다(진짜 신분 데이터는 이어지지 않는다).
+#   op 는 접속할 때마다 setOp(true) 로 유지한다(ops.json 은 UUID 기준이라 새 UUID 에 직접 줘야 함).
+# 숨기는 범위: 다른 플레이어에게 보이는 모든 곳(이름표, 탭, 채팅, 접속/퇴장 메시지, 킬로그, /tp 등 명령 대상)이 가짜 이름이다. 확정 직후 접속을 끊을 때의 퇴장 메시지는 숨긴다.
+#   못 숨기는 것: 서버 콘솔/로그, 서버 파일(variables.csv 의 매핑, usercache, playerdata), 서버 소유자. 확정하기 전에 다른 사람이 이미 본 진짜 이름, 같은 시각에 나가고 들어오는 타이밍으로 눈치채는 것도 막을 수 없다.
+#   프로필 교체가 안 먹혀서 진짜 신분으로 들어왔다면(매핑이 있는데 진짜 UUID 로 접속) 접속 메시지를 숨기고 바로 접속을 끊는다.
+# 저장 변수: {nick::map::진짜uuid}(가짜 이름) {nick::uuid::진짜uuid}(가짜 uuid) {nick::real::가짜uuid}(진짜 uuid, 가짜 신분인지 판별) {nick::names::소문자이름}(쓰인 가짜 이름) {nick::tex::진짜uuid::value|sig}(스킨 속성)
+# RAM 변수: {-nickpend::uuid}(확정 대기 이름) {-nickpskin::uuid}(확정 대기 스킨 계정) {-nickquiet::uuid}(퇴장 메시지 숨김)
+# 미검증: AsyncPlayerPreLoginEvent#setPlayerProfile 이 이름/UUID 까지 바꾸는지(Paper), 비동기 이벤트에서 Skript 변수 읽기, ProfileProperty 생성, PlayerProfile#complete(true) 로 스킨 가져오기,
+#   loop Bukkit.getOfflinePlayers(), PlayerJoinEvent#joinMessage(null)/PlayerQuitEvent#quitMessage(null), Player#setOp.
 
 import:
 	org.bukkit.Bukkit
+	java.util.UUID
+	com.destroystokyo.paper.profile.ProfileProperty
+	org.bukkit.event.player.AsyncPlayerPreLoginEvent
+
+# 이 서버에 들어온 적이 있는 사람 이름인지(대소문자 무시)
+function nickKnown(nm: text) :: boolean:
+	set {_l} to {_nm}.toLowerCase()
+	loop Bukkit.getOfflinePlayers():
+		set {_o} to loop-value
+		set {_on} to {_o}.getName()
+		if {_on} is set:
+			if {_on}.toLowerCase() is {_l}:
+				return true
+	return false
+
+function nickTaken(nm: text) :: boolean:
+	set {_l} to {_nm}.toLowerCase()
+	if {nick::names::%{_l}%} is set:
+		return true
+	return nickKnown({_nm})
 
 command /nick [<text>] [<text>]:
-	description: op 전용 가짜 신분 (이름/스킨)
-	usage: /nick <이름> [스킨 계정] | /nick off
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
+	description: op 전용 영구 가짜 신분
+	usage: /nick <이름> [스킨 계정] | /nick confirm
 	executable by: players
 	trigger:
+		set {_p} to player
+		set {_id} to "%uuid of {_p}%"
 		if player is not op:
 			send "&c권한이 없습니다."
 			stop
-		if arg-1 is not set:
-			send "&7사용법: /nick <이름> [스킨 계정]  /  /nick off"
+		if {nick::real::%{_id}%} is set:
+			send "&c이미 가짜 신분입니다. 한 번 정해진 신분은 바꿀 수 없습니다."
 			stop
-		set {_p} to player
-		set {_id} to "%uuid of {_p}%"
-		if arg-1 is "off":
-			if {-fakeorig::%{_id}%} is not set:
-				send "&7지금은 가짜 신분이 아닙니다."
+		if arg-1 is not set:
+			send "&7사용법: /nick <이름> [스킨 계정]  ->  /nick confirm"
+			stop
+		if arg-1 is "confirm":
+			set {_nm} to {-nickpend::%{_id}%}
+			if {_nm} is not set:
+				send "&c확정할 신청이 없습니다. 먼저 /nick <이름> 을 입력하세요."
 				stop
-			set {_orig} to {-fakeorig::%{_id}%}
-			{_p}.setPlayerProfile({_orig})
-			set {_rn} to {_orig}.getName()
-			set display name of {_p} to "%{_rn}%"
-			delete {-fakeorig::%{_id}%}
-			tabUpdate({_p})
-			send "&a원래 신분으로 돌아왔습니다."
+			if nickTaken({_nm}) is true:
+				delete {-nickpend::%{_id}%}
+				delete {-nickpskin::%{_id}%}
+				send "&c그 사이 이름 '%{_nm}%' 을(를) 쓸 수 없게 되었습니다. 다른 이름으로 다시 신청하세요."
+				stop
+			set {_fu} to UUID.randomUUID().toString()
+			set {_sk} to {-nickpskin::%{_id}%}
+			delete {nick::tex::%{_id}%::*}
+			if {_sk} is set:
+				set {_sp} to Bukkit.createProfile({_sk})
+				set {_ok} to {_sp}.complete(true)
+				if {_ok} is true:
+					loop {_sp}.getProperties():
+						set {_pr} to loop-value
+						if {_pr}.getName() is "textures":
+							set {nick::tex::%{_id}%::value} to {_pr}.getValue()
+							set {nick::tex::%{_id}%::sig} to {_pr}.getSignature()
+				else:
+					send "&e스킨 계정을 찾지 못해 기본 스킨으로 진행합니다."
+			set {nick::map::%{_id}%} to {_nm}
+			set {nick::uuid::%{_id}%} to {_fu}
+			set {nick::real::%{_fu}%} to {_id}
+			set {_low} to {_nm}.toLowerCase()
+			set {nick::names::%{_low}%} to true
+			delete {-nickpend::%{_id}%}
+			delete {-nickpskin::%{_id}%}
+			set {-nickquiet::%{_id}%} to true
+			kick {_p} due to "가짜 신분 '%{_nm}%' 이(가) 적용되었습니다. 다시 접속하세요."
 			stop
 		set {_nm} to arg-1
-		set {_len} to {_nm}.length()
-		if {_len} > 16:
-			send "&c이름은 16글자까지입니다."
+		if {_nm} does not match "[A-Za-z0-9_]{3,16}":
+			send "&c이름은 영문/숫자/_ 3~16자여야 합니다."
 			stop
-		if {_nm} contains " ":
-			send "&c이름에 공백을 넣을 수 없습니다."
+		if nickTaken({_nm}) is true:
+			send "&c그 이름은 쓸 수 없습니다(이 서버에 있었던 사람 이름이거나 이미 쓰인 가짜 이름)."
 			stop
-		set {_skin} to {_nm}
 		if arg-2 is set:
-			set {_skin} to arg-2
-		if {-fakeorig::%{_id}%} is not set:
-			set {-fakeorig::%{_id}%} to {_p}.getPlayerProfile()
-		set {_np} to Bukkit.createProfile({_p}.getUniqueId(), {_nm})
-		set {_sp} to Bukkit.createProfile({_skin})
-		set {_ok} to {_sp}.complete(true)
-		set {_msg} to "&a스킨 '%{_skin}%' 적용"
-		if {_ok} is true:
-			{_np}.setProperties({_sp}.getProperties())
+			if nickKnown(arg-2) is true:
+				send "&c이 서버에 있었던 사람의 스킨은 쓸 수 없습니다."
+				stop
+			set {-nickpskin::%{_id}%} to arg-2
 		else:
-			set {_msg} to "&e스킨 '%{_skin}%' 계정을 찾지 못해 기본 스킨 적용"
-		{_p}.setPlayerProfile({_np})
-		set display name of {_p} to "%{_nm}%"
-		tabUpdate({_p})
-		send "&a가짜 신분 적용: 이름 &f%{_nm}% &7/ %{_msg}%&7. 해제: /nick off"
+			delete {-nickpskin::%{_id}%}
+		set {-nickpend::%{_id}%} to {_nm}
+		send "&e가짜 신분 '%{_nm}%' 을(를) 신청했습니다. 확정하면 &c되돌리거나 바꿀 수 없고&e, 지금 진짜 신분의 변수/승점/기록은 이어지지 않습니다(가짜 신분으로 새로 시작). op 권한은 유지됩니다."
+		send "&e확정하려면 /nick confirm 을 입력하세요. 하지 않으면 아무 일도 없습니다."
+
+# 접속 단계에서 진짜 UUID 에 매핑이 있으면 프로필을 가짜로 바꾼다
+on AsyncPlayerPreLoginEvent:
+	set {_u} to event.getUniqueId()
+	set {_ru} to "%{_u}%"
+	set {_fn} to {nick::map::%{_ru}%}
+	if {_fn} is set:
+		set {_fu} to UUID.fromString({nick::uuid::%{_ru}%})
+		set {_np} to Bukkit.createProfile({_fu}, {_fn})
+		set {_tv} to {nick::tex::%{_ru}%::value}
+		if {_tv} is set:
+			set {_ts} to {nick::tex::%{_ru}%::sig}
+			if {_ts} is set:
+				{_np}.setProperty(new ProfileProperty("textures", {_tv}, {_ts}))
+			else:
+				{_np}.setProperty(new ProfileProperty("textures", {_tv}))
+		event.setPlayerProfile({_np})
+
+on join:
+	set {_id} to "%uuid of player%"
+	# 매핑이 있는데 진짜 UUID 로 들어왔다 = 프로필 교체 실패. 진짜 신분이 드러나기 전에 끊는다
+	if {nick::map::%{_id}%} is set:
+		event.joinMessage(null)
+		set {-nickquiet::%{_id}%} to true
+		kick player due to "신분 전환에 실패했습니다. 관리자에게 알려 주세요."
+		stop
+	# 가짜 신분이면 op 유지
+	if {nick::real::%{_id}%} is set:
+		player.setOp(true)
 
 on quit:
-	delete {-fakeorig::%player's uuid%}
+	set {_id} to "%uuid of player%"
+	if {-nickquiet::%{_id}%} is set:
+		event.quitMessage(null)
+		delete {-nickquiet::%{_id}%}
+	delete {-nickpend::%{_id}%}
+	delete {-nickpskin::%{_id}%}
