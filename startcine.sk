@@ -27,7 +27,7 @@ import:
 function bgmVolume() :: number:
 	return 0.8
 
-# name: 소리 이름(gamestart / roundstart, 팩의 assets/mck/sounds.json). Skript 기본 play sound(플레이어 위치, 다른 소리 효과들과 같은 방식)로 재생하되, 팩에서 소리가 닿는 거리(attenuation_distance)를 2000칸으로 늘려 놔서 연출 중 멀리 옮겨져도 거의 같은 크기로 들린다.
+# name: 소리 이름(gamestart, 팩의 assets/mck/sounds.json). Skript 기본 play sound(플레이어 위치, 다른 소리 효과들과 같은 방식)로 재생하되, 팩에서 소리가 닿는 거리(attenuation_distance)를 2000칸으로 늘려 놔서 연출 중 멀리 옮겨져도 거의 같은 크기로 들린다.
 function bgmPlay(p: player, name: text):
 	set {_sn} to "mck:%{_name}%"
 	set {_v} to bgmVolume()
@@ -36,7 +36,6 @@ function bgmPlay(p: player, name: text):
 function bgmStopAll():
 	loop all players:
 		loop-value.stopSound("mck:gamestart")
-		loop-value.stopSound("mck:roundstart")
 
 # ===== 라인업 자리 찾기 =====
 function gsSearchCenter() :: location:
@@ -292,7 +291,7 @@ function gStartIntro(sg: number):
 		set {_pl} to loop-value
 		if {_pl} is online:
 			bgmPlay({_pl}, "gamestart")
-			send title "&e%{-gworld}%" with subtitle "" to {_pl} for 4 seconds with fadein 10 ticks and fade out 10 ticks
+			send title "&f%{-gworld}%" with subtitle "" to {_pl} for 4 seconds with fadein 10 ticks and fade out 10 ticks
 	set {_tk} to 0
 	while {_tk} < 380:
 		if gStartAbort({_sg}) is true:
@@ -333,7 +332,7 @@ function gStartIntro(sg: number):
 			loop {-gplist::*}:
 				set {_pl} to loop-value
 				if {_pl} is online:
-					send title "&e강하를 준비하세요" with subtitle "" to {_pl} for 3 seconds with fadein 10 ticks and fade out 10 ticks
+					send title "&f강하를 준비하세요" with subtitle "" to {_pl} for 3 seconds with fadein 10 ticks and fade out 10 ticks
 		if mod({_tk}, 2) is 0:
 			gStartKeep()
 		add 1 to {_tk}

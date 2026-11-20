@@ -1,12 +1,25 @@
 {
   "gamestart": {
     "sounds": [
-      { "name": "mck:gamestart", "stream": true, "attenuation_distance": 2000 }
+      {
+        "name": "mck:gamestart",
+        "stream": true,
+        "attenuation_distance": 2000
+      }
     ]
   },
-  "roundstart": {
+  "knockout": {
     "sounds": [
-      { "name": "mck:roundstart", "stream": true, "attenuation_distance": 2000 }
+      {
+        "name": "mck:knockout"
+      }
+    ]
+  },
+  "killsound": {
+    "sounds": [
+      {
+        "name": "mck:killsound"
+      }
     ]
   }
 }

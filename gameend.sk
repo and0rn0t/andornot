@@ -782,7 +782,7 @@ function gameFinale():
 		if loop-value is online:
 			set gamemode of loop-value to spectator
 	loop all players:
-		send title "&e게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+		send title "&f게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "ui.toast.challenge_complete" with volume 0.8 to loop-player
 	wait 3 seconds
 	if {-gfgen} is not {_gen}:

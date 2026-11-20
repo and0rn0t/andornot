@@ -152,7 +152,7 @@
 #   - blazerod.sk   : 블레이즈 막대기 스킬(화염구, 3번째 사용 5연발)
 #   - windburst.sk  : 연막탄 스킬(반구 모양, 블럭에 막히면 번지지 않음)
 #   - startcine.sk  : 게임 시작 연출(시작 카메라 + 음악 gamestart + 맵 이름, 팀 더미 라인업 3구도 + 팀 이름, "강하를 준비하세요", 19초)과 음악 함수 bgmPlay/bgmStopAll
-#                     리소스팩 mck_pack: resourcepack/mck_pack(원본) + build_pack.py(zip/SHA-1 생성). 소리는 mck:gamestart, mck:roundstart(ogg -6dB, 재생 음량 bgmVolume()). 섬멸전 라운드 시작(game.sk gRoundNext)은 roundstart + 5초 카운트다운(소리 없음)
+#                     리소스팩 mck_pack: resourcepack/mck_pack(원본) + build_pack.py(zip/SHA-1 생성). 소리는 mck:gamestart(ogg -6dB, 재생 음량 bgmVolume()), mck:knockout(킬 연출 시작, 피격자에게만, -6dB)과 mck:killsound(더미 부서질 때, -9.5dB)(killcine.sk). 섬멸전 라운드 시작(game.sk gRoundNext)은 5초 카운트다운(소리 없음, roundstart 음악은 제거됨)
 #   - nick.sk       : op 전용 가짜 신분(/nick <이름> [스킨 계정], /nick off). 이름+스킨 프로필 교체({-fakeorig::uuid}, RAM)
 #   - tier.sk       : 티어 시스템(승점 -> 브론즈~챌린저, 닉네임 앞 아이콘 + 로마 숫자. 탭리스트/게임 결과/매치 기록에만 표시, 채팅/킬로그 제외)
 #   - flintsteel.sk : 부싯돌과 부시 스킬(취약 + 불태움)
