@@ -1,10 +1,13 @@
 # [minimap.sk] 팀원 전용 미니맵(리소스 팩 + 보스바 글자). 환경, 작업 규칙, 변수 목록은 skill_core.sk 맨 위 주석 참고.
 # 원리: 흰색 보스바 한 줄의 제목을 커스텀 폰트(andornot:mm)로 그린다. 폰트에는 지도 이미지 글자(E100~), 행마다 높이가 다른 점 글자(E200~)·내 표시 글자(E300~),
 #   가로 이동용 공백 글자(E000~E008 = +1,+2,+4..+256 / E010~E018 = 음수)가 들어 있다. 팩은 resourcepack/ 폴더(gen_pack.py 로 생성, andornot-pack.zip).
-# 화면 위치: 보스바 글자줄은 화면 가운데 정렬이라, 앞에 공백 265 를 붙여 지도가 화면 가운데에서 오른쪽 100 칸(GUI 픽셀)에 오게 한다(뒤쪽 이동은 지도 폭 65 로 되돌려 총 너비를 고정).
+# 화면 위치: 보스바 글자줄은 화면 가운데 정렬이다. 지도를 줄 맨 앞에 두고 총 너비를 2L 로 고정하면(뒤에 공백을 붙임) 지도 왼쪽이 화면 가운데에서 L 만큼 왼쪽에 온다.
+#   L(GUI 픽셀)은 플레이어마다 /minimap left <값> 으로 맞춘다(저장 {mmleft::uuid}, 기본 234). 화면 폭/GUI 배율을 서버가 알 수 없어서 창 크기를 바꾸면 다시 맞춰야 한다. 정확한 구석 고정은 셰이더가 필요(미구현).
+# 지도 표시 크기 mmMapPx()=100 GUI 픽셀(resourcepack/gen_pack.py 의 MAP_PX 와 같아야 한다). 지도 이미지 해상도는 bake 때 정함(기본 1000).
+# 바라보는 방향: 내 마름모 앞쪽에 노란 점 3개(반지름 8,13,18)를 찍는다.
 # 지도: 월드마다 /minimap bake 로 위에서 본 이미지를 만들어 서버 plugins/Skript/minimap/mapN.png 에 저장 -> 팩의 textures/font/ 에 넣고 gen_pack.py 로 다시 압축.
 # 표시 조건: 게임 중, 팀전, 살아 있는 참가자, 팩 적용 완료({-mmpack}), 그 월드에 지도가 저장돼 있을 때. 팀원 점(팀 색) + 나(흰 마름모)만 보인다(적은 안 보임). 북쪽이 위.
-# 이 파일의 변수: {mmcfg::월드::slot|minx|minz|size}(저장, 지도 슬롯/범위), {mmcfg::owner::슬롯}(저장, 슬롯 주인 월드), {-mmbar::uuid}(보스바 객체), {-mmpack::uuid}(팩 적용 완료), {-mmtest::uuid}(/minimap test)
+# 이 파일의 변수: {mmcfg::월드::slot|minx|minz|size}(저장, 지도 슬롯/범위), {mmcfg::owner::슬롯}(저장, 슬롯 주인 월드), {-mmbar::uuid}(보스바 객체), {-mmpack::uuid}(팩 적용 완료), {-mmtest::uuid}(/minimap test), {mmleft::uuid}(저장, 지도 왼쪽 거리 L), {-mmbaking}(bake 진행 중)
 # 미검증: Adventure BossBar 정적 호출과 중첩 클래스 import, MiniMessage <font>, 음수 ascent 글자, BlockData#getMapColor, ImageIO 저장, PlayerResourcePackStatusEvent, pack.mcmeta 형식.
 
 import:
@@ -17,6 +20,15 @@ import:
 	java.io.File
 	java.awt.image.BufferedImage
 	javax.imageio.ImageIO
+
+function mmMapPx() :: number:
+	return 100
+
+function mmLeft(p: player) :: number:
+	set {_l} to {mmleft::%uuid of {_p}%}
+	if {_l} is not set:
+		return 234
+	return {_l}
 
 function mmChar(code: number) :: text:
 	return Character.toString({_code})
@@ -44,14 +56,26 @@ function mmTeamHex(i: number) :: text:
 	set {_c::*} to "#ff5555", "#6677ff", "#55ff55", "#ffff55", "#ff55ff", "#55ffff", "#ffaa00", "#cc66ff"
 	return {_c::%mod({_i} - 1, 8) + 1%}
 
-# 월드 좌표 -> 지도 픽셀(0~63, 범위 밖이면 가장자리)
+# 월드 좌표 -> 지도 픽셀(0~mmMapPx-1, 범위 밖이면 가장자리)
 function mmPx(v: number, mn: number, size: number) :: number:
-	set {_q} to floor(({_v} - {_mn}) / {_size} * 64)
-	if {_q} < 0:
-		set {_q} to 0
-	if {_q} > 63:
-		set {_q} to 63
-	return {_q}
+	set {_sz} to mmMapPx()
+	set {_q} to floor(({_v} - {_mn}) / {_size} * {_sz})
+	return mmClamp({_q})
+
+function mmClamp(q: number) :: number:
+	set {_sz} to mmMapPx()
+	set {_r} to floor({_q})
+	if {_r} < 0:
+		set {_r} to 0
+	if {_r} > {_sz} - 1:
+		set {_r} to {_sz} - 1
+	return {_r}
+
+# 점 하나: 현재 커서 c 에서 px 로 이동하는 공백 + 점 글자(행 pz). 호출한 쪽이 c 를 px + 3 으로 갱신한다.
+function mmDot(px: number, pz: number, c: number, hex: text) :: text:
+	set {_sh} to mmShift({_px} - 1 - {_c})
+	set {_g} to mmChar(57856 + {_pz})
+	return "<%{_hex}%>%{_sh}%%{_g}%"
 
 function mmWants(p: player) :: boolean:
 	if {-mmpack::%uuid of {_p}%} is not true:
@@ -83,10 +107,30 @@ function mmBuild(p: player) :: text:
 	set {_minx} to {mmcfg::%{_wn}%::minx}
 	set {_minz} to {mmcfg::%{_wn}%::minz}
 	set {_size} to {mmcfg::%{_wn}%::size}
-	set {_lead} to mmShift(265)
+	set {_sz} to mmMapPx()
 	set {_mapc} to mmChar(57600 + {_slot} - 1)
-	set {_s} to "<font:andornot:mm><color:white>%{_lead}%%{_mapc}%"
-	set {_c} to 65
+	set {_s} to "<font:andornot:mm><color:white>%{_mapc}%"
+	set {_c} to {_sz} + 1
+	set {_mx} to x-coordinate of {_p}
+	set {_mz} to z-coordinate of {_p}
+	set {_qx} to mmPx({_mx}, {_minx}, {_size})
+	set {_qz} to mmPx({_mz}, {_minz}, {_size})
+	# 바라보는 방향: 노란 점 3개(yaw 0 = 남쪽(+z), 90 = 서쪽(-x), 지도는 북쪽이 위)
+	set {_yaw} to yaw of {_p}
+	set {_dx} to 0 - sin({_yaw})
+	set {_dz} to cos({_yaw})
+	set {_ylw} to "#ffff55"
+	set {_r::*} to 8, 13, 18
+	set {_k} to 1
+	while {_k} <= 3:
+		set {_rr} to {_r::%{_k}%}
+		set {_ax} to mmClamp({_qx} + {_dx} * {_rr})
+		set {_az} to mmClamp({_qz} + {_dz} * {_rr})
+		set {_d} to mmDot({_ax}, {_az}, {_c}, {_ylw})
+		set {_s} to "%{_s}%%{_d}%"
+		set {_c} to {_ax} + 3
+		add 1 to {_k}
+	# 팀원(같은 월드, 같은 팀, 생존)
 	if gInGame({_p}) is true:
 		if {-gteams} > 0:
 			set {_my} to gTeamOf({_p})
@@ -101,20 +145,18 @@ function mmBuild(p: player) :: text:
 								set {_oz} to z-coordinate of {_o}
 								set {_px} to mmPx({_ox}, {_minx}, {_size})
 								set {_pz} to mmPx({_oz}, {_minz}, {_size})
-								set {_sh} to mmShift({_px} - 1 - {_c})
-								set {_dc} to mmChar(57856 + {_pz})
-								set {_s} to "%{_s}%<%{_hex}%>%{_sh}%%{_dc}%"
+								set {_d} to mmDot({_px}, {_pz}, {_c}, {_hex})
+								set {_s} to "%{_s}%%{_d}%"
 								set {_c} to {_px} + 3
-	set {_mx} to x-coordinate of {_p}
-	set {_mz} to z-coordinate of {_p}
-	set {_qx} to mmPx({_mx}, {_minx}, {_size})
-	set {_qz} to mmPx({_mz}, {_minz}, {_size})
+	# 나(흰 마름모)
 	set {_sh} to mmShift({_qx} - 2 - {_c})
 	set {_mc} to mmChar(58112 + {_qz})
 	set {_s} to "%{_s}%<color:white>%{_sh}%%{_mc}%"
 	set {_c} to {_qx} + 4
-	set {_back} to mmShift(65 - {_c})
-	return "%{_s}%%{_back}%"
+	# 커서를 지도 폭 뒤로 되돌리고, 총 너비가 2L 이 되도록 뒤쪽 공백을 붙인다
+	set {_back} to mmShift({_sz} + 1 - {_c})
+	set {_trail} to mmShift(2 * mmLeft({_p}) - {_sz} - 1)
+	return "%{_s}%%{_back}%%{_trail}%"
 
 function mmHide(p: player):
 	set {_b} to {-mmbar::%uuid of {_p}%}
@@ -156,6 +198,7 @@ on quit:
 
 # 스크립트를 다시 불러오면 떠 있던 보스바를 걷어낸다(RAM 변수는 리로드해도 남는다)
 on load:
+	delete {-mmbaking}
 	loop all players:
 		set {_pl} to loop-player
 		set {_b} to {-mmbar::%uuid of {_pl}%}
@@ -163,78 +206,18 @@ on load:
 			{_pl}.hideBossBar({_b})
 		delete {-mmbar::%uuid of {_pl}%}
 
-# 지금 서 있는 곳을 중심으로 size 칸 정사각형을 위에서 본 256x256 이미지(화면에는 64칸 크기로 축소 표시)로 저장한다(블록 지도 색 + 북쪽 이웃과의 높이 차 음영).
-function mmBake(p: player, size: number, slot: number):
-	set {_w} to {_p}.getWorld()
-	set {_wn} to {_w}.getName()
-	set {_minx} to floor(x-coordinate of {_p} - {_size} / 2)
-	set {_minz} to floor(z-coordinate of {_p} - {_size} / 2)
-	set {_top} to floor(y-coordinate of {_p}) + 24
-	set {_maxh} to {_w}.getMaxHeight() - 1
-	if {_top} > {_maxh}:
-		set {_top} to {_maxh}
-	set {_minh} to {_w}.getMinHeight()
-	set {_tex} to 256
-	set {_img} to new BufferedImage({_tex}, {_tex}, 2)
-	set {_step} to {_size} / {_tex}
-	set {_j} to 0
-	while {_j} < {_tex}:
-		set {_i} to 0
-		while {_i} < {_tex}:
-			set {_bx} to floor({_minx} + ({_i} + 0.5) * {_step})
-			set {_bz} to floor({_minz} + ({_j} + 0.5) * {_step})
-			set {_y} to {_w}.getHighestBlockYAt({_bx}, {_bz})
-			if {_y} > {_top}:
-				set {_y} to {_top}
-			set {_found} to false
-			while {_found} is false:
-				if {_y} < {_minh}:
-					exit loop
-				if {_y} < {_top} - 90:
-					exit loop
-				set {_b} to {_w}.getBlockAt({_bx}, {_y}, {_bz})
-				set {_col} to {_b}.getBlockData().getMapColor()
-				set {_r} to {_col}.getRed()
-				set {_g} to {_col}.getGreen()
-				set {_bl} to {_col}.getBlue()
-				if {_r} + {_g} + {_bl} > 0:
-					set {_found} to true
-				else:
-					subtract 1 from {_y}
-			if {_found} is true:
-				set {_f} to 1
-				if {_prev::%{_i}%} is set:
-					if {_y} > {_prev::%{_i}%}:
-						set {_f} to 1.12
-					else if {_y} < {_prev::%{_i}%}:
-						set {_f} to 0.8
-				set {_prev::%{_i}%} to {_y}
-				set {_r} to min(255, floor({_r} * {_f}))
-				set {_g} to min(255, floor({_g} * {_f}))
-				set {_bl} to min(255, floor({_bl} * {_f}))
-				set {_argb} to {_r} * 65536 + {_g} * 256 + {_bl} - 16777216
-				{_img}.setRGB({_i}, {_j}, {_argb})
-			add 1 to {_i}
-		add 1 to {_j}
-	set {_file} to new File("plugins/Skript/minimap/map%{_slot}%.png")
-	{_file}.getParentFile().mkdirs()
-	ImageIO.write({_img}, "png", {_file})
-	delete {mmcfg::owner::%{_slot}%}
-	set {mmcfg::owner::%{_slot}%} to {_wn}
-	set {mmcfg::%{_wn}%::slot} to {_slot}
-	set {mmcfg::%{_wn}%::minx} to {_minx}
-	set {mmcfg::%{_wn}%::minz} to {_minz}
-	set {mmcfg::%{_wn}%::size} to {_size}
-
-command /minimap <text> [<number>] [<number>]:
+command /minimap <text> [<number>] [<number>] [<number>]:
 	permission: minecraft.command.op
 	permission message: &c권한이 없습니다.
 	description: 미니맵 관리 (op 전용)
-	usage: /minimap bake [범위] [슬롯] | info | clear | test
+	usage: /minimap bake [범위] [슬롯] [해상도] | left [값] | info | clear | test
 	executable by: players
 	trigger:
 		set {_wn} to player's world.getName()
 		if arg-1 is "bake":
+			if {-mmbaking} is true:
+				send "&c이미 지도를 만드는 중입니다."
+				stop
 			set {_size} to 128
 			if arg-2 is set:
 				set {_size} to arg-2
@@ -243,6 +226,15 @@ command /minimap <text> [<number>] [<number>]:
 				stop
 			if {_size} > 2048:
 				send "&c범위는 16~2048 칸입니다."
+				stop
+			set {_tex} to 1000
+			if arg-4 is set:
+				set {_tex} to arg-4
+			if {_tex} < 64:
+				send "&c해상도는 64~2048 입니다."
+				stop
+			if {_tex} > 2048:
+				send "&c해상도는 64~2048 입니다."
 				stop
 			set {_slot} to {mmcfg::%{_wn}%::slot}
 			if arg-3 is set:
@@ -267,9 +259,87 @@ command /minimap <text> [<number>] [<number>]:
 				if {mmcfg::owner::%{_slot}%} is not {_wn}:
 					send "&c슬롯 %{_slot}% 은(는) 월드 %{mmcfg::owner::%{_slot}%}% 이(가) 쓰고 있습니다. 먼저 그 월드에서 /minimap clear 를 하세요."
 					stop
-			send "&7지도를 만드는 중입니다. 수 초 멈출 수 있습니다."
-			mmBake(player, {_size}, {_slot})
-			send "&a저장했습니다. 슬롯 %{_slot}%, 중심 현재 위치, 범위 %{_size}% 칸. 서버의 plugins/Skript/minimap/map%{_slot}%.png 를 팩에 넣어 주세요."
+			set {-mmbaking} to true
+			set {_p} to player
+			set {_w} to {_p}.getWorld()
+			set {_minx} to floor(x-coordinate of {_p} - {_size} / 2)
+			set {_minz} to floor(z-coordinate of {_p} - {_size} / 2)
+			set {_top} to floor(y-coordinate of {_p}) + 24
+			set {_maxh} to {_w}.getMaxHeight() - 1
+			if {_top} > {_maxh}:
+				set {_top} to {_maxh}
+			set {_minh} to {_w}.getMinHeight()
+			set {_img} to new BufferedImage({_tex}, {_tex}, 2)
+			set {_step} to {_size} / {_tex}
+			set {_rows} to floor(2000 / {_tex})
+			if {_rows} < 1:
+				set {_rows} to 1
+			send "&7지도를 만드는 중입니다(해상도 %{_tex}%). 몇 십 초 걸리며 그동안 서버가 조금 느려질 수 있습니다."
+			set {_j} to 0
+			set {_n} to 0
+			set {_next} to floor({_tex} / 4)
+			while {_j} < {_tex}:
+				set {_i} to 0
+				while {_i} < {_tex}:
+					set {_bx} to floor({_minx} + ({_i} + 0.5) * {_step})
+					set {_bz} to floor({_minz} + ({_j} + 0.5) * {_step})
+					set {_y} to {_w}.getHighestBlockYAt({_bx}, {_bz})
+					if {_y} > {_top}:
+						set {_y} to {_top}
+					set {_found} to false
+					while {_found} is false:
+						if {_y} < {_minh}:
+							exit loop
+						if {_y} < {_top} - 90:
+							exit loop
+						set {_b} to {_w}.getBlockAt({_bx}, {_y}, {_bz})
+						set {_col} to {_b}.getBlockData().getMapColor()
+						set {_r} to {_col}.getRed()
+						set {_g} to {_col}.getGreen()
+						set {_bl} to {_col}.getBlue()
+						if {_r} + {_g} + {_bl} > 0:
+							set {_found} to true
+						else:
+							subtract 1 from {_y}
+					if {_found} is true:
+						set {_f} to 1
+						if {_prev::%{_i}%} is set:
+							if {_y} > {_prev::%{_i}%}:
+								set {_f} to 1.12
+							else if {_y} < {_prev::%{_i}%}:
+								set {_f} to 0.8
+						set {_prev::%{_i}%} to {_y}
+						set {_r} to min(255, floor({_r} * {_f}))
+						set {_g} to min(255, floor({_g} * {_f}))
+						set {_bl} to min(255, floor({_bl} * {_f}))
+						set {_argb} to {_r} * 65536 + {_g} * 256 + {_bl} - 16777216
+						{_img}.setRGB({_i}, {_j}, {_argb})
+					add 1 to {_i}
+				add 1 to {_j}
+				add 1 to {_n}
+				if {_n} >= {_rows}:
+					set {_n} to 0
+					wait 1 tick
+				if {_j} >= {_next}:
+					send "&7지도 만드는 중... %floor({_j} / {_tex} * 100)%%%" to {_p}
+					set {_next} to {_next} + floor({_tex} / 4)
+			set {_file} to new File("plugins/Skript/minimap/map%{_slot}%.png")
+			{_file}.getParentFile().mkdirs()
+			ImageIO.write({_img}, "png", {_file})
+			delete {mmcfg::owner::%{_slot}%}
+			set {mmcfg::owner::%{_slot}%} to {_wn}
+			set {mmcfg::%{_wn}%::slot} to {_slot}
+			set {mmcfg::%{_wn}%::minx} to {_minx}
+			set {mmcfg::%{_wn}%::minz} to {_minz}
+			set {mmcfg::%{_wn}%::size} to {_size}
+			delete {-mmbaking}
+			send "&a저장했습니다. 슬롯 %{_slot}%, 범위 %{_size}% 칸, 해상도 %{_tex}%. 서버의 plugins/Skript/minimap/map%{_slot}%.png 를 팩에 넣어 주세요." to {_p}
+		else if arg-1 is "left":
+			if arg-2 is set:
+				set {mmleft::%uuid of player%} to arg-2
+				send "&a지도 왼쪽 거리를 %arg-2% 로 맞췄습니다. 지도가 화면 왼쪽 끝에 닿지 않으면 값을 키우고, 화면 밖으로 나가면 줄이세요."
+			else:
+				send "&7지금 값: %mmLeft(player)% (화면 가운데에서 지도 왼쪽까지 GUI 픽셀). /minimap left <값> 으로 조절하세요."
 		else if arg-1 is "info":
 			set {_k} to 1
 			while {_k} <= 4:
@@ -297,4 +367,4 @@ command /minimap <text> [<number>] [<number>]:
 				set {-mmpack::%uuid of player%} to true
 				send "&7미니맵 테스트를 켰습니다. 팩 적용 여부와 상관없이 표시합니다(팩이 없으면 깨진 글자가 보임). 이 월드에 지도 설정이 있어야 합니다."
 		else:
-			send "&c/minimap bake [범위] [슬롯] | info | clear | test"
+			send "&c/minimap bake [범위] [슬롯] [해상도] | left [값] | info | clear | test"

@@ -5,9 +5,9 @@ import json, os, zipfile, hashlib, struct, zlib
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PACK = os.path.join(ROOT, "pack")
 FONT_TEX = os.path.join(PACK, "assets", "andornot", "textures", "font")
-MAP_PX = 64          # 지도 이미지 한 변(픽셀) = 화면에서 차지하는 크기(GUI 픽셀)
-MAP_TOP = 21         # 보스바 글자줄 윗변에서 지도 윗변까지 거리(GUI 픽셀). 보스바 1번째 줄 기준
-TEX_PX = 256        # 지도 이미지 해상도(픽셀). 화면 표시 크기(MAP_PX)와 별개
+MAP_PX = 100         # 지도 이미지 한 변(픽셀) = 화면에서 차지하는 크기(GUI 픽셀)
+MAP_TOP = 5          # 보스바 글자줄 윗변에서 지도 윗변까지 거리(GUI 픽셀). 보스바 1번째 줄 기준
+TEX_PX = 100        # 지도 이미지 해상도(픽셀). 화면 표시 크기(MAP_PX)와 별개
 SLOTS = 4            # 지도 슬롯 개수(월드 4개까지)
 
 def png(path, w, h, rgba):
@@ -42,7 +42,7 @@ png(os.path.join(BB, "white_progress.png"), 182, 5, lambda x, y: T)
 # 폰트: 공백 글자(가로 이동), 지도 글자, 행마다 높이가 다른 점/내 표시 글자
 providers = []
 adv = {}
-for k in range(9):
+for k in range(11):
     adv[chr(0xE000 + k)] = 2 ** k
     adv[chr(0xE010 + k)] = -(2 ** k)
 providers.append({"type": "space", "advances": adv})
