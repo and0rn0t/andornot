@@ -26,14 +26,31 @@ W = (255, 255, 255, 255); T = (0, 0, 0, 0)
 png(os.path.join(FONT_TEX, "dot.png"), 3, 3, lambda x, y: W)
 diamond = ["..X..", ".XXX.", "XXXXX", ".XXX.", "..X.."]
 png(os.path.join(FONT_TEX, "me.png"), 5, 5, lambda x, y: W if diamond[y][x] == "X" else T)
-# 지도 자리표시(베이크 전): 어두운 바탕 + 8칸 격자
+# 지도: 글자 텍스처 한 장은 256x256 을 넘을 수 없어서(글꼴 아틀라스 한 장 크기), 원본(maps/mapN.png)을 TILES x TILES 조각으로 잘라 조각마다 글자 하나로 쓴다.
+# 원본이 없으면 회색 격자 자리표시를 쓴다. 원본은 정사각형이며 한 변이 TILES*256 을 넘으면 그 크기로 줄인다. (Pillow 필요: pip install pillow)
+from PIL import Image
+TILES = 4
+MAPS = os.path.join(ROOT, "maps")
+for old in os.listdir(FONT_TEX):
+    if old.startswith("map") and old.endswith(".png"):
+        os.remove(os.path.join(FONT_TEX, old))
 for s in range(1, SLOTS + 1):
-    p = os.path.join(FONT_TEX, "map%d.png" % s)
-    if not os.path.exists(p):
-        def px(x, y):
-            g = (x % 32 == 0) or (y % 32 == 0)
-            return (70, 70, 70, 255) if g else (40, 40, 40, 255)
-        png(p, TEX_PX, TEX_PX, px)
+    src = os.path.join(MAPS, "map%d.png" % s)
+    if os.path.exists(src):
+        im = Image.open(src).convert("RGBA")
+    else:
+        im = Image.new("RGBA", (TILES * 25, TILES * 25))
+        for x in range(im.width):
+            for y in range(im.height):
+                im.putpixel((x, y), (70, 70, 70, 255) if (x % 20 == 0 or y % 20 == 0) else (40, 40, 40, 255))
+    side = min(im.width, im.height, TILES * 256)
+    side -= side % TILES
+    im = im.resize((side, side), Image.NEAREST) if im.size != (side, side) else im
+    tp = side // TILES
+    for r in range(TILES):
+        for c in range(TILES):
+            im.crop((c * tp, r * tp, (c + 1) * tp, (r + 1) * tp)).save(
+                os.path.join(FONT_TEX, "map%d_%d_%d.png" % (s, r, c)))
 # 보스바 기본 막대 그림을 투명으로 덮어서 흰색 보스바는 글자만 보이게 한다(1.20.2+ 스프라이트 경로)
 BB = os.path.join(PACK, "assets", "minecraft", "textures", "gui", "sprites", "boss_bar")
 png(os.path.join(BB, "white_background.png"), 182, 5, lambda x, y: T)
@@ -46,9 +63,13 @@ for k in range(11):
     adv[chr(0xE000 + k)] = 2 ** k
     adv[chr(0xE010 + k)] = -(2 ** k)
 providers.append({"type": "space", "advances": adv})
+TP = MAP_PX // TILES   # 조각 하나의 화면 크기(GUI 픽셀). MAP_PX 는 TILES 로 나눠떨어져야 한다
 for s in range(SLOTS):
-    providers.append({"type": "bitmap", "file": "andornot:font/map%d.png" % (s + 1),
-                      "ascent": 7 - MAP_TOP, "height": MAP_PX, "chars": [chr(0xE100 + s)]})
+    for r in range(TILES):
+        for c in range(TILES):
+            providers.append({"type": "bitmap", "file": "andornot:font/map%d_%d_%d.png" % (s + 1, r, c),
+                              "ascent": 7 - (MAP_TOP + r * TP), "height": TP,
+                              "chars": [chr(0xE400 + s * 16 + r * TILES + c)]})
 for y in range(MAP_PX):
     providers.append({"type": "bitmap", "file": "andornot:font/dot.png",
                       "ascent": 7 - (MAP_TOP + y - 1), "height": 3, "chars": [chr(0xE200 + y)]})

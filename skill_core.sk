@@ -302,18 +302,19 @@
 # 11. 미니맵 (minimap.sk + resourcepack/, 2026-11, 사용자 요청: 리소스 팩 기반, 팀원만 표시)
 #   구현 상태: 표시는 서버에서 확인됨(로비 /minimap test 로 지도와 내 마름모가 뜸). 팀원 점(팀전 게임 중)과 게임 월드 지도는 아직 실전 검증 전.
 #   [원리] 화면 구석 고정(셰이더) 대신, 흰색 보스바(Adventure BossBar) 한 줄의 제목을 커스텀 폰트 andornot:mm 으로 그린다.
-#     - 폰트(resourcepack/pack/assets/andornot/font/mm.json, gen_pack.py 가 생성): 지도 글자 E100~E103(슬롯 1~4), 점 글자 E200~E23F(지도 행 0~63마다 ascent 가 다름),
+#     - 폰트(resourcepack/pack/assets/andornot/font/mm.json, gen_pack.py 가 생성): 지도 조각 글자 E400~E43F(슬롯 s 의 행 r 열 c 조각 = E400 + (s-1)*16 + r*4 + c), 점 글자 E200~E23F(지도 행 0~63마다 ascent 가 다름),
 #       내 표시 글자 E300~E33F, 가로 이동 공백 E000~E008(+1,+2,+4..+256)과 E010~E018(음수). 점의 가로 위치는 공백 글자 조합(mmShift, 이진 분해)으로 맞춘다.
 #     - 보스바 글자는 화면 가운데 정렬이라, 지도를 줄 맨 앞에 두고 뒤에 공백을 붙여 총 너비를 2L 로 고정하면 지도 왼쪽이 화면 가운데에서 L 만큼 왼쪽(= 왼쪽 위 구석 부근)에 온다. L 은 플레이어마다 /minimap left <값>(저장 {mmleft::uuid}, 기본 234). 서버는 화면 폭/GUI 배율을 모르므로 창 크기를 바꾸면 다시 맞춰야 한다. 정확한 구석 고정은 셰이더가 필요(미구현, rendertype_text 를 통째로 덮어써서 잘못되면 모든 글자가 깨지므로 시험 없이는 하지 않기로 함).
 #     - 지도 표시 크기는 100 GUI 픽셀(gen_pack.py 의 MAP_PX 와 minimap.sk 의 mmMapPx() 가 같아야 한다). 바꾸면 gen_pack.py 재실행 + 이 함수 한 곳만 고치면 된다. 지도 윗변 위치는 MAP_TOP(5): 글자 ascent 는 height 이하여야 해서(점 3, 마름모 5) 너무 작게 하면 폰트가 거부된다.
 #     - 바라보는 방향은 내 마름모 앞쪽에 노란 점 3개(반지름 8,13,18 픽셀, mmBuild)로 표시. yaw 0 = 남쪽(+z), 지도 북쪽이 위.
+#     - 글자 텍스처 한 장은 256x256 을 넘으면 통째로 거부돼 깨진 글자 상자가 뜬다(실제로 1000px 로 겪음). 그래서 gen_pack.py 가 원본(resourcepack/maps/mapN.png, 팩 밖)을 4x4 조각(최대 1024px 원본까지)으로 잘라 pack/.../font/mapN_r_c.png 로 만들고, minimap.sk 의 mmBuild 가 조각 16개를 이어 붙인다. Pillow 필요. 지도 원본을 바꾸려면 maps/mapN.png 만 교체하고 gen_pack.py 재실행.
 #     - 지도 이미지 해상도는 bake 때 정한다(기본 1000x1000, /minimap bake 범위 슬롯 해상도). 화면에는 MAP_PX 칸으로 줄여 보이고 둘은 서로 독립. 글자 텍스처는 축소 보간이 없어 해상도가 표시 크기보다 너무 크면 거칠어 보일 수 있다.
 #       bake 는 한 틱에 약 2000 칸씩 나눠(wait 1 tick) 처리해서 1000 해상도면 약 25초~1분 걸리고 그동안 서버가 조금 느려진다({-mmbaking} 으로 중복 실행 방지, 리로드하면 해제).
 #     - 흰색 보스바의 기본 막대 그림은 팩에서 투명으로 덮어서(textures/gui/sprites/boss_bar/white_*.png) 글자만 보인다. 다른 보스바(효과 표시 등, 빨강/초록)와 쌓이면 지도가 19 픽셀씩 밀린다.
 #   [표시 조건] mmWants: 팩 적용 완료({-mmpack}) + 이 월드에 지도 있음 + (/minimap test 중이거나, 게임 중 팀전 살아 있는 참가자). 팀원은 같은 월드의 같은 팀 생존자만(적 안 보임), 나는 흰 마름모. 북쪽이 위.
 #   [지도 만들기] 게임 월드의 중심에서 /minimap bake [범위] [슬롯] -> plugins/Skript/minimap/map<슬롯>.png (256x256, 위에서 본 블록 지도 색 + 북쪽 이웃과 높이 차 음영)와 {mmcfg::월드::slot|minx|minz|size} 저장.
 #     월드마다 한 번씩 필요. 슬롯은 4개(월드 4개까지). 5번째 월드부터는 gen_pack.py 의 SLOTS 와 minimap.sk 의 슬롯 검사(4)를 늘려야 한다. 지붕 있는 맵은 지붕이 찍힐 수 있음(player y+24 아래에서 위로 내려 스캔).
-#   [팩 갱신 절차(AI가 한다)] 1) 사용자가 보낸 mapN.png 를 resourcepack/pack/assets/andornot/textures/font/mapN.png 로 복사(없으면 gen_pack.py 가 회색 격자 자리표시를 만든다)
+#   [팩 갱신 절차(AI가 한다)] 1) 사용자가 보낸 mapN.png 를 resourcepack/maps/mapN.png 로 복사(없으면 gen_pack.py 가 회색 격자 자리표시를 만든다)
 #     2) python3 resourcepack/gen_pack.py 실행 -> andornot-pack.zip 재생성 + sha1 출력(같은 입력이면 같은 해시) 3) 커밋/푸시 4) 사용자에게 server.properties 값을 안내:
 #     resource-pack=https://raw.githubusercontent.com/and0rn0t/andornot/<커밋 전체 해시>/resourcepack/andornot-pack.zip , resource-pack-sha1=<sha1>. 반드시 "커밋 해시 고정 URL"을 쓴다
 #     (main 주소는 raw.githubusercontent.com 이 약 5분 캐시해서 방금 올린 zip 대신 옛 zip 을 주면 해시 불일치로 클라이언트 다운로드가 실패한다). 서버 재시작 필요.
