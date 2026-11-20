@@ -87,8 +87,9 @@ function umRecvWl() :: object:
 
 # ---------- 패킷 수정 ----------
 
+# (skript-reflect 의 proxy 핸들러 함수는 첫 인자로 proxy 자신을 받고 두 번째가 실제 인자 = PacketEvent. 로그의 "$Proxy#isReadOnly" 오류로 확인)
 # 보내는 패킷: 종류를 보고 알맞은 함수로 넘겨요. 패킷은 여러 사람에게 같이 쓰일 수 있어서 항상 복사본(shallowClone)에만 써요.
-function umOnSend(e: object):
+function umOnSend(px: object, e: object):
 	if {-umoff} is true:
 		stop
 	if {_e}.isReadOnly() is true:
@@ -105,7 +106,7 @@ function umOnSend(e: object):
 		umUuid0({_e}, {_v})
 
 # 받는 패킷: 관전 메뉴 텔레포트. 클라이언트가 가짜 UUID 로 보내면 진짜 UUID 로 되돌려요.
-function umOnRecv(e: object):
+function umOnRecv(px: object, e: object):
 	if {-umoff} is true:
 		stop
 	set {_pk} to {_e}.getPacket()
