@@ -488,6 +488,27 @@ function gDropColorName(i: number) :: text:
 	set {_c::*} to "RED", "BLUE", "GREEN", "YELLOW", "LIGHT_PURPLE", "AQUA", "GOLD", "DARK_PURPLE"
 	return {_c::%mod({_i} - 1, 8) + 1%}
 
+# 발광 색용 스코어보드 팀에 넣을 항목들. 보통은 이름 하나. /nick 가짜 신분이면 다른 사람 화면에서 그 사람을 가리키는 이름이 이름 말고도
+# 패킷용 가짜 UUID(uuidmask.sk 의 {-umr2f})로 잡힐 수 있어서 그 문자열도 같이 넣는다(진짜 이름/진짜 UUID 는 절대 넣지 않는다: 팀 패킷으로 새기 때문).
+# 팀 추가/제거는 항상 이 목록 전체에 한다. 원래 팀 복구는 이름 항목({_p}.getName())만 기억한다.
+function scEntries(p: player) :: texts:
+	add {_p}.getName() to {_r::*}
+	if {-umr2f} is set:
+		set {_f} to {-umr2f}.get({_p}.getUniqueId())
+		if {_f} is set:
+			add "%{_f}%" to {_r::*}
+	return {_r::*}
+
+function scAdd(team: object, p: player):
+	set {_en::*} to scEntries({_p})
+	loop {_en::*}:
+		{_team}.addEntry(loop-value)
+
+function scRemove(team: object, p: player):
+	set {_en::*} to scEntries({_p})
+	loop {_en::*}:
+		{_team}.removeEntry(loop-value)
+
 function gDropGlowOn(p: player):
 	set {_id} to "%uuid of {_p}%"
 	if {-gdropteam::%{_id}%} is set:
@@ -505,7 +526,7 @@ function gDropGlowOn(p: player):
 	set {_old} to {_sb}.getEntryTeam({_n})
 	if {_old} is set:
 		set {-gdropold::%{_id}%} to {_old}.getName()
-	{_team}.addEntry({_n})
+	scAdd({_team}, {_p})
 	set {-gdropteam::%{_id}%} to {_tn}
 	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 300 seconds replacing the existing effect
 
@@ -517,7 +538,7 @@ function gDropGlowOff(p: player):
 	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
 	set {_team} to {_sb}.getTeam({-gdropteam::%{_id}%})
 	if {_team} is set:
-		{_team}.removeEntry({_n})
+		scRemove({_team}, {_p})
 	if {-gdropold::%{_id}%} is set:
 		set {_ot} to {_sb}.getTeam({-gdropold::%{_id}%})
 		if {_ot} is set:

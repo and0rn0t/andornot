@@ -38,7 +38,7 @@ on rightclick:
 		set {_team} to {_sb}.registerNewTeam("totemyellow")
 	{_team}.setColor(ChatColor.YELLOW)
 	set {_old} to {_sb}.getEntryTeam({_n})
-	{_team}.addEntry({_n})
+	scAdd({_team}, {_p})
 	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 5 seconds replacing the existing effect
 	# 노란 flash 를 2틱 간격으로 3번(색 지정은 불길한 병과 같은 reflect 호출, 1.21.9 이상)
 	set {_c} to {_p}'s location ~ vector(0, 1, 0)
@@ -46,7 +46,7 @@ on rightclick:
 		{_c}.getWorld().spawnParticle(Particle.FLASH, {_c}, 1, Color.fromRGB(255, 220, 0))
 		wait 2 ticks
 	wait 94 ticks
-	{_team}.removeEntry({_n})
+	scRemove({_team}, {_p})
 	if {_old} is set:
 		{_old}.addEntry({_n})
 	delete {-totemend::%{_id}%}

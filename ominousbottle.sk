@@ -44,13 +44,13 @@ on rightclick:
 		set {_team} to {_sb}.registerNewTeam("obred")
 	{_team}.setColor(ChatColor.RED)
 	set {_old} to {_sb}.getEntryTeam({_n})
-	{_team}.addEntry({_n})
+	scAdd({_team}, player)
 	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to player for 7 seconds replacing the existing effect
 	loop 3 times:
 		{_c}.getWorld().spawnParticle(Particle.FLASH, {_c}, 1, Color.fromRGB(255, 0, 0))
 		wait 2 ticks
 	wait 134 ticks
-	{_team}.removeEntry({_n})
+	scRemove({_team}, player)
 	if {_old} is set:
 		{_old}.addEntry({_n})
 
