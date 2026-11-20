@@ -290,6 +290,8 @@
 #   구현 상태: [완료] 게임 시작/종료, 팀 배정, 전적(K/D/A/가한 피해), 바운티, 섬멸전, 목표 스코어/승점 설정   [game.sk, gamesetup.sk, admin.sk, killcine.sk]
 #             [완료] 게임 중 탭리스트 전투 정보   [gametab.sk]
 #             [완료] 게임 종료 연출/결과 발표/Player Of The Match 투표/채팅 상단 고정/15초 뒤 로비   [gameend.sk, killcine.sk]
+#             [완료] 섬멸전 라운드 시작 5분 뒤 체력 감소(리스폰 x,z 에서 먼 순서로 더 깎음, gStormTick, 변수 {-grstart})   [game.sk]
+#             [완료] 로비/훈련장 월드는 맵 선택/랜덤에서 제외(mapExcluded)   [admin.sk, game.sk]
 #             [완료] 시작 연출 재작성(음악 + 팀 더미 라인업)과 섬멸전 라운드 시작 연출(음악 + 5초 카운트다운)   [startcine.sk, game.sk, resourcepack/]
 #             [완료] 티어 시스템(승점 기본 90=골드 I, 15점당 세부 티어, 마스터 225+ 순위제, 0점 하한)   [tier.sk, game.sk, gametab.sk, items.sk, gameend.sk]
 #             [완료] 지난 매치 독서대(GUI) + 결과 dialog + 리뷰, 결과창 맨 윗줄에 MATCH 번호   [matchhistory.sk, gameend.sk, admin.sk]

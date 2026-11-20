@@ -284,11 +284,22 @@ function adminOpen(p: player):
 # 불러온 월드와 자동으로 불러올 월드 목록({gamecfg::worldlist})의 월드(네더/엔드 제외)를 칸마다 하나씩 보여 주고, 클릭하면 게임 맵으로 정한다(한글 이름 가능, 아직 안 불러온 월드는 그때 불러온다).
 # 맨 아래 줄: 47번 칸 = 매 게임 랜덤 모드 켜기/끄기(켜면 게임 시작마다 후보에서 새로 뽑음), 48번 칸 = 랜덤 선택(후보 중 하나를 지금 골라 일반 선택과 똑같이 저장), 49번 칸 = 선택 해제(시작한 사람이 있는 월드에서 진행), 53번 칸 = 관리자 메뉴로 돌아가기. 월드는 최대 45개까지 보인다.
 # 선택한 맵은 {gamecfg::map}(저장 변수)에 있어서 바꾸거나 해제하기 전까지 게임이 끝나도 그대로 쓴다.
-# 랜덤 후보: 불러온 월드 + 자동 불러오기 목록에서 로비 월드와 네더/엔드(_nether, _the_end)를 뺀 것.
-function mapCandidates() :: texts:
+# 로비/훈련장 월드(mapExcluded)는 목록과 랜덤 후보에서 뺀다. 랜덤 후보: 불러온 월드 + 자동 불러오기 목록에서 로비 월드와 네더/엔드(_nether, _the_end)를 뺀 것.
+# 로비 월드와 훈련장 월드는 맵으로 못 쓴다(맵 선택 목록과 랜덤에서 뺀다). 훈련장은 위치가 설정된 경우만.
+function mapExcluded(wn: text) :: boolean:
 	set {_ll} to gameLobbyLoc()
 	set {_lw} to {_ll}.getWorld()
-	set {_lobby} to {_lw}.getName()
+	if {_lw}.getName() is {_wn}:
+		return true
+	if {gamecfg::loc::training::world} is set:
+		if "%{gamecfg::loc::training::world}%" is {_wn}:
+			return true
+	if {gamecfg::loc::lobby::world} is set:
+		if "%{gamecfg::loc::lobby::world}%" is {_wn}:
+			return true
+	return false
+
+function mapCandidates() :: texts:
 	delete {_seen::*}
 	loop all worlds:
 		set {_seen::%loop-world.getName()%} to true
@@ -296,7 +307,7 @@ function mapCandidates() :: texts:
 		set {_seen::%loop-value%} to true
 	loop {_seen::*}:
 		set {_n} to loop-index
-		if {_n} is not {_lobby}:
+		if mapExcluded({_n}) is false:
 			if {_n} does not end with "_nether":
 				if {_n} does not end with "_the_end":
 					add {_n} to {_r::*}
@@ -304,6 +315,9 @@ function mapCandidates() :: texts:
 
 # 맵 선택(클릭/랜덤 공통): 월드를 불러오고 {gamecfg::map} 에 저장한다. 바꾸기 전까지 유지된다.
 function mapSelect(p: player, wn: text):
+	if mapExcluded({_wn}) is true:
+		send "&c로비/훈련장으로 설정된 월드는 게임 맵으로 쓸 수 없습니다: %{_wn}%" to {_p}
+		stop
 	set {_w} to gcWorld({_wn})
 	if {_w} is not set:
 		send "&c월드를 불러오지 못했습니다: %{_wn}%" to {_p}
@@ -326,16 +340,18 @@ function mapGuiOpen(p: player):
 	loop all worlds:
 		set {_n} to loop-world.getName()
 		set {_seen::%{_n}%} to true
-		if {_n} does not end with "_nether":
-			if {_n} does not end with "_the_end":
-				add {_n} to {_names::*}
+		if mapExcluded({_n}) is false:
+			if {_n} does not end with "_nether":
+				if {_n} does not end with "_the_end":
+					add {_n} to {_names::*}
 	loop {gamecfg::worldlist::*}:
 		set {_n} to "%loop-value%"
 		if {_seen::%{_n}%} is not set:
 			set {_seen::%{_n}%} to false
-			if {_n} does not end with "_nether":
-				if {_n} does not end with "_the_end":
-					add {_n} to {_names::*}
+			if mapExcluded({_n}) is false:
+				if {_n} does not end with "_nether":
+					if {_n} does not end with "_the_end":
+						add {_n} to {_names::*}
 	set {_cur} to ""
 	if {gamecfg::map} is set:
 		set {_cur} to "%{gamecfg::map}%"

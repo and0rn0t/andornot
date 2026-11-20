@@ -691,6 +691,10 @@ function gameStart(by: text):
 	if {_target} is "":
 		if {gamecfg::map} is set:
 			set {_target} to "%{gamecfg::map}%"
+	# 로비/훈련장 월드로 저장돼 있는 맵 선택은 무시한다(mapExcluded)
+	if {_target} is not "":
+		if mapExcluded({_target}) is true:
+			set {_target} to ""
 	if {_target} is not "":
 		set {_mw} to gcWorld({_target})
 		if {_mw} is set:
@@ -821,6 +825,8 @@ function gStartFinish(sg: number):
 	set {-ingame} to true
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
+	# 섬멸전 첫 라운드 시작 시각(5분 뒤 체력 감소, gStormTick)
+	set {-grstart} to now
 	delete {-gstartprev::*}
 	gAnnounceTeams()
 	set {_sub} to "목표 %{-gtarget}%"
@@ -838,6 +844,7 @@ function gameCleanup():
 	delete {-gstarting}
 	add 1 to {-gstartgen}
 	add 1 to {-grgen}
+	delete {-grstart}
 	gStartCamRelease()
 	gsClear()
 	bgmStopAll()
@@ -1084,9 +1091,78 @@ function gRoundNext():
 	loop {-gplist::*}:
 		if loop-value is online:
 			gameRespawn(loop-value)
+	set {-grstart} to now
 	delete {-groundend}
 	loop all players:
 		send title "&e라운드 시작!" with subtitle "&7%gcModeName({-gmode})%" to loop-player for 2 seconds with fadein 0 ticks and fade out 10 ticks
+
+# ===== 섬멸전 체력 감소(자기장 대신) =====
+# 라운드가 시작되고({-grstart}) 5분이 지나면 매 초 살아 있는 참가자의 체력이 깎인다. 리스폰 지점(없으면 월드 스폰)에서 가로(x,z)로 먼 사람부터 순서대로 더 깎는다(높이 y 는 안 봄):
+#   가까운 순서 r(0 = 제일 가까움)마다 기본 1 + r x 0.5 (실 체력), 최대 gStormMax() 까지. 거리가 같으면 같은 순서.
+# 라운드 종료 연출 중({-groundend}), 킬 연출 중({-kc}), 죽은 사람, 관전자는 제외. 피해는 attacker 없는 일반 피해라 치명타면 킬 연출 + 마지막으로 피해를 준 적(10초 안)에게 킬 인정(기존 규칙).
+# 미검증: 연속 피해가 무적 시간에 막히는지, 갑옷/버프로 줄어드는지(실제 피해량 확인 필요).
+function gStormDelaySec() :: number:
+	return 300
+
+function gStormStep() :: number:
+	return 0.5
+
+function gStormMax() :: number:
+	return 4
+
+# dists 중 mine 보다 작은 값의 개수(= 나보다 리스폰에 가까운 사람 수)
+function gStormCloser(mine: number, dists: numbers) :: number:
+	set {_c} to 0
+	loop {_dists::*}:
+		if loop-value < {_mine}:
+			add 1 to {_c}
+	return {_c}
+
+function gStormTick():
+	if {-ingame} is not true:
+		stop
+	if {-gmode} is not "annihilation":
+		stop
+	if {-groundend} is true:
+		stop
+	if {-gover} is true:
+		stop
+	if {-gstarting} is true:
+		stop
+	if {-grcount} is set:
+		stop
+	if {-grstart} is not set:
+		stop
+	set {_el} to difference between {-grstart} and now
+	if {_el} < 5 minutes:
+		stop
+	set {_c} to gcLoadLoc(gcRespawnKey("%{-gworld}%"))
+	if {_c} is not set:
+		set {_gw} to gcWorld("%{-gworld}%")
+		set {_c} to {_gw}.getSpawnLocation()
+	set {_cx} to {_c}.getX()
+	set {_cz} to {_c}.getZ()
+	delete {_d::*}
+	loop {-gplist::*}:
+		set {_p} to loop-value
+		if gAlive({_p}) is true:
+			if {-kc::%uuid of {_p}%} is not set:
+				if gamemode of {_p} is not spectator:
+					set {_dx} to {_p}.getLocation().getX() - {_cx}
+					set {_dz} to {_p}.getLocation().getZ() - {_cz}
+					set {_d::%uuid of {_p}%} to {_dx} * {_dx} + {_dz} * {_dz}
+	loop {-gplist::*}:
+		set {_p} to loop-value
+		set {_id} to "%uuid of {_p}%"
+		if {_d::%{_id}%} is set:
+			set {_r} to gStormCloser({_d::%{_id}%}, {_d::*})
+			set {_dmg} to 1 + {_r} * gStormStep()
+			if {_dmg} > gStormMax():
+				set {_dmg} to gStormMax()
+			damage {_p} by hp({_dmg}) hearts
+
+every second:
+	gStormTick()
 
 # 연출 중에 부활을 막을지(섬멸전에서 죽은 사람은 라운드가 끝날 때까지 관전). killcine.sk 의 리스폰 단계가 부른다.
 function gKeepDead(v: player) :: boolean:
