@@ -584,7 +584,8 @@ function tabUpdate(p: player):
 		stop
 	set {_gap} to "{""text"":"" ""}"
 	set {_nm} to name of {_p}
-	set {_ex} to "{""text"":""%{_nm}%""}"
+	set {_pre} to tierPreJ("%uuid of {_p}%")
+	set {_ex} to "%{_pre}%,{""text"":""%{_nm}%""}"
 	# 아이콘 순서는 구성 번호와 상관없이 GUI 정렬 순서(itemOrder: 금속 -> 나무 -> cc기 -> 포션류)를 따른다.
 	loop integers from 1 to 5:
 		add loadoutGet({_p}, loop-value) to {_ld::*}

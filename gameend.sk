@@ -408,7 +408,9 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	# 저장용/dialog 용(겹친 디스플레이가 없다): 이름을 줄 안에 직접 넣는다. {-gfinline} 이 true 일 때만.
 	if {-gfinline} is true:
 		set {_c1} to gfT({_nm}, {_cn}, false)
-		set {_pn} to gfPad(gfNameW(), {_nm})
+		set {_pre} to tierPreJ({_id})
+		set {_c1} to "%{_pre}%,%{_c1}%"
+		set {_pn} to gfPad(gfNameW() - tierPreW({_id}), {_nm})
 		set {_c2} to gtT({_pn}, "white")
 	# 숫자는 회색. 각 항목(K/D/A/피해)에서 전체 최고값(0 초과)을 기록한 사람만 노란색 굵은 글씨
 	set {_hk} to false
@@ -497,7 +499,7 @@ function gfPrep():
 				set {-gfmaxd} to round({_dd})
 	set {-gfnw} to 96
 	loop gfIds():
-		set {_nw} to (floor((gtPx(gfName(loop-value)) + 8) / 4) + 1) * 4
+		set {_nw} to (floor((gtPx(gfName(loop-value)) + tierPreW(loop-value) + 8) / 4) + 1) * 4
 		if {_nw} > {-gfnw}:
 			set {-gfnw} to {_nw}
 
@@ -519,6 +521,8 @@ function gfTeamRowsOv(tk: text, nlc: text) :: text:
 	set {_r} to ""
 	loop gfSortedTeam({_tk}):
 		set {_nmj} to gfT(gfName(loop-value), {_cn}, false)
+		set {_pre} to tierPreJ(loop-value)
+		set {_nmj} to "%{_pre}%,%{_nmj}%"
 		set {_r} to "%{_r}%,%{_nmj}%,%{_nlc}%"
 	return {_r}
 

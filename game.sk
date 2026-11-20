@@ -115,7 +115,7 @@ function gPickTeam(n: number) :: text:
 function ratingOf(id: text) :: number:
 	if {rating::%{_id}%} is a number:
 		return {rating::%{_id}%}
-	return 100
+	return 105
 
 # 팀 구성. mode "random": 섞어서 돌아가며 배정. mode "mmr"(매튜 렁): 승점 높은 순(동점은 섞음)으로 보면서,
 # 인원 상한(올림(인원/팀수))이 안 찬 팀 중 현재 승점 합이 가장 낮은 팀에 넣는다(미검증 알고리즘: 탐욕법이라 최적은 아닐 수 있음).
@@ -366,7 +366,17 @@ function ratingApply():
 			set {_g} to {rating::games::%{_id}%}
 		if {_g} < 10:
 			set {_delta} to {_delta} * 2
-		set {rating::%{_id}%} to round((ratingOf({_id}) + {_delta}) * 100) / 100
+		set {_old} to ratingOf({_id})
+		set {_new} to round(({_old} + {_delta}) * 100) / 100
+		# 승점은 0 아래로 내려가지 않는다
+		if {_new} < 0:
+			set {_new} to 0
+		set {rating::%{_id}%} to {_new}
+		# 승점이 바뀐 시각(티어 순위 동점 처리용, tier.sk). 안 바뀌었으면 기존 시각 유지, 없으면 지금.
+		if {_new} is not {_old}:
+			set {ratingsince::%{_id}%} to tierNowMs()
+		else if {ratingsince::%{_id}%} is not a number:
+			set {ratingsince::%{_id}%} to tierNowMs()
 		set {rating::games::%{_id}%} to {_g} + 1
 
 # ===== 리스폰 위치 =====

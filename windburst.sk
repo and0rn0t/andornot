@@ -3,10 +3,12 @@
 # 이 파일이 쓰는 변수: {-wbcd}(쿨타임 종료 시각), {-wbball::눈덩이uuid}(우리가 던진 연막탄 표시), {-skillitems::wind_charge}
 # 던지기: 돌풍구 모양 아이템을 단 눈덩이를 던진다(진짜 돌풍구를 쓰면 넉백/폭발이 생겨서 안 씀). 어디든 맞으면(땅/벽/엔티티) 그 자리에 연막을 만든다.
 # 연막은 시야를 가리는 파티클 연출뿐이다(실명 효과는 없음, 사용자 요청으로 삭제).
-# 파티클: 흰색 구름(CLOUD)만 쓴다. 반지름 11.5칸 구 안에 4칸 간격 격자점(약 100곳)을 만들어 점마다 가우시안으로 뿌려 구형으로 고르게 채운다(smokeLattice).
+# 파티클: 흰색 구름(CLOUD)만 쓴다. 모양은 반구(위쪽 절반만): 반지름 11.5칸 안, 중심 높이 이상인 3칸 간격 격자점을 만들어 점마다 가우시안으로 뿌린다(smokeLattice).
+#   블럭에 막히면 번지지 않는다: 연막이 생길 때 한 번, 중심에서 각 격자점으로 광선(rayTraceBlocks)을 쏴서 블럭에 막힌 점(벽 뒤/다른 층)과 바로 위에 천장이 있는 점을 뺀다(smokePoints). 파티클은 퍼짐을 작게(가로 1.2, 세로 0.5) 줄여 새는 양을 최소화.
+#   플레이어 눈 주변 구름(smokeAround)도 눈이 중심보다 1칸 넘게 아래거나 중심과 눈 사이에 블럭이 있으면 뿌리지 않는다.
 #   2틱마다 뿌리고, 지속이 끝나면 마지막 2초 동안 양을 줄여 서서히 사라진다. 양은 smokeDensity() 로 조절한다.
 #   force=true 로 뿌려서 먼 거리에서도 보인다(World#spawnParticle 의 force 인자). 플레이어 눈 주변에는 따로 더 뿌려서 화면이 확실히 가려지게 한다.
-# 미검증: 눈덩이 setItem(Material.WIND_CHARGE), "wind charge" 별칭, 파티클 CLOUD 호출(null 데이터 + force 인자 9개짜리 spawnParticle).
+# 미검증: World#rayTraceBlocks(from, dir, dist) 호출과 null 결과 is set 판정, event.getHitBlockFace(), 눈덩이 setItem(Material.WIND_CHARGE), "wind charge" 별칭, 파티클 CLOUD 호출(null 데이터 + force 인자 9개짜리 spawnParticle).
 
 import:
 	org.bukkit.Particle
@@ -36,23 +38,22 @@ function smokeFadeTicks() :: number:
 function smokeDensity() :: number:
 	return 18
 
-# 구형 배치용 격자 점(중심 기준 벡터)을 한 번만 만들어 {-smokelat::*} 에 둔다. 간격 4칸, 반지름 11.5칸 안의 점만 쓴다.
-# 위아래(y)는 smokeYScale() 배율(0.7)로 눌러서 점 위치와 퍼짐을 모두 줄인다. 점마다 작은 가우시안(가로 표준편차 1.6)으로 구름을 뿌리면 전체가 반지름 11칸 구 모양으로 고르게 채워진다.
+# 반구 배치용 격자 점(중심 기준 벡터)을 한 번만 만들어 {-smokelat::*} 에 둔다. 간격 3칸, 반지름 11.5칸 안의 점 중 y >= 0(위쪽 절반)만 쓴다.
+# 위아래(y)는 smokeYScale() 배율(0.7)로 눌러서 점 위치를 줄인다. 점마다 작은 가우시안(가로 1.2, 세로 0.5)으로 구름을 뿌린다.
 function smokeLattice():
 	if {-smokelat::*} is set:
 		stop
 	set {_ix} to 0
-	while {_ix} < 7:
+	while {_ix} < 9:
 		set {_iy} to 0
-		while {_iy} < 7:
+		while {_iy} < 5:
 			set {_iz} to 0
-			while {_iz} < 7:
-				set {_x} to {_ix} - 3
-				set {_x} to {_x} * 4
-				set {_y} to {_iy} - 3
-				set {_y} to {_y} * 4
-				set {_z} to {_iz} - 3
-				set {_z} to {_z} * 4
+			while {_iz} < 9:
+				set {_x} to {_ix} - 4
+				set {_x} to {_x} * 3
+				set {_y} to {_iy} * 3
+				set {_z} to {_iz} - 4
+				set {_z} to {_z} * 3
 				if ({_x} * {_x} + {_y} * {_y} + {_z} * {_z}) <= 132:
 					set {_yy} to {_y} * smokeYScale()
 					add vector({_x}, {_yy}, {_z}) to {-smokelat::*}
@@ -60,23 +61,57 @@ function smokeLattice():
 			add 1 to {_iy}
 		add 1 to {_ix}
 
-# 연막 파티클 한 번 뿌리기. f = 0~1 (페이드 아웃 배율)
-# 마지막 인자 true(force)로 먼 거리(최대 512칸)에서도 보이게 한다. 기본값(false)은 근처 32칸 안에서만 보인다.
-function smokeStep(center: location, f: number):
+# 막힘 검사: from 에서 to 방향으로 maxd 칸 안에 블럭이 있으면 true (World#rayTraceBlocks, 미검증)
+function smokeBlocked(from: location, to: location, extra: number) :: boolean:
+	set {_w} to {_from}.getWorld()
+	set {_dx} to {_to}.getX() - {_from}.getX()
+	set {_dy} to {_to}.getY() - {_from}.getY()
+	set {_dz} to {_to}.getZ() - {_from}.getZ()
+	set {_len} to sqrt({_dx} * {_dx} + {_dy} * {_dy} + {_dz} * {_dz})
+	if {_len} < 0.01:
+		return false
+	set {_dir} to vector({_dx} / {_len}, {_dy} / {_len}, {_dz} / {_len})
+	set {_d} to {_len} + {_extra}
+	set {_hit} to {_w}.rayTraceBlocks({_from}, {_dir}, {_d})
+	if {_hit} is set:
+		return true
+	return false
+
+# 연막이 생길 때 한 번 계산: 중심에서 각 격자점으로 직선을 쏴서 블럭에 막힌 점(벽 뒤, 천장/바닥 너머)과 점 바로 위 1.2칸 안에 천장이 있는 점을 뺀다.
+# 막히지 않은 점의 위치만 {_out::*} 로 돌려준다. 벽 근처(1.2칸 이내)도 번지지 않게 뺀다.
+function smokePoints(center: location) :: locations:
 	smokeLattice()
-	set {_w} to {_center}.getWorld()
+	set {_up} to {_center} ~ vector(0, 1.2, 0)
+	loop {-smokelat::*}:
+		set {_l} to {_center} ~ loop-value
+		set {_bad} to smokeBlocked({_center}, {_l}, 1.2)
+		if {_bad} is false:
+			set {_top} to {_l} ~ vector(0, 1.2, 0)
+			set {_bad} to smokeBlocked({_l}, {_top}, 0)
+		if {_bad} is false:
+			add {_l} to {_out::*}
+	return {_out::*}
+
+# 연막 파티클 한 번 뿌리기. pts = smokePoints 결과. f = 0~1 (페이드 아웃 배율)
+# 마지막 인자 true(force)로 먼 거리(최대 512칸)에서도 보이게 한다. 기본값(false)은 근처 32칸 안에서만 보인다.
+function smokeStep(pts: locations, f: number):
 	set {_n} to floor(smokeDensity() * {_f})
 	if {_n} < 1:
 		stop
-	set {_sy} to 1.6 * smokeYScale()
-	loop {-smokelat::*}:
-		set {_v} to loop-value
-		set {_l} to {_center} ~ {_v}
-		{_w}.spawnParticle(Particle.CLOUD, {_l}, {_n}, 1.6, {_sy}, 1.6, 0, null, true)
+	loop {_pts::*}:
+		set {_l} to loop-value
+		set {_w} to {_l}.getWorld()
+		{_w}.spawnParticle(Particle.CLOUD, {_l}, {_n}, 1.2, 0.5, 1.2, 0, null, true)
 
-# 연막 안 플레이어 눈 주변(1.3칸)에 구름을 촘촘히 뿌려 화면을 가린다
-function smokeAround(p: player, f: number):
+# 연막 안 플레이어 눈 주변(1.3칸)에 구름을 촘촘히 뿌려 화면을 가린다.
+# 눈이 중심보다 1칸 넘게 아래거나, 중심과 눈 사이에 블럭이 있으면(다른 층) 뿌리지 않는다.
+function smokeAround(p: player, f: number, center: location):
 	set {_eye} to {_p}.getEyeLocation()
+	if {_eye}.getY() < {_center}.getY() - 1:
+		stop
+	set {_blocked} to smokeBlocked({_center}, {_eye}, 0)
+	if {_blocked} is true:
+		stop
 	set {_c} to floor(70 * {_f})
 	if {_c} < 1:
 		stop
@@ -84,6 +119,7 @@ function smokeAround(p: player, f: number):
 
 function smokeCloud(center: location):
 	set {_r} to smokeRadius()
+	set {_pts::*} to smokePoints({_center})
 	set {_hold} to smokeTicks() / 2
 	set {_fade} to smokeFadeTicks() / 2
 	set {_total} to {_hold} + {_fade}
@@ -93,9 +129,9 @@ function smokeCloud(center: location):
 		set {_f} to 1
 		if {_i} >= {_hold}:
 			set {_f} to ({_total} - {_i}) / {_fade}
-		smokeStep({_center}, {_f})
+		smokeStep({_pts::*}, {_f})
 		loop all players in radius {_r} around {_center}:
-			smokeAround(loop-player, {_f})
+			smokeAround(loop-player, {_f}, {_center})
 		wait 2 ticks
 		add 1 to {_i}
 
@@ -126,6 +162,15 @@ on projectile hit:
 	if {-wbball::%uuid of projectile%} is set:
 		delete {-wbball::%uuid of projectile%}
 		set {_l} to location of projectile
+		# 맞은 면 바깥쪽으로 0.6칸 띄워 중심을 공기 중에 둔다(블럭 속에서 시작하면 광선이 막힘). 엔티티를 맞춘 경우는 위로 0.6칸.
+		set {_ev} to event
+		set {_face} to {_ev}.getHitBlockFace()
+		if {_face} is set:
+			set {_fd} to {_face}.getDirection()
+			set {_fv} to vector({_fd}.getX() * 0.6, {_fd}.getY() * 0.6, {_fd}.getZ() * 0.6)
+			set {_l} to {_l} ~ {_fv}
+		else:
+			set {_l} to {_l} ~ vector(0, 0.6, 0)
 		delete projectile
 		play sound "entity.generic.explode" with volume 0.6 and pitch 1.6 at {_l}
 		smokeCloud({_l})

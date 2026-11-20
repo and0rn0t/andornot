@@ -58,7 +58,7 @@
 #   {-pickexp::uuid}         곡괭이 중첩 만료 시각(타격마다 +3초)       main(접속 시 삭제)
 #   {-atkcd::uuid}           공격 쿨다운 충전도 0~1(매 틱 기록)        main(기록/접속 시 삭제), cooldownScale 이 읽음
 #   {-skilldmg::uuid}        스킬이 데미지를 주는 중(철퇴/창 보정 제외용). 공격자 uuid   fishing(set/delete), main(읽기, 접속 시 삭제)
-#   {gamecfg::teams|mode|random|teammode} 게임 사전 설정(teammode: mmr=매튜 렁/random), {rating::uuid}·{rating::games::uuid} 내부 승점/경기 수(저장, 비공개, /rating)(저장 변수, 대시 없음. 팀 수 0=개인전)  gamesetup
+#   {gamecfg::teams|mode|random|teammode} 게임 사전 설정(teammode: mmr=매튜 렁/random), {rating::uuid}·{rating::games::uuid} 내부 승점(기본 105, 0 미만 불가)/경기 수(저장, /rating, 티어 표기로만 공개), {ratingsince::uuid} 지금 승점 도달 시각(밀리초, 티어 동점 순위용, tier.sk)(저장 변수, 대시 없음. 팀 수 0=개인전)  gamesetup
 #   {-kc::uuid}              킬 연출 중 표시(연출 끝/접속 시 삭제)                killcine
 #   {-kcorig::uuid} {-groundwin}   라운드 종료 연출 중 원래 위치 / 라운드 승리 팀 키   killcine, game
 #   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
@@ -148,7 +148,8 @@
 #   - team.sk       : /team 명령으로 {-team} 설정(op 전용, 테스트용)
 #   - bow.sk        : 활 스킬(충전 데미지, 소닉붐)
 #   - blazerod.sk   : 블레이즈 막대기 스킬(화염구, 3번째 사용 5연발)
-#   - windburst.sk  : 연막탄 스킬
+#   - windburst.sk  : 연막탄 스킬(반구 모양, 블럭에 막히면 번지지 않음)
+#   - tier.sk       : 티어 시스템(승점 -> 브론즈~챌린저, 닉네임 앞 아이콘 + 로마 숫자. 탭리스트/게임 결과/매치 기록에만 표시, 채팅/킬로그 제외)
 #   - flintsteel.sk : 부싯돌과 부시 스킬(취약 + 불태움)
 #   - totem.sk      : 불사의 토템 스킬
 #   - sword.sk      : 검 패시브(피해 1회 막기, 쿨 20초, 준비 중 체력바 하늘색). 판정은 main.sk 첫 on damage, 색은 healthbar.sk
@@ -252,7 +253,7 @@
 #       최대 충전으로 발사하면 소닉붐 이펙트와 사운드.
 #   - 블레이즈 막대기 / 쿨 4초(발사 딜레이 미포함)   [완료: blazerod.sk] : 사용 0.2초 후 화염구 발사(속도 소폭 감소, 큰 화염구). 맞으면 폭발해서 반경 3칸 범위 피해 5(블럭 피해 없음, 쏜 사람/아군 제외).
 #       3번째 사용 때는 바라보는 지점 위쪽(10칸)에서 사선으로, 그 지점 반경 3칸 안 무작위 목표로 화염구 5개가 차례로 떨어짐.
-#   - 연막탄(돌풍구 아이템) / 쿨 30초   [완료: windburst.sk] : 브리즈 막대 대신 들어감. 맞은 자리에 10초간 지속되는 연막(반경 11칸) 생성, 지속이 끝나면 2초에 걸쳐 사라짐.
+#   - 연막탄(돌풍구 아이템) / 쿨 30초   [완료: windburst.sk] : 브리즈 막대 대신 들어감. 맞은 자리에 10초간 지속되는 반구 모양 연막(반경 11칸, 위쪽 절반만) 생성. 블럭에 막힌 구역(벽 뒤/다른 층)과 천장 위로는 번지지 않음, 지속이 끝나면 2초에 걸쳐 사라짐.
 #       실명 효과는 없음(파티클 연출만, 사용자 변경 2026-11).
 #   - 부싯돌과 부시 / 쿨 20초   [완료: flintsteel.sk] : 사용 시 주변 10칸 안의 적을 모두 5초간 '취약' 상태로 만들고 불태움(불로는 데미지 없음).
 #       취약: 받는 데미지 1.2배. 사용 지점에서 범위 끝까지 불꽃이 퍼져나가는 이펙트.
@@ -283,6 +284,7 @@
 #   구현 상태: [완료] 게임 시작/종료, 팀 배정, 전적(K/D/A/가한 피해), 바운티, 섬멸전, 목표 스코어/승점 설정   [game.sk, gamesetup.sk, admin.sk, killcine.sk]
 #             [완료] 게임 중 탭리스트 전투 정보   [gametab.sk]
 #             [완료] 게임 종료 연출/결과 발표/Player Of The Match 투표/채팅 상단 고정/15초 뒤 로비   [gameend.sk, killcine.sk]
+#             [완료] 티어 시스템(승점 기본 105=골드 I, 15점당 세부 티어, 마스터 240+ 순위제, 0점 하한)   [tier.sk, game.sk, gametab.sk, items.sk, gameend.sk]
 #             [완료] 지난 매치 독서대(GUI) + 결과 dialog + 리뷰, 결과창 맨 윗줄에 MATCH 번호   [matchhistory.sk, gameend.sk, admin.sk]
 #             [완료] 관리자 /gamestop(게임·연출 중단)   [gameend.sk]
 #             [미구현] 맵 설정(스폰 위치, 로비 위치, 팀별 스폰), 랜덤 아이템 모드 지급

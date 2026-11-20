@@ -37,7 +37,7 @@ command /rating <offlineplayer>:
 		set {_g} to 0
 		if {rating::games::%{_id}%} is a number:
 			set {_g} to {rating::games::%{_id}%}
-		send "&7%arg-1% 내부 승점: &e%ratingOf({_id})% &7(%{_g}%경기)"
+		send "&7%arg-1% 내부 승점: &e%ratingOf({_id})% &7(%{_g}%경기, 티어 %tierLabel({_id})%)"
 
 on quit:
 	delete {-team::%uuid of player%}
