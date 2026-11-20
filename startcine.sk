@@ -3,7 +3,7 @@
 # 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
 #   준비  라인업 자리를 정한다(gsPrepare). 시작 카메라(없으면 라인업 첫 구도 자리)로 이동해 관전 상태로 카메라 엔티티를 관전 대상으로 걸어 위치/시점을 고정한다.
-#   준비 2초(음악 시작 전): 카메라/라인업 청크를 서버에서 먼저 불러 두고 관전 대상을 연출 전 준비 구간에만 강제로 다시 건다(서버/스크립트 로드 직후 첫 게임에서 클라이언트가 아직 준비 안 돼 카메라 잠금/음악이 무시되던 문제 대응). 19초는 음악을 틀기 시작한 때부터다.
+#   준비 3초(음악 시작 전): 카메라는 지금 있는 자리에서 시작해, 카메라/라인업 청크를 서버에서 먼저 불러 두고 관전 대상을 연출 전 준비 구간에만 강제로 다시 건다(서버/스크립트 로드 직후 첫 게임에서 클라이언트가 아직 준비 안 돼 카메라 잠금/음악이 무시되던 문제 대응), 그다음 2초 동안 시작 카메라까지 부드럽게 이동한다. 19초는 음악을 틀기 시작한 때부터다.
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
@@ -272,30 +272,69 @@ function gStartIntro(sg: number):
 	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
 	if {_cam} is not set:
 		set {_cam} to gsShotLoc(1, 0)
+	# 참가자 전원을 관전 상태로 바꾸고, 카메라는 지금 있는 자리(첫 참가자의 눈 위치)에서 시작한다. 바로 시작 카메라로 순간이동하면 어색해서,
+	# 준비(로딩)가 끝난 뒤 시작 카메라까지 부드럽게 날아가게 한다. 처음 카메라가 이미 클라이언트가 불러둔 자리에 있어서 관전 요청도 무시되지 않는다.
+	set {_cw} to {_cam}.getWorld()
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
 			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
 			set gamemode of {_pl} to spectator
-			tpSafe({_pl}, {_cam})
-	set {_cw} to {_cam}.getWorld()
-	set {_ce} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
+			if {_from} is not set:
+				set {_from} to {_pl}.getEyeLocation()
+	if {_from} is not set:
+		set {_from} to {_cam}
+	if {_from}.getWorld() is not {_cw}:
+		# 다른 월드에 있으면 날아갈 수 없어서 바로 이동한다
+		set {_from} to {_cam}
+		loop {-gplist::*}:
+			if loop-value is online:
+				tpSafe(loop-value, {_cam})
+	set {_ce} to {_cw}.spawnEntity({_from}, EntityType.TEXT_DISPLAY)
 	{_ce}.setGravity(false)
 	{_ce}.setInvulnerable(true)
 	{_ce}.setSilent(true)
 	set {-gstartcam} to {_ce}
-	# 준비 시간(2초): 서버에서 카메라/라인업 자리 청크를 먼저 불러 두고(getChunk 가 동기로 불러옴), 클라이언트가 월드/청크/카메라 엔티티를 받을 시간을 준다.
-	# 서버 로드/스크립트 로드 직후 첫 게임에서는 이 준비 없이 바로 관전 대상을 걸고 음악을 틀면 클라이언트가 아직 준비가 안 돼 무시되던 문제(카메라 잠금/음악 안 나옴)를 막는다. 관전 대상은 이 동안만(연출 화면이 보이기 전) 1초마다 강제로 다시 건다. 연출 중에는 강제로 다시 걸지 않는다(풀었다 거는 순간 화면이 흔들려서 카메라 이동 연출이 깨짐).
+	wait 1 tick
+	if gStartAbort({_sg}) is true:
+		stop
+	gStartKeepForce()
+	# 준비 1초: 서버에서 시작 카메라/라인업 첫 구도 자리 청크를 먼저 불러 둔다(getChunk 가 동기로 불러옴). 연출 화면이 보이기 전이라 관전 대상을 한 번 더 강제로 건다.
+	# (서버/스크립트 로드 직후 첫 게임에서 카메라 잠금/음악이 무시되던 문제 대응. 연출 중에는 강제 재설정을 안 한다: 풀었다 거는 순간 화면이 흔들림)
 	{_cam}.getChunk()
 	set {_lc0} to gsShotLoc(1, 0)
 	{_lc0}.getChunk()
 	set {_pre} to 0
-	while {_pre} < 40:
+	while {_pre} < 20:
 		if gStartAbort({_sg}) is true:
 			stop
-		if mod({_pre}, 20) is 0:
+		if {_pre} is 10:
 			gStartKeepForce()
 		add 1 to {_pre}
+		wait 1 tick
+	# 시작 카메라로 이동(2초, 천천히 시작해서 천천히 멈춤). 위치와 시선을 같이 보간한다.
+	set {_x0} to {_from}.getX()
+	set {_y0} to {_from}.getY()
+	set {_z0} to {_from}.getZ()
+	set {_yw0} to {_from}.getYaw()
+	set {_pt0} to {_from}.getPitch()
+	set {_dyw} to mod({_cam}.getYaw() - {_yw0} + 540, 360) - 180
+	set {_mv} to 0
+	while {_mv} < 40:
+		if gStartAbort({_sg}) is true:
+			stop
+		add 1 to {_mv}
+		set {_t} to {_mv} / 40
+		set {_e} to {_t} * {_t} * (3 - 2 * {_t})
+		set {_mx} to {_x0} + ({_cam}.getX() - {_x0}) * {_e}
+		set {_my} to {_y0} + ({_cam}.getY() - {_y0}) * {_e}
+		set {_mz} to {_z0} + ({_cam}.getZ() - {_z0}) * {_e}
+		set {_myw} to {_yw0} + {_dyw} * {_e}
+		set {_mpt} to {_pt0} + ({_cam}.getPitch() - {_pt0}) * {_e}
+		set {_ml} to new Location({_cw}, {_mx}, {_my}, {_mz}, {_myw}, {_mpt})
+		teleport {-gstartcam} to {_ml}
+		if mod({_mv}, 2) is 0:
+			gStartKeep()
 		wait 1 tick
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
