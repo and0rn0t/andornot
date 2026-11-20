@@ -103,7 +103,7 @@ function umOnSend(px: object, e: object):
 	else if {_t}.equals(PTServer.PLAYER_INFO_REMOVE) is true:
 		umRemove({_e}, {_v})
 	else:
-		umUuid0({_e}, {_v})
+		umUuidFirst({_e}, {_v})
 
 # 받는 패킷: 관전 메뉴 텔레포트. 클라이언트가 가짜 UUID 로 보내면 진짜 UUID 로 되돌려요.
 function umOnRecv(px: object, e: object):
@@ -207,7 +207,7 @@ function umRemove(e: object, v: object):
 	{_e}.setPacket({_cl})
 
 # 엔티티 생성 / 플레이어 채팅 패킷: UUID 필드가 하나라서 첫 번째 것을 바꿔요.
-function umUuid0(e: object, v: object):
+function umUuidFirst(e: object, v: object):
 	set {_pk} to {_e}.getPacket()
 	set {_u} to {_pk}.getUUIDs().read(0)
 	if {_u} is not set:
