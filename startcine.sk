@@ -1,8 +1,11 @@
-# [startcine.sk] 게임 시작 연출(19초, 음악 gamestart 길이에 맞춤)과 배경 음악 재생 함수.
+# [startcine.sk] 게임 시작 연출(로딩 3초 + 19초, 음악 gamestart 길이에 맞춤)과 배경 음악 재생 함수, 라운드 시작 카운트다운의 강한 카메라 잠금.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
+#   {-grcam}(섬멸전 라운드 시작 카운트다운용 카메라 엔티티, 카운트다운이 끝나면 지움) {-grcamt}(그 카메라를 세운 뒤 지난 틱 수)
+# 강한 카메라 잠금 = 카메라 엔티티(텍스트 디스플레이)를 관전 대상으로 걸어 위치/시점을 못 바꾸게 하는 것(웅크리기 등으로 풀려도 매 틱 다시 건다). game.sk 의 PlayerMoveEvent 잠금(카메라 없이 제자리에서 못 움직이게 함)보다 강하다.
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
-#   준비  라인업 자리를 정한 뒤 모두 관전 상태로 시작 카메라(없으면 라인업 첫 구도 자리)로 이동하고 카메라 엔티티를 관전 대상으로 걸어 위치/시점을 고정한다(로딩 연출 없음). 서버/스크립트 로드 직후 첫 게임에서 클라이언트가 카메라를 아직 몰라 요청이 무시되던 문제는 시작 0.5초/2초 뒤 두 번만 관전 대상을 강제로 다시 걸어 막는다.
+#   로딩  모두 관전 상태로 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라를 세우고 3초 동안 강한 카메라 잠금(맵이 불러와지길 기다린다). 액션바에 노란색 "loading..." 만 보이고 소리는 없다.
+#   준비  라인업 자리를 정한 뒤 같은 카메라를 시작 카메라(없으면 라인업 첫 구도 자리)로 옮기고 모두 그 자리로 이동시킨다(로딩 연출 없음). 서버/스크립트 로드 직후 첫 게임에서 클라이언트가 카메라를 아직 몰라 요청이 무시되던 문제는 로딩 구간 0.5초/2초 뒤와 시작 카메라로 옮긴 직후, 연출 시작 0.5초/2초 뒤에 관전 대상을 강제로 다시 걸어 막는다.
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
@@ -11,8 +14,11 @@
 #   라인업 자리(항상 정해져서 연출이 반드시 나온다): 1) 관리자 메뉴 "팀 라인업 위치 지정"으로 저장한 위치({gamecfg::loc::lineup_<월드>::*}: 서 있는 자리 = 줄 가운데 더미 발 위치, 시선 = 더미가 바라볼 방향(90도 단위), 카메라는 그 앞쪽에 선다)
 #     2) 없으면 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰) 주변 30칸에서 평평하고 막히지 않은 곳을 무작위로 40번까지 자동 탐색 3) 그래도 없으면 그 중심 자리의 가장 높은 블럭 위(조건 검사 없음).
 #   개인전은 한 사람당 더미 하나(자기 것만 보인다). 더미는 마네킹(이름표: 티어 아이콘 + 로마 숫자 + 닉네임).
+# 섬멸전 라운드 시작 카운트다운(game.sk 의 gRoundNext, "강하를 준비하세요" + 5초): game.sk 는 건드리지 않고 이 파일의 every 1 tick 이 카운트다운 중({-grcount} 가 켜져 있을 때, gSpecIntro())인 것을 보고
+#   리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라({-grcam})를 세워 참가자 전원을 그 자리로 옮기고 강한 카메라 잠금을 건다(카운트다운이 끝나 관전이 풀리거나 게임이 멈추면 카메라를 지운다).
 # 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
-# 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt.
+# 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt,
+#   로딩 구간 카메라를 시작 카메라로 teleport 로 옮겨도 관전 대상이 유지되는지(안 되면 바로 뒤 gStartKeepForce 가 다시 건다), 카운트다운 카메라 세우기/지우기(every 1 tick 감시), send action bar "" 로 액션바가 지워지는지.
 
 import:
 	org.bukkit.Bukkit
@@ -21,6 +27,7 @@ import:
 	org.bukkit.entity.EntityType
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
 
 # ===== 배경 음악 =====
 # 재생 음량(0~1). 파일이 이미 -6dB 낮춰져 있다. 아직 크면 이 값을 줄인다.
@@ -46,6 +53,16 @@ function gsSearchCenter() :: location:
 	if {_c} is not set:
 		set {_c} to {_w}.getSpawnLocation()
 	return {_c}
+
+# 로딩 구간/라운드 카운트다운에서 카메라를 세울 자리: 리스폰 지점(저장한 위치와 시점 그대로), 없으면 시작 카메라, 없으면 월드 스폰.
+function gHoldLoc() :: location:
+	set {_w} to gcWorld("%{-gworld}%")
+	set {_l} to gcLoadLoc(gcRespawnKey("%{-gworld}%"))
+	if {_l} is not set:
+		set {_l} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
+	if {_l} is not set:
+		set {_l} to {_w}.getSpawnLocation()
+	return {_l}
 
 # 줄(가운데 기준 n 명)과 카메라 공간이 맞는지. 가운데 아래 블럭 (bx,by,bz), 앞 방향 (fx,fz), 줄 방향 (ux,uz).
 function gsLineupOk(w: world, bx: number, by: number, bz: number, fx: number, fz: number, ux: number, uz: number, n: number, half: number, dmax: number) :: boolean:
@@ -267,31 +284,67 @@ function gsClear():
 function gStartIntro(sg: number):
 	# 진단 로그(콘솔): 리로드 직후 연출이 씹히는 문제를 추적하려고 단계마다 남긴다. 원인을 찾으면 지운다.
 	send "[startcine] 시작: gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}% 참가자=%size of {-gplist::*}% 월드=%{-gworld}%" to console
-	# 라인업 자리를 먼저 정한다(항상 정해짐)
-	gsPrepare()
-	send "[startcine] 라인업 자리: ok=%{-gsl::ok}% loc=%{-gsl::loc}%" to console
-	# 시작 카메라: 모두 관전 상태로 이동해 카메라 엔티티를 관전 대상으로 건다(시점/위치 고정). 시작 카메라 위치가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
-	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
-	if {_cam} is not set:
-		set {_cam} to gsShotLoc(1, 0)
+	# 로딩 3초: 모두 관전 상태로 리스폰 지점에 세운 카메라에 건다(강한 카메라 잠금). 맵이 불러와질 시간을 벌고, 액션바에 노란색 loading... 만 보여 준다(소리 없음).
+	set {_hl} to gHoldLoc()
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
 			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
 			set gamemode of {_pl} to spectator
+			tpSafe({_pl}, {_hl})
+	set {_hw} to {_hl}.getWorld()
+	set {_he} to {_hw}.spawnEntity({_hl}, EntityType.TEXT_DISPLAY)
+	{_he}.setGravity(false)
+	{_he}.setInvulnerable(true)
+	{_he}.setSilent(true)
+	set {-gstartcam} to {_he}
+	send "[startcine] 로딩 구간 카메라 생성: loc=%{_hl}% 엔티티=%{_he}%" to console
+	wait 1 tick
+	if gStartAbort({_sg}) is true:
+		send "[startcine] 중단(로딩 준비 직후): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
+		stop
+	gStartKeepForce()
+	set {_ht} to 0
+	while {_ht} < 60:
+		if gStartAbort({_sg}) is true:
+			send "[startcine] 중단(로딩 %{_ht}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
+			stop
+		if mod({_ht}, 10) is 0:
+			loop {-gplist::*}:
+				if loop-value is online:
+					send action bar colored "&eloading..." to loop-value
+		if {_ht} is 10:
+			gStartKeepForce()
+		else if {_ht} is 40:
+			gStartKeepForce()
+		else:
+			gStartKeep()
+		add 1 to {_ht}
+		wait 1 tick
+	loop {-gplist::*}:
+		if loop-value is online:
+			send action bar "" to loop-value
+	send "[startcine] 로딩 구간 끝" to console
+	# 라인업 자리를 먼저 정한다(항상 정해짐)
+	gsPrepare()
+	send "[startcine] 라인업 자리: ok=%{-gsl::ok}% loc=%{-gsl::loc}%" to console
+	# 시작 카메라: 로딩 구간 카메라를 시작 카메라 위치로 옮기고 모두 그 자리로 보낸다(관전 대상으로 걸린 카메라가 시점/위치를 고정). 시작 카메라 위치가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
+	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
+	if {_cam} is not set:
+		set {_cam} to gsShotLoc(1, 0)
+	teleport {-gstartcam} to {_cam}
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			if gamemode of {_pl} is not spectator:
+				set gamemode of {_pl} to spectator
 			tpSafe({_pl}, {_cam})
-	set {_cw} to {_cam}.getWorld()
-	set {_ce} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
-	{_ce}.setGravity(false)
-	{_ce}.setInvulnerable(true)
-	{_ce}.setSilent(true)
-	set {-gstartcam} to {_ce}
-	send "[startcine] 카메라 생성: cam=%{_cam}% 엔티티=%{_ce}%" to console
+	send "[startcine] 카메라 이동: cam=%{_cam}% 엔티티=%{-gstartcam}%" to console
 	wait 1 tick
 	if gStartAbort({_sg}) is true:
 		send "[startcine] 중단(준비 직후): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 		stop
-	gStartKeep()
+	gStartKeepForce()
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
 		set {_pl} to loop-value
@@ -341,7 +394,7 @@ function gStartIntro(sg: number):
 				set {_pl} to loop-value
 				if {_pl} is online:
 					send title "&f강하를 준비하세요" with subtitle "" to {_pl} for 3 seconds with fadein 10 ticks and fade out 10 ticks
-		# 서버/스크립트 로드 직후 첫 게임에서 클라이언트가 카메라 엔티티를 아직 몰라 처음 건 관전 요청이 무시되던 문제 대응: 시작 직후 두 번만 강제로 다시 건다(로딩 없음). 그 뒤에는 풀렸을 때만 다시 건다.
+		# 서버/스크립트 로드 직후 첫 게임에서 클라이언트가 카메라 엔티티를 아직 몰라 처음 건 관전 요청이 무시되던 문제 대응: 연출 시작 직후 두 번만 강제로 다시 건다. 그 뒤에는 풀렸을 때만 다시 건다.
 		if {_tk} is 10:
 			gStartKeepForce()
 		else if {_tk} is 40:
@@ -355,3 +408,79 @@ function gStartIntro(sg: number):
 		stop
 	send "[startcine] 연출 끝, 게임 시작" to console
 	gStartFinish({_sg})
+
+# ===== 섬멸전 라운드 시작 카운트다운의 강한 카메라 잠금 =====
+# game.sk 의 gRoundNext 가 "강하를 준비하세요" 5초 카운트다운 동안 {-grcount} 를 켜 두고 참가자를 관전 상태로 둔다(gSpecIntro() 가 true). 그 동안 아래 every 1 tick 이
+# 리스폰 지점에 카메라({-grcam})를 세워 전원을 그 자리로 옮기고 관전 대상으로 건다. 카운트다운이 끝나면(gameRespawn 이 어드벤처로 되돌려 관전이 풀림) 다음 틱에 카메라를 지운다.
+function grCamTick():
+	if {-grcam} is not set:
+		set {_hl} to gHoldLoc()
+		set {_cw} to {_hl}.getWorld()
+		set {_ce} to {_cw}.spawnEntity({_hl}, EntityType.TEXT_DISPLAY)
+		{_ce}.setGravity(false)
+		{_ce}.setInvulnerable(true)
+		{_ce}.setSilent(true)
+		set {-grcam} to {_ce}
+		set {-grcamt} to 0
+		loop {-gplist::*}:
+			set {_pl} to loop-value
+			if {_pl} is online:
+				if gamemode of {_pl} is spectator:
+					tpSafe({_pl}, {_hl})
+		stop
+	add 1 to {-grcamt}
+	set {_force} to false
+	if {-grcamt} is 2:
+		set {_force} to true
+	else if {-grcamt} is 10:
+		set {_force} to true
+	else if {-grcamt} is 40:
+		set {_force} to true
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			if gamemode of {_pl} is spectator:
+				if {_force} is true:
+					{_pl}.setSpectatorTarget(null)
+					{_pl}.setSpectatorTarget({-grcam})
+				else:
+					set {_cur} to {_pl}.getSpectatorTarget()
+					if {_cur} is not {-grcam}:
+						{_pl}.setSpectatorTarget({-grcam})
+
+function grCamRelease():
+	if {-grcam} is set:
+		loop {-gplist::*}:
+			set {_pl} to loop-value
+			if {_pl} is online:
+				if gamemode of {_pl} is spectator:
+					{_pl}.setSpectatorTarget(null)
+		{-grcam}.remove()
+	delete {-grcam}
+	delete {-grcamt}
+
+every 1 tick:
+	# 시작 연출 중에는 gStartIntro/game.sk 가 카메라를 맡는다
+	if {-gstarting} is true:
+		if {-grcam} is set:
+			grCamRelease()
+		stop
+	if gSpecIntro() is true:
+		grCamTick()
+	else if {-grcam} is set:
+		grCamRelease()
+
+# 카운트다운 동안 카메라(관전 대상)에서 내려오는 것(웅크리기 등)을 막는다. 시작 연출 중에는 game.sk 의 같은 이벤트가 막는다.
+on PlayerStopSpectatingEntityEvent:
+	if {-grcam} is not set:
+		stop
+	set {_sp} to event.getPlayer()
+	if {-gplist::*} contains {_sp}:
+		event.setCancelled(true)
+
+# 스크립트를 다시 불러올 때 남은 카운트다운 카메라를 지운다
+on load:
+	if {-grcam} is set:
+		{-grcam}.remove()
+	delete {-grcam}
+	delete {-grcamt}
