@@ -2,13 +2,14 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
-#   준비  시작 카메라로 이동해 관전 상태로 시점 고정(카메라가 없는 월드는 제자리, 시점 고정 없음). 라인업 자리를 찾는다(gsPrepare).
+#   준비  라인업 자리를 정한다(gsPrepare). 시작 카메라(없으면 라인업 첫 구도 자리)로 이동해 관전 상태로 카메라 엔티티를 관전 대상으로 걸어 위치/시점을 고정한다.
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
 #   15.5초 "강하를 준비하세요" 타이틀
 #   19초  더미를 치우고 게임 시작(gStartFinish). 음악 길이가 19.6초라 끝날 즈음에 시작한다.
-#   라인업 자리: 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰) 주변 30칸 안에서 가장 높은 블럭 위가 줄 길이만큼 평평하고 머리 위 3칸이 비었으며 카메라가 설 앞쪽 공간이 막히지 않은 곳을 무작위로 40번까지 찾는다. 못 찾으면 더미/카메라 이동 없이 시작 카메라 화면 그대로 진행한다.
+#   라인업 자리(항상 정해져서 연출이 반드시 나온다): 1) 관리자 메뉴 "팀 라인업 위치 지정"으로 저장한 위치({gamecfg::loc::lineup_<월드>::*}: 서 있는 자리 = 줄 가운데 더미 발 위치, 시선 = 더미가 바라볼 방향(90도 단위), 카메라는 그 앞쪽에 선다)
+#     2) 없으면 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰) 주변 30칸에서 평평하고 막히지 않은 곳을 무작위로 40번까지 자동 탐색 3) 그래도 없으면 그 중심 자리의 가장 높은 블럭 위(조건 검사 없음).
 #   개인전은 한 사람당 더미 하나(자기 것만 보인다). 더미는 마네킹(이름표: 티어 아이콘 + 로마 숫자 + 닉네임).
 # 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
 # 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt.
@@ -122,7 +123,26 @@ function gsFindLineup(n: number, c: location):
 				set {-gsl::ok} to true
 				stop
 
-# 팀(개인전은 한 사람) 단위 최대 인원을 세어 자리를 찾는다. 접속 중인 참가자만 센다.
+# 월드별 라인업 위치 키(관리자 메뉴 "팀 라인업 위치 지정")
+function gcLineupKey(wn: text) :: text:
+	return "lineup_%{_wn}%"
+
+# 위치 l(서 있는 자리 = 줄 가운데 더미 발 위치, 시선 = 더미가 바라볼 방향, 90도 단위로 맞춤)을 라인업 자리로 쓴다. len = 줄 길이.
+function gsApply(l: location, len: number):
+	set {_y} to round({_l}.getYaw() / 90) * 90
+	set {_fx} to round(0 - sin({_y}))
+	set {_fz} to round(cos({_y}))
+	set {-gsl::loc} to {_l}
+	set {-gsl::fx} to {_fx}
+	set {-gsl::fz} to {_fz}
+	set {-gsl::ux} to abs({_fz})
+	set {-gsl::uz} to abs({_fx})
+	set {-gsl::yaw} to {_y}
+	set {-gsl::len} to {_len}
+	set {-gsl::ok} to true
+
+# 팀(개인전은 한 사람) 단위 최대 인원을 센다(접속 중인 참가자만). 라인업 자리 정하는 순서(항상 자리가 정해져서 연출이 반드시 나온다):
+#   1) 관리자 메뉴로 저장한 위치  2) 자동으로 찾은 자리(gsFindLineup)  3) 못 찾으면 검색 중심(리스폰 지점/시작 카메라/월드 스폰)의 가장 높은 블럭 위(조건 검사 없음)
 function gsPrepare():
 	delete {-gsl::*}
 	delete {_cnt::*}
@@ -133,8 +153,21 @@ function gsPrepare():
 			add 1 to {_cnt::%{_k}%}
 			if {_cnt::%{_k}%} > {_n}:
 				set {_n} to {_cnt::%{_k}%}
+	set {_len} to ({_n} - 1) * 1.4
+	set {_sv} to gcLoadLoc(gcLineupKey("%{-gworld}%"))
+	if {_sv} is set:
+		gsApply({_sv}, {_len})
+		stop
 	set {_c} to gsSearchCenter()
 	gsFindLineup({_n}, {_c})
+	if {-gsl::ok} is true:
+		stop
+	set {_w} to {_c}.getWorld()
+	set {_bx} to floor({_c}.getX())
+	set {_bz} to floor({_c}.getZ())
+	set {_by} to {_w}.getHighestBlockYAt({_bx}, {_bz})
+	set {_fl} to new Location({_w}, {_bx} + 0.5, {_by} + 1, {_bz} + 0.5)
+	gsApply({_fl}, {_len})
 
 # ===== 카메라 구도 =====
 # shot 1: 정면 넓게(천천히 다가감) / 2: 가까이서 옆으로 훑기 / 3: 낮은 정면 클로즈업(천천히 물러남). t 는 0~1.
@@ -232,28 +265,28 @@ function gsClear():
 
 # ===== 시작 연출 본체 =====
 function gStartIntro(sg: number):
-	# 시작 카메라: 모두 관전 상태로 이동해 시점을 고정한다(카메라 위치가 없는 월드는 제자리, 시점 고정 없음)
-	set {_cam} to gcLoadLoc(gcStartCamKey({-gworld}))
+	# 라인업 자리를 먼저 정한다(항상 정해짐)
+	gsPrepare()
+	# 시작 카메라: 모두 관전 상태로 이동해 카메라 엔티티를 관전 대상으로 건다(시점/위치 고정). 시작 카메라 위치가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
+	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
+	if {_cam} is not set:
+		set {_cam} to gsShotLoc(1, 0)
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
 			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
 			set gamemode of {_pl} to spectator
-			if {_cam} is set:
-				tpSafe({_pl}, {_cam})
-	if {_cam} is set:
-		set {_cw} to {_cam}.getWorld()
-		set {_ce} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
-		{_ce}.setGravity(false)
-		{_ce}.setInvulnerable(true)
-		{_ce}.setSilent(true)
-		set {-gstartcam} to {_ce}
-		wait 2 ticks
-		if gStartAbort({_sg}) is true:
-			stop
-		gStartKeep()
-	# 라인업 자리 찾기(한 틱 안에 끝나도록 가벼운 검사부터 한다)
-	gsPrepare()
+			tpSafe({_pl}, {_cam})
+	set {_cw} to {_cam}.getWorld()
+	set {_ce} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
+	{_ce}.setGravity(false)
+	{_ce}.setInvulnerable(true)
+	{_ce}.setSilent(true)
+	set {-gstartcam} to {_ce}
+	wait 1 tick
+	if gStartAbort({_sg}) is true:
+		stop
+	gStartKeep()
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
 		set {_pl} to loop-value
@@ -277,15 +310,10 @@ function gStartIntro(sg: number):
 						send title colored "%{_lab}%" with subtitle colored "&7당신의 팀" to {_pl} for 3500 milliseconds with fadein 10 ticks and fade out 10 ticks
 			if {-gsl::ok} is true:
 				set {_cl0} to gsShotLoc(1, 0)
+				teleport {-gstartcam} to {_cl0}
 				loop {-gplist::*}:
 					if loop-value is online:
 						tpSafe(loop-value, {_cl0})
-				if {-gstartcam} is not set:
-					set {_ce2} to {_cl0}.getWorld().spawnEntity({_cl0}, EntityType.TEXT_DISPLAY)
-					{_ce2}.setGravity(false)
-					{_ce2}.setInvulnerable(true)
-					{_ce2}.setSilent(true)
-					set {-gstartcam} to {_ce2}
 		if {_tk} >= 100:
 			if {-gsl::ok} is true:
 				if {-gstartcam} is set:

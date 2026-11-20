@@ -70,6 +70,7 @@ function wtRenameRefs(o: text, n: text):
 				set {gamecfg::loc::%{_k}%::world} to {_n}
 	wtMoveLoc(gcRespawnKey({_o}), gcRespawnKey({_n}), {_n})
 	wtMoveLoc(gcStartCamKey({_o}), gcStartCamKey({_n}), {_n})
+	wtMoveLoc(gcLineupKey({_o}), gcLineupKey({_n}), {_n})
 	wtMoveLoc(gcStageKey({_o}), gcStageKey({_n}), {_n})
 
 # 저장된 위치 키 ko 를 kn 으로 옮기고 월드 이름을 n 으로 바꾼다(없으면 아무 일도 안 함)
