@@ -184,6 +184,10 @@ on damage with priority highest:
 	# 2) 죽은 자리에 손에 아무것도 안 든 스켈레톤을 세운다(바라보는 방향 그대로). 마네킹은 본체와 똑같이 생겨서 죽었는지 구분이 안 돼서 교체.
 	#    AI/소리/충돌/줍기를 끄고 무적(햇빛에 타는 모습은 불 표시를 끄고 매 틱 불을 꺼서 막는다). 스켈레톤은 소환하면 활을 들고 나올 수 있어서 손/방어구를 전부 비운다(미검증).
 	set {_loc} to {_v}.getLocation()
+	# 공허로 떨어져 죽었으면(월드 최저 높이 아래) 그 자리에 세우면 스켈레톤도 공허 피해(무적도 못 막음)로 죽어 연출이 깨진다. 최저 높이 바로 위로 올려서 세운다(공허 피해는 최저 높이 - 64 아래에서만 들어온다).
+	set {_miny} to {_v}.getWorld().getMinHeight()
+	if y-coordinate of {_loc} < {_miny} + 2:
+		{_loc}.setY({_miny} + 2)
 	# 피격자의 시선과 상관없이 정해진 방향(kcPickYaw)을 보게 세우고, 카메라는 그 정면에 둔다
 	set {_yaw} to kcPickYaw({_loc})
 	{_loc}.setYaw({_yaw})
@@ -191,6 +195,7 @@ on damage with priority highest:
 	set {_w} to {_v}.getWorld()
 	set {_m} to {_w}.spawnEntity({_loc}, EntityType.SKELETON)
 	{_m}.setAI(false)
+	{_m}.setGravity(false)
 	{_m}.setInvulnerable(true)
 	{_m}.setSilent(true)
 	{_m}.setCollidable(false)
