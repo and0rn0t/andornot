@@ -25,6 +25,7 @@ import:
 	org.bukkit.ChatColor
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	org.bukkit.event.player.PlayerMoveEvent
+	org.bukkit.event.player.PlayerTeleportEvent
 	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
 
 # 미검증: attacker 가 투사체/커스텀 피해 출처의 주인으로 잡히는지, shuffled/sorted 문법, text display 승차(statustag.sk 와 같은 방식).
@@ -1057,6 +1058,8 @@ function gRoundNext():
 		if {_pl} is online:
 			set gamemode of {_pl} to spectator
 			bgmPlay({_pl}, "roundstart")
+	# 카운트다운 동안 관전자의 위치/시점을 잠근다(gSpecIntro)
+	set {-grcount} to {_rg}
 	set {_c} to 5
 	while {_c} > 0:
 		if {-ingame} is not true:
@@ -1077,6 +1080,7 @@ function gRoundNext():
 		stop
 	if {-grgen} is not {_rg}:
 		stop
+	delete {-grcount}
 	loop {-gplist::*}:
 		if loop-value is online:
 			gameRespawn(loop-value)
@@ -1106,6 +1110,27 @@ function gameWin(key: text):
 	if size of {-kc::*} is 0:
 		gameFinale()
 
+# 시작 연출(startcine.sk) 또는 섬멸전 라운드 시작 카운트다운(gRoundNext) 중인지
+function gSpecIntro() :: boolean:
+	if {-gstarting} is true:
+		return true
+	if {-grcount} is set:
+		if {-grcount} is {-grgen}:
+			return true
+	return false
+
+# 관전 상태 참가자 p 의 위치/시점을 잠글지(킬 연출/리스폰 대기, 승패 후 마지막 킬 연출, 종료 연출, 시작 연출, 라운드 시작 카운트다운)
+function gSpecLocked(p: player) :: boolean:
+	if {-kc::%{_p}'s uuid%} is set:
+		return true
+	if {-gover} is true:
+		return true
+	if {-gfinale} is true:
+		return true
+	if gSpecIntro() is true:
+		return true
+	return false
+
 # 연출을 보거나 리스폰을 기다리는 관전 상태 참가자만 제자리에서 못 움직이게 한다. 시선 회전은 허용.
 #   대상: 킬 연출 중/리스폰 대기 중인 사람({-kc} 가 켜진 사람), 승패가 난 뒤 마지막 킬 연출을 보는 사람({-gover}), 종료 연출 중인 사람({-gfinale}).
 #   "게임 중"인지는 보지 않는다(종료 연출 중에는 게임이 진행 중이 아니어도 막아야 해서). 섬멸전에서 죽어 라운드를 기다리는 관전자는 자유롭게 움직인다.
@@ -1116,15 +1141,7 @@ on PlayerMoveEvent:
 		stop
 	if {-gplist::*} does not contain {_p}:
 		stop
-	set {_lock} to false
-	if {-kc::%{_p}'s uuid%} is set:
-		set {_lock} to true
-	if {-gover} is true:
-		set {_lock} to true
-	if {-gfinale} is true:
-		set {_lock} to true
-	if {-gstarting} is true:
-		set {_lock} to true
+	set {_lock} to gSpecLocked({_p})
 	if {_lock} is false:
 		stop
 	if {_p}.getSpectatorTarget() is set:
@@ -1134,8 +1151,8 @@ on PlayerMoveEvent:
 	if distance between {_f} and {_t} > 0.0001:
 		event.setCancelled(true)
 		stop
-	# 시작 연출(팀 추첨/카운트다운) 중에는 시선도 못 돌린다(시작 카메라가 없는 월드는 카메라 고정이 없어서 여기서 막는다)
-	if {-gstarting} is true:
+	# 시작 연출/라운드 시작 카운트다운 중에는 시선도 못 돌린다(시작 카메라가 없는 월드는 카메라 고정이 없어서 여기서 막는다)
+	if gSpecIntro() is true:
 		if {_f}.getYaw() is not {_t}.getYaw():
 			event.setCancelled(true)
 		else if {_f}.getPitch() is not {_t}.getPitch():
@@ -1147,6 +1164,20 @@ on PlayerStopSpectatingEntityEvent:
 	if {-gstarting} is true:
 		if {-gplist::*} contains {_sp}:
 			event.setCancelled(true)
+
+# 관전 메뉴(숫자키/가운데 클릭으로 다른 플레이어에게 순간이동)도 잠금 대상이면 막는다. 미검증: 순간이동 원인 이름 SPECTATE.
+on PlayerTeleportEvent:
+	set {_tp} to event.getPlayer()
+	if gamemode of {_tp} is not spectator:
+		stop
+	if {-gplist::*} does not contain {_tp}:
+		stop
+	set {_cause} to event.getCause()
+	set {_cn} to {_cause}.name()
+	if {_cn} is not "SPECTATE":
+		stop
+	if gSpecLocked({_tp}) is true:
+		event.setCancelled(true)
 
 # 혹시 풀려도 매 틱 다시 카메라에 붙인다(웅크리기, 연출 단계 사이 대기 중에도)
 every 1 tick:

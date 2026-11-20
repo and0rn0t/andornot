@@ -3,7 +3,7 @@
 # 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
 #   준비  시작 카메라로 이동해 관전 상태로 시점 고정(카메라가 없는 월드는 제자리, 시점 고정 없음). 라인업 자리를 찾는다(gsPrepare).
-#   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 자신을 소리 발생원으로 재생) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
+#   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
 #   15.5초 "강하를 준비하세요" 타이틀
@@ -11,7 +11,7 @@
 #   라인업 자리: 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰) 주변 30칸 안에서 가장 높은 블럭 위가 줄 길이만큼 평평하고 머리 위 3칸이 비었으며 카메라가 설 앞쪽 공간이 막히지 않은 곳을 무작위로 40번까지 찾는다. 못 찾으면 더미/카메라 이동 없이 시작 카메라 화면 그대로 진행한다.
 #   개인전은 한 사람당 더미 하나(자기 것만 보인다). 더미는 마네킹(이름표: 티어 아이콘 + 로마 숫자 + 닉네임).
 # 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
-# 미검증: Player#playSound(Entity, String, SoundCategory, float, float)(소리가 플레이어를 따라다님), Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt.
+# 미검증: Player#playSound(Location, String, SoundCategory, float, float)와 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt.
 
 import:
 	org.bukkit.Bukkit
@@ -26,10 +26,11 @@ import:
 function bgmVolume() :: number:
 	return 0.8
 
-# name: 소리 이름(gamestart / roundstart, 팩의 assets/mck/sounds.json). 플레이어 자신이 소리 발생원이라 어디로 옮겨져도 같은 크기로 들린다.
+# name: 소리 이름(gamestart / roundstart, 팩의 assets/mck/sounds.json). 플레이어 위치에서 재생하되, 팩에서 소리가 닿는 거리(attenuation_distance)를 2000칸으로 늘려 놔서 연출 중 멀리 옮겨져도 거의 같은 크기로 들린다.
 function bgmPlay(p: player, name: text):
 	set {_sn} to "mck:%{_name}%"
-	{_p}.playSound({_p}, {_sn}, SoundCategory.MUSIC, bgmVolume(), 1)
+	set {_pl} to {_p}.getLocation()
+	{_p}.playSound({_pl}, {_sn}, SoundCategory.MUSIC, bgmVolume(), 1)
 
 function bgmStopAll():
 	loop all players:
@@ -305,7 +306,7 @@ function gStartIntro(sg: number):
 				set {_pl} to loop-value
 				if {_pl} is online:
 					send title "&e강하를 준비하세요" with subtitle "" to {_pl} for 3 seconds with fadein 10 ticks and fade out 10 ticks
-		if mod({_tk}, 10) is 0:
+		if mod({_tk}, 2) is 0:
 			gStartKeep()
 		add 1 to {_tk}
 		wait 1 tick
