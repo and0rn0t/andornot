@@ -37,6 +37,10 @@ function gStarBase() :: number:
 function gAssistSec() :: number:
 	return 10
 
+# 낙사/허공/용암 등 공격자 없는 죽음에서, 이 시간(초) 안에 피해를 준 적이 있으면 그 사람이 킬을 가져간다.
+function gFallCreditSec() :: number:
+	return 10
+
 function gTeamColor(i: number) :: text:
 	set {_c::*} to "&c", "&9", "&a", "&e", "&d", "&b", "&6", "&5"
 	return {_c::%mod({_i} - 1, 8) + 1%}
@@ -967,6 +971,19 @@ on damage with priority monitor:
 	set {_ev} to event
 	gameDamageRecord(victim, attacker, {_ev}.getFinalDamage())
 
+# 피해자 vid 에게 최근 gFallCreditSec() 초 안에 피해를 준 사람 중 가장 최근 사람의 uuid 를 {-gcredit} 에 넣는다(없으면 지움).
+function gFallCredit(vid: text):
+	delete {-gcredit}
+	set {_best} to 999999999
+	loop {-glastdmg::%{_vid}%::*}:
+		set {_oid} to loop-index
+		set {_age} to now - loop-value
+		set {_ms} to {_age}.getMilliSeconds()
+		if {_ms} <= gFallCreditSec() * 1000:
+			if {_ms} < {_best}:
+				set {_best} to {_ms}
+				set {-gcredit} to {_oid}
+
 # 킬 처리. v 가 죽었고 a 가 공격자(없으면 v 본인)다. killcine.sk 의 killScoreHook 가 부른다.
 function gameOnKill(v: player, a: entity):
 	if {-ingame} is not true:
@@ -983,6 +1000,28 @@ function gameOnKill(v: player, a: entity):
 		if {_a} is not {_v}:
 			if isAlly("%uuid of {_a}%", {_vid}) is false:
 				set {_kill} to true
+	# 공격자 없는 죽음(낙사, 허공, 용암 등): 최근 gFallCreditSec() 초 안에 피해를 준 적이 있으면 가장 최근에 때린 적이 킬을 가져간다.
+	if {_kill} is false:
+		if {_a} is not a player:
+			gFallCredit({_vid})
+			set {_cid} to {-gcredit}
+			delete {-gcredit}
+			if {_cid} is set:
+				loop {-gplist::*}:
+					set {_cp} to loop-value
+					if "%uuid of {_cp}%" is {_cid}:
+						set {_a} to {_cp}
+						set {_kill} to true
+		else if {_a} is {_v}:
+			gFallCredit({_vid})
+			set {_cid} to {-gcredit}
+			delete {-gcredit}
+			if {_cid} is set:
+				loop {-gplist::*}:
+					set {_cp} to loop-value
+					if "%uuid of {_cp}%" is {_cid}:
+						set {_a} to {_cp}
+						set {_kill} to true
 	set {_aid} to "%uuid of {_a}%"
 	if {_kill} is true:
 		add 1 to {-gk::%{_aid}%}
