@@ -1,6 +1,6 @@
 # [game.sk] 게임 진행: 시작/종료, 팀 배정, 전적(K/D/A/가한 피해), 바운티(별/현상금 스코어), 섬멸전(목숨 1개, 라운드 승점), 승리 판정.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 리스폰 위치: 아래 "리스폰 위치" 절 참고(월드별 기준 위치 + 게임마다 팀별 무작위 초기 위치 {-gspawn::팀키}, RAM).
+# 리스폰 위치: 아래 "리스폰 위치" 절 참고(월드별 리스폰 지점 + 바운티는 팀원 근처 50칸).
 # 이 파일이 쓰는 변수(RAM 전용):
 #   {-ingame}          게임 진행 중(true). items.sk 가 읽어서 무기고를 치운다.
 #   {-gover}           승패가 난 뒤(종연출 중)면 true. 새 킬/점수를 더 받지 않는다.
@@ -363,11 +363,10 @@ function ratingApply():
 		set {rating::games::%{_id}%} to {_g} + 1
 
 # ===== 리스폰 위치 =====
-# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 기준 위치를 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때 팀 수만큼(개인전은 참가자 수만큼) 그 기준 위치에서 반경 200칸 안의 무작위 위치를 뽑아
-# 이번 게임의 팀별 초기 리스폰 위치({-gspawn::팀키})로 쓴다. 기준 위치가 없는 월드는 뽑지 않고 예전처럼 동작한다(시작 때 제자리, 리스폰은 월드 스폰).
-# 섬멸전: 리스폰이 없고 초기 위치만 쓴다(게임 시작/매 라운드 시작 때 그 팀의 초기 위치로 이동).
-# 리스폰/초기 위치는 실제로는 그 지점 위 Y=170 높이에서 시작해 겉날개로 활강한다(아래 "상공 낙하" 절). 바운티: 처음에는 초기 위치, 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 초기 위치). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
-# 무작위 위치: 그 자리의 가장 높은 블럭 위, 물/용암이 아닌 곳. 기준 높이와 너무 차이 나는 곳(동굴 위/아래 등)은 버리고 다시 뽑는다. 20번 안에 못 찾으면 기준 위치를 그대로 쓴다.
+# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 리스폰 지점을 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때와 섬멸전 라운드 시작 때 모두 그 지점의 X/Z 로 간다(팀 구분 없이 같은 지점).
+# 지점이 없는 월드는 예전처럼 동작한다(시작 때 제자리, 리스폰은 월드 스폰).
+# 리스폰은 실제로는 그 지점 위 Y=170 높이에서 시작해 겉날개로 활강한다(아래 "상공 낙하" 절). 바운티: 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 리스폰 지점). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
+# 팀원 근처 무작위 위치: 그 자리의 가장 높은 블럭 위, 물/용암이 아닌 곳, 팀원과 높이 차이 12칸 이내. 20번 안에 못 찾으면 팀원 위치를 쓴다.
 # 미검증: World#getHighestBlockYAt(x, z), Block#getType().name() 문자열 비교.
 function gcRespawnKey(wn: text) :: text:
 	return "respawn_%{_wn}%"
@@ -399,24 +398,14 @@ function gRandomSpot(center: location, r: number, ytol: number) :: location:
 			return {_l}
 	return {_center}.clone()
 
-# 팀 키의 초기 리스폰 위치(없으면 지금 뽑아 저장). 기준 위치가 없는 월드면 값 없음.
+# 리스폰 지점(관리자가 저장한 그 위치, 모든 팀 공통). 지점이 없는 월드면 값 없음. tk 는 예전 호출 형태를 맞추려고 받기만 한다.
 function gInitSpawn(tk: text) :: location:
-	if {-gspawn::%{_tk}%} is set:
-		return {-gspawn::%{_tk}%}
 	set {_base} to gcLoadLoc(gcRespawnKey("%{-gworld}%"))
 	if {_base} is not set:
 		return {_none}
-	set {_s} to gRandomSpot({_base}, 200, -1)
-	set {-gspawn::%{_tk}%} to {_s}
-	return {_s}
+	return {_base}
 
-# 게임 시작 때 팀마다 초기 리스폰 위치를 새로 뽑는다.
-function gGenSpawns():
-	delete {-gspawn::*}
-	loop {-gteamlist::*}:
-		set {_s} to gInitSpawn(loop-value)
-
-# 바운티 리스폰 위치: 같은 월드의 살아 있는 팀원 근처 50칸 안. 팀원이 없으면 초기 위치, 그것도 없으면 값 없음.
+# 바운티 리스폰 위치: 같은 월드의 살아 있는 팀원 근처 50칸 안. 팀원이 없으면 리스폰 지점, 그것도 없으면 값 없음.
 function gTeamSpot(v: player) :: location:
 	set {_tk} to gTeamOf({_v})
 	set {_vw} to {_v}.getWorld()
@@ -437,13 +426,13 @@ function gTeamSpot(v: player) :: location:
 		return gRandomSpot({_ml}, 50, 12)
 	return gInitSpawn({_tk})
 
-# 게임/라운드가 시작될 때 플레이어를 보낼 곳: 그 팀의 초기 리스폰 위치의 상공(기준 위치가 없으면 제자리). 도착하면 겉날개를 입혀 활강시킨다(gDropStart).
+# 게임/라운드가 시작될 때 플레이어를 보낼 곳: 리스폰 지점의 상공(지점이 없으면 제자리). 도착하면 겉날개를 입혀 활강시킨다(gDropStart).
 function gameSpawn(p: player):
 	if {-ingame} is not true:
 		stop
 	set {_s} to gInitSpawn(gTeamOf({_p}))
 	if {_s} is not set:
-		# 리스폰 기준 위치가 없으면 시작 카메라로 가기 전 자리로 되돌린다
+		# 리스폰 지점이 없으면 시작 카메라로 가기 전 자리로 되돌린다
 		if {-gstartprev::%uuid of {_p}%} is set:
 			tpSafe({_p}, {-gstartprev::%uuid of {_p}%})
 		stop
@@ -828,7 +817,6 @@ function gStartFinish(sg: number):
 			gRollLoadout(loop-value)
 			loadoutClearAll(loop-value)
 	set {-ingame} to true
-	gGenSpawns()
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
 	delete {-gstartprev::*}

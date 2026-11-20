@@ -27,7 +27,7 @@ import:
 function kcEnabled() :: boolean:
 	return true
 
-# 리스폰 위치: 게임 중인 참가자(바운티)는 팀원 근처 무작위 위치(game.sk 의 gTeamSpot, 없으면 초기 위치, 기준 위치도 없으면 월드 스폰). 게임 중이 아니거나 모드가 없거나 참가자가 아니면 로비.
+# 리스폰 위치: 게임 중인 참가자(바운티)는 팀원 근처 무작위 위치(game.sk 의 gTeamSpot, 없으면 리스폰 지점, 지점도 없으면 월드 스폰). 게임 중이 아니거나 모드가 없거나 참가자가 아니면 로비.
 function kcRespawnLoc(v: player) :: location:
 	if {-ingame} is true:
 		if {-gmode} is set:
