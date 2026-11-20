@@ -21,6 +21,8 @@
 #   {-glastdmg::피격자uuid::공격자uuid}   마지막으로 피해를 준 시각(어시스트 판정용)
 # 킬 처리 연결: killcine.sk 의 killScoreHook() 가 gameOnKill() 을 부르고, 치명타 피해량은 gameDamageRecord() 로 넘긴다. 치명타가 아닌 피해는 아래 on damage 가 센다.
 import:
+	org.bukkit.Bukkit
+	org.bukkit.ChatColor
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	org.bukkit.event.player.PlayerMoveEvent
 
@@ -363,7 +365,7 @@ function ratingApply():
 		set {rating::games::%{_id}%} to {_g} + 1
 
 # ===== 리스폰 위치 =====
-# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 리스폰 지점을 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때와 섬멸전 라운드 시작 때 모두 그 지점의 X/Z 로 간다(팀 구분 없이 같은 지점 주변 반경 30칸에 한 명씩 무작위로 흩뿌린다).
+# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 리스폰 지점을 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때와 섬멸전 라운드 시작 때 모두 그 지점의 X/Z 로 간다(팀 구분 없이 같은 지점 주변 반경 10칸에 한 명씩 무작위로 흩뿌린다).
 # 지점이 없는 월드는 예전처럼 동작한다(시작 때 제자리, 리스폰은 월드 스폰).
 # 리스폰은 실제로는 그 지점의 Y 높이에서 시작해 겉날개로 활강한다(아래 "상공 낙하" 절). 바운티: 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 리스폰 지점). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
 # 팀원 근처 무작위 위치: 그 자리의 가장 높은 블럭 위, 물/용암이 아닌 곳, 팀원과 높이 차이 12칸 이내. 20번 안에 못 찾으면 팀원 위치를 쓴다.
@@ -436,9 +438,9 @@ function gameSpawn(p: player):
 		if {-gstartprev::%uuid of {_p}%} is set:
 			tpSafe({_p}, {-gstartprev::%uuid of {_p}%})
 		stop
-	# 지점 주변 반경 30칸에 흩뿌린다(높이는 그대로)
+	# 지점 주변 반경 10칸에 흩뿌린다(높이는 그대로)
 	set {_ang} to random number between 0 and 360
-	set {_dist} to sqrt(random number between 0 and 1) * 30
+	set {_dist} to sqrt(random number between 0 and 1) * 10
 	set {_sc} to {_s}.clone()
 	{_sc}.setX({_s}.getX() + cos({_ang}) * {_dist})
 	{_sc}.setZ({_s}.getZ() + sin({_ang}) * {_dist})
@@ -464,9 +466,54 @@ function gDropLoc(l: location) :: location:
 	{_r}.setY({_y})
 	return {_r}
 
+# 낙하 동안 팀 색 발광: 발광 외곽선 색은 스코어보드 팀 색이라 색별 팀(dropc1~8)에 잠깐 넣는다(토템/불길한 병과 같은 방식). 끝나면 원래 팀으로 되돌린다.
+function gDropColorName(i: number) :: text:
+	set {_c::*} to "RED", "BLUE", "GREEN", "YELLOW", "LIGHT_PURPLE", "AQUA", "GOLD", "DARK_PURPLE"
+	return {_c::%mod({_i} - 1, 8) + 1%}
+
+function gDropGlowOn(p: player):
+	set {_id} to "%uuid of {_p}%"
+	if {-gdropteam::%{_id}%} is set:
+		stop
+	set {_ci} to gTeamIndex(gTeamOf({_p}))
+	set {_k} to mod({_ci} - 1, 8) + 1
+	set {_tn} to "dropc%{_k}%"
+	set {_n} to {_p}.getName()
+	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+	set {_team} to {_sb}.getTeam({_tn})
+	if {_team} is not set:
+		set {_team} to {_sb}.registerNewTeam({_tn})
+	set {_cn} to gDropColorName({_ci})
+	{_team}.setColor(ChatColor.valueOf({_cn}))
+	set {_old} to {_sb}.getEntryTeam({_n})
+	if {_old} is set:
+		set {-gdropold::%{_id}%} to {_old}.getName()
+	{_team}.addEntry({_n})
+	set {-gdropteam::%{_id}%} to {_tn}
+	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 300 seconds replacing the existing effect
+
+function gDropGlowOff(p: player):
+	set {_id} to "%uuid of {_p}%"
+	if {-gdropteam::%{_id}%} is not set:
+		stop
+	set {_n} to {_p}.getName()
+	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+	set {_team} to {_sb}.getTeam({-gdropteam::%{_id}%})
+	if {_team} is set:
+		{_team}.removeEntry({_n})
+	if {-gdropold::%{_id}%} is set:
+		set {_ot} to {_sb}.getTeam({-gdropold::%{_id}%})
+		if {_ot} is set:
+			{_ot}.addEntry({_n})
+	delete {-gdropteam::%{_id}%}
+	delete {-gdropold::%{_id}%}
+	if {_p} is online:
+		remove glowing from {_p}
+
 function gDropEnd(p: player):
 	set {_id} to "%uuid of {_p}%"
 	add 1 to {-gdropgen::%{_id}%}
+	gDropGlowOff({_p})
 	if {-gdropon::%{_id}%} is true:
 		if {_p} is online:
 			if {-gdropchest::%{_id}%} is set:
@@ -491,6 +538,7 @@ function gDropStart(p: player):
 	set {_gen} to {-gdropgen::%{_id}%}
 	set chestplate of {_p} to elytra named "&f낙하용 겉날개"
 	{_p}.setGliding(true)
+	gDropGlowOn({_p})
 	apply slow falling potion of tier 1 without any particles whilst hiding the potion icon to {_p} for 1 seconds replacing the existing effect
 	wait 1 second
 	set {_t} to 0
