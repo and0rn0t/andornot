@@ -13,24 +13,29 @@
 # 저장 변수: {nick::map::진짜uuid}(가짜 이름) {nick::uuid::진짜uuid}(가짜 uuid) {nick::real::가짜uuid}(진짜 uuid, 가짜 신분인지 판별) {nick::names::소문자이름}(쓰인 가짜 이름) {nick::tex::진짜uuid::value|sig}(스킨 속성)
 # RAM 변수: {-nickpend::uuid}(확정 대기 이름) {-nickpskin::uuid}(확정 대기 스킨 계정) {-nickquiet::uuid}(퇴장 메시지 숨김)
 # 미검증: AsyncPlayerPreLoginEvent#setPlayerProfile 이 이름/UUID 까지 바꾸는지(Paper), 비동기 이벤트에서 Skript 변수 읽기, ProfileProperty 생성, PlayerProfile#complete(true) 로 스킨 가져오기,
-#   loop Bukkit.getOfflinePlayers(), String#replaceAll/new File(부모, 이름)/Bukkit.getWorlds() loop, PlayerJoinEvent#joinMessage(null)/PlayerQuitEvent#quitMessage(null), Player#setOp.
+#   Array.getLength/Array.get 으로 Bukkit.getOfflinePlayers() 순회, getProperties().iterator(), String#replaceAll/new File(부모, 이름), PlayerJoinEvent#joinMessage(null)/PlayerQuitEvent#quitMessage(null), Player#setOp.
 
 import:
 	org.bukkit.Bukkit
 	java.util.UUID
 	java.io.File
+	java.lang.reflect.Array
 	com.destroystokyo.paper.profile.ProfileProperty
 	org.bukkit.event.player.AsyncPlayerPreLoginEvent
 
 # 이 서버에 들어온 적이 있는 사람 이름인지(대소문자 무시)
 function nickKnown(nm: text) :: boolean:
 	set {_l} to {_nm}.toLowerCase()
-	loop Bukkit.getOfflinePlayers():
-		set {_o} to loop-value
+	set {_arr} to Bukkit.getOfflinePlayers()
+	set {_n} to Array.getLength({_arr})
+	set {_i} to 0
+	while {_i} < {_n}:
+		set {_o} to Array.get({_arr}, {_i})
 		set {_on} to {_o}.getName()
 		if {_on} is set:
 			if {_on}.toLowerCase() is {_l}:
 				return true
+		add 1 to {_i}
 	return false
 
 function nickTaken(nm: text) :: boolean:
@@ -73,8 +78,9 @@ command /nick [<text>] [<text>]:
 					send "&c스킨 계정 '%arg-2%' 을(를) 찾지 못했습니다."
 					stop
 				set {_found} to false
-				loop {_sp}.getProperties():
-					set {_pr} to loop-value
+				set {_it} to {_sp}.getProperties().iterator()
+				while {_it}.hasNext() is true:
+					set {_pr} to {_it}.next()
 					if {_pr}.getName() is "textures":
 						set {nick::tex::%{_ru}%::value} to {_pr}.getValue()
 						set {nick::tex::%{_ru}%::sig} to {_pr}.getSignature()
@@ -109,8 +115,9 @@ command /nick [<text>] [<text>]:
 				set {_sp} to Bukkit.createProfile({_sk})
 				set {_ok} to {_sp}.complete(true)
 				if {_ok} is true:
-					loop {_sp}.getProperties():
-						set {_pr} to loop-value
+					set {_it} to {_sp}.getProperties().iterator()
+					while {_it}.hasNext() is true:
+						set {_pr} to {_it}.next()
 						if {_pr}.getName() is "textures":
 							set {nick::tex::%{_id}%::value} to {_pr}.getValue()
 							set {nick::tex::%{_id}%::sig} to {_pr}.getSignature()
@@ -155,7 +162,7 @@ command /nick [<text>] [<text>]:
 					set {matchlog::%{_mi}%::rvn::%{_idx}%} to {_x}.replaceAll({_re}, {_nm})
 				add 1 to {_mi}
 			# 3) 서버의 플레이어 데이터 파일(인벤토리/통계/발전 과제). 모든 월드 폴더를 확인한다.
-			loop Bukkit.getWorlds():
+			loop all worlds:
 				set {_wf} to loop-value.getWorldFolder()
 				set {_f1} to new File({_wf}, "playerdata/%{_id}%.dat")
 				{_f1}.delete()
