@@ -294,6 +294,7 @@ command /minimap <text> [<number>] [<number>]:
 				send "&7미니맵 테스트를 껐습니다."
 			else:
 				set {-mmtest::%uuid of player%} to true
-				send "&7미니맵 테스트를 켰습니다. 팩 적용(적용 완료)과 이 월드의 지도 설정이 있으면 내 위치가 표시됩니다."
+				set {-mmpack::%uuid of player%} to true
+				send "&7미니맵 테스트를 켰습니다. 팩 적용 여부와 상관없이 표시합니다(팩이 없으면 깨진 글자가 보임). 이 월드에 지도 설정이 있어야 합니다."
 		else:
 			send "&c/minimap bake [범위] [슬롯] | info | clear | test"

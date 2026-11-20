@@ -59,8 +59,10 @@ os.makedirs(fd, exist_ok=True)
 with open(os.path.join(fd, "mm.json"), "w", encoding="utf-8") as f:
     json.dump({"providers": providers}, f, indent=1)  # ensure_ascii 기본값 ->  형태로 저장
 
-meta = {"pack": {"description": "andornot minimap", "pack_format": 75,
-                 "supported_formats": {"min_inclusive": 34, "max_inclusive": 99}}}
+# 1.21.9 이후 형식(min_format/max_format)과 예전 형식(pack_format/supported_formats)을 같이 적어 어느 클라이언트에서도 호환으로 보이게 한다
+meta = {"pack": {"description": "andornot minimap", "pack_format": 34,
+                 "supported_formats": {"min_inclusive": 34, "max_inclusive": 999},
+                 "min_format": 34, "max_format": 999}}
 with open(os.path.join(PACK, "pack.mcmeta"), "w", encoding="utf-8") as f:
     json.dump(meta, f, indent=1)
 
