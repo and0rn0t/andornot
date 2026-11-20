@@ -7,6 +7,7 @@ PACK = os.path.join(ROOT, "pack")
 FONT_TEX = os.path.join(PACK, "assets", "andornot", "textures", "font")
 MAP_PX = 64          # 지도 이미지 한 변(픽셀) = 화면에서 차지하는 크기(GUI 픽셀)
 MAP_TOP = 21         # 보스바 글자줄 윗변에서 지도 윗변까지 거리(GUI 픽셀). 보스바 1번째 줄 기준
+TEX_PX = 256        # 지도 이미지 해상도(픽셀). 화면 표시 크기(MAP_PX)와 별개
 SLOTS = 4            # 지도 슬롯 개수(월드 4개까지)
 
 def png(path, w, h, rgba):
@@ -30,9 +31,9 @@ for s in range(1, SLOTS + 1):
     p = os.path.join(FONT_TEX, "map%d.png" % s)
     if not os.path.exists(p):
         def px(x, y):
-            g = (x % 8 == 0) or (y % 8 == 0)
+            g = (x % 32 == 0) or (y % 32 == 0)
             return (70, 70, 70, 255) if g else (40, 40, 40, 255)
-        png(p, MAP_PX, MAP_PX, px)
+        png(p, TEX_PX, TEX_PX, px)
 # 보스바 기본 막대 그림을 투명으로 덮어서 흰색 보스바는 글자만 보이게 한다(1.20.2+ 스프라이트 경로)
 BB = os.path.join(PACK, "assets", "minecraft", "textures", "gui", "sprites", "boss_bar")
 png(os.path.join(BB, "white_background.png"), 182, 5, lambda x, y: T)
