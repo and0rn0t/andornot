@@ -3,7 +3,7 @@
 #   가로 이동용 공백 글자(E000~E008 = +1,+2,+4..+256 / E010~E018 = 음수)가 들어 있다. 팩은 resourcepack/ 폴더(gen_pack.py 로 생성, andornot-pack.zip).
 # 화면 위치: 보스바 글자줄은 화면 가운데 정렬이다. 지도를 줄 맨 앞에 두고 총 너비를 2L 로 고정하면(뒤에 공백을 붙임) 지도 왼쪽이 화면 가운데에서 L 만큼 왼쪽에 온다.
 #   L(GUI 픽셀)은 플레이어마다 /minimap left <값> 으로 맞춘다(저장 {mmleft::uuid}, 기본 234). 화면 폭/GUI 배율을 서버가 알 수 없어서 창 크기를 바꾸면 다시 맞춰야 한다. 정확한 구석 고정은 셰이더가 필요(미구현).
-# 지도는 4x4 조각 글자로 이어 붙인다(글자 텍스처 한 장은 256x256 이하만 가능). 지도 표시 크기 mmMapPx()=248 GUI 픽셀(4로 나눠떨어져야 함)(resourcepack/gen_pack.py 의 MAP_PX 와 같아야 한다). 지도 이미지 해상도는 bake 때 정함(기본 1000).
+# 지도는 16x16 조각 글자로 잘라 두고 플레이어 주변 5x5 조각만 이어 붙인다(조각 창, 글자 텍스처 한 장은 256x256 이하만 가능). 조각 글자 코드 = U+F0000 + ((슬롯-1)*5 + 창 안 행)*256 + 조각행*16 + 조각열. 지도 표시 크기 mmMapPx()=175 GUI 픽셀(5로 나눠떨어져야 함)(resourcepack/gen_pack.py 의 MAP_PX 와 같아야 한다). 지도 이미지 해상도는 bake 때 정함(기본 1000).
 # 내 표시: 바라보는 방향으로 회전하는 네비게이션 화살표 하나(16방향, 세로 2픽셀 단위).
 # 지도: 월드마다 /minimap bake 로 위에서 본 이미지를 만들어 서버 plugins/Skript/minimap/mapN.png 에 저장 -> 팩의 textures/font/ 에 넣고 gen_pack.py 로 다시 압축.
 # 표시 조건: 게임 중, 팀전, 살아 있는 참가자, 팩 적용 완료({-mmpack}), 그 월드에 지도가 저장돼 있을 때. 팀원 점(팀 색) + 나(흰 마름모)만 보인다(적은 안 보임). 북쪽이 위.
@@ -22,7 +22,7 @@ import:
 	javax.imageio.ImageIO
 
 function mmMapPx() :: number:
-	return 248
+	return 175
 
 function mmLeft(p: player) :: number:
 	set {_l} to {mmleft::%uuid of {_p}%}
@@ -99,6 +99,14 @@ function mmWants(p: player) :: boolean:
 		return false
 	return true
 
+function mmClampI(v: number, lo: number, hi: number) :: number:
+	set {_r} to floor({_v})
+	if {_r} < {_lo}:
+		set {_r} to {_lo}
+	if {_r} > {_hi}:
+		set {_r} to {_hi}
+	return {_r}
+
 # 보스바 제목(MiniMessage 문자열)을 만든다
 function mmBuild(p: player) :: text:
 	set {_w} to {_p}.getWorld()
@@ -108,27 +116,35 @@ function mmBuild(p: player) :: text:
 	set {_minz} to {mmcfg::%{_wn}%::minz}
 	set {_size} to {mmcfg::%{_wn}%::size}
 	set {_sz} to mmMapPx()
-	# 지도는 4x4 조각 글자(E400 + 슬롯*16 + 행*4 + 열). 조각마다 진행 폭이 1 늘어나므로 -1 로 되돌려 이어 붙이고, 줄이 끝나면 처음으로 되돌아간다
+	set {_mx} to x-coordinate of {_p}
+	set {_mz} to z-coordinate of {_p}
+	# 조각 창: 플레이어가 있는 조각을 가운데로 5x5 조각(지도 가장자리에서는 지도 안쪽으로 밀어 넣는다)
+	set {_tb} to {_size} / 16
+	set {_tx} to mmClampI(({_mx} - {_minx}) / {_tb}, 0, 15)
+	set {_tz} to mmClampI(({_mz} - {_minz}) / {_tb}, 0, 15)
+	set {_tx0} to mmClampI({_tx} - 2, 0, 11)
+	set {_tz0} to mmClampI({_tz} - 2, 0, 11)
+	set {_wx} to {_minx} + {_tx0} * {_tb}
+	set {_wz} to {_minz} + {_tz0} * {_tb}
+	set {_span} to {_tb} * 5
 	set {_s} to "<font:andornot:mm><color:white>"
 	set {_m1} to mmShift(-1)
 	set {_back1} to mmShift(0 - {_sz})
 	set {_tr} to 0
-	while {_tr} < 4:
+	while {_tr} < 5:
 		set {_tc} to 0
-		while {_tc} < 4:
-			set {_mapc} to mmChar(58368 + ({_slot} - 1) * 16 + {_tr} * 4 + {_tc})
+		while {_tc} < 5:
+			set {_mapc} to mmChar(983040 + (({_slot} - 1) * 5 + {_tr}) * 256 + ({_tz0} + {_tr}) * 16 + {_tx0} + {_tc})
 			set {_s} to "%{_s}%%{_mapc}%%{_m1}%"
 			add 1 to {_tc}
-		if {_tr} < 3:
+		if {_tr} < 4:
 			set {_s} to "%{_s}%%{_back1}%"
 		add 1 to {_tr}
 	set {_c} to {_sz}
-	set {_mx} to x-coordinate of {_p}
-	set {_mz} to z-coordinate of {_p}
-	set {_qx} to mmPx({_mx}, {_minx}, {_size})
-	set {_qz} to mmPx({_mz}, {_minz}, {_size})
+	set {_qx} to mmPx({_mx}, {_wx}, {_span})
+	set {_qz} to mmPx({_mz}, {_wz}, {_span})
 	set {_yaw} to yaw of {_p}
-	# 팀원(같은 월드, 같은 팀, 생존)
+	# 팀원(같은 월드, 같은 팀, 생존). 창 밖이면 가장자리에 붙는다
 	if gInGame({_p}) is true:
 		if {-gteams} > 0:
 			set {_my} to gTeamOf({_p})
@@ -141,8 +157,8 @@ function mmBuild(p: player) :: text:
 							if gTeamOf({_o}) is {_my}:
 								set {_ox} to x-coordinate of {_o}
 								set {_oz} to z-coordinate of {_o}
-								set {_px} to mmPx({_ox}, {_minx}, {_size})
-								set {_pz} to mmPx({_oz}, {_minz}, {_size})
+								set {_px} to mmPx({_ox}, {_wx}, {_span})
+								set {_pz} to mmPx({_oz}, {_wz}, {_span})
 								set {_d} to mmDot({_px}, {_pz}, {_c}, {_hex})
 								set {_s} to "%{_s}%%{_d}%"
 								set {_c} to {_px} + 3

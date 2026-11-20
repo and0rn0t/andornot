@@ -5,7 +5,7 @@ import json, os, zipfile, hashlib, struct, zlib
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PACK = os.path.join(ROOT, "pack")
 FONT_TEX = os.path.join(PACK, "assets", "andornot", "textures", "font")
-MAP_PX = 248         # 지도 이미지 한 변(픽셀) = 화면에서 차지하는 크기(GUI 픽셀)
+MAP_PX = 175         # 지도 이미지 한 변(픽셀) = 화면에서 차지하는 크기(GUI 픽셀)
 MAP_TOP = 5          # 보스바 글자줄 윗변에서 지도 윗변까지 거리(GUI 픽셀). 보스바 1번째 줄 기준
 TEX_PX = 100        # 지도 이미지 해상도(픽셀). 화면 표시 크기(MAP_PX)와 별개
 SLOTS = 4            # 지도 슬롯 개수(월드 4개까지)
@@ -45,31 +45,33 @@ for k in range(16):
 old_me = os.path.join(FONT_TEX, "me.png")
 if os.path.exists(old_me):
     os.remove(old_me)
-# 지도: 글자 텍스처 한 장은 256x256 을 넘을 수 없어서(글꼴 아틀라스 한 장 크기), 원본(maps/mapN.png)을 TILES x TILES 조각으로 잘라 조각마다 글자 하나로 쓴다.
-# 원본이 없으면 회색 격자 자리표시를 쓴다. 원본은 정사각형이며 한 변이 TILES*256 을 넘으면 그 크기로 줄인다. (Pillow 필요: pip install pillow)
+# 지도: 글자 텍스처 한 장은 256x256 을 넘을 수 없어서, 원본(maps/mapN.png)을 GRID x GRID 조각으로 잘라 조각마다 글자로 쓴다.
+# 화면에는 플레이어 주변 WIN x WIN 조각만 이어 붙인다(minimap.sk 의 조각 창). 창 안 세로 위치(행 r)마다 ascent 가 달라서 조각 글자는 (조각, r) 마다 하나씩 필요하다.
+# 원본이 있는 슬롯만 글자를 만든다(없으면 그 슬롯은 쓸 수 없음). 원본은 정사각형, 한 변이 GRID*256 을 넘으면 줄인다. (Pillow 필요)
 from PIL import Image
-TILES = 4
+GRID = 16
+WIN = 5
+assert MAP_PX % WIN == 0
 MAPS = os.path.join(ROOT, "maps")
 for old in os.listdir(FONT_TEX):
     if old.startswith("map") and old.endswith(".png"):
         os.remove(os.path.join(FONT_TEX, old))
+tile_slots = []
 for s in range(1, SLOTS + 1):
     src = os.path.join(MAPS, "map%d.png" % s)
-    if os.path.exists(src):
-        im = Image.open(src).convert("RGBA")
-    else:
-        im = Image.new("RGBA", (TILES * 25, TILES * 25))
-        for x in range(im.width):
-            for y in range(im.height):
-                im.putpixel((x, y), (70, 70, 70, 255) if (x % 20 == 0 or y % 20 == 0) else (40, 40, 40, 255))
-    side = min(im.width, im.height, TILES * 256)
-    side -= side % TILES
-    im = im.resize((side, side), Image.NEAREST) if im.size != (side, side) else im
-    tp = side // TILES
-    for r in range(TILES):
-        for c in range(TILES):
-            im.crop((c * tp, r * tp, (c + 1) * tp, (r + 1) * tp)).save(
-                os.path.join(FONT_TEX, "map%d_%d_%d.png" % (s, r, c)))
+    if not os.path.exists(src):
+        continue
+    tile_slots.append(s)
+    im = Image.open(src).convert("RGBA")
+    side = min(im.width, im.height, GRID * 256)
+    side -= side % GRID
+    if im.size != (side, side):
+        im = im.resize((side, side), Image.NEAREST)
+    tp = side // GRID
+    for R in range(GRID):
+        for C in range(GRID):
+            im.crop((C * tp, R * tp, (C + 1) * tp, (R + 1) * tp)).save(
+                os.path.join(FONT_TEX, "map%d_%d_%d.png" % (s, R, C)))
 # 보스바 기본 막대 그림을 투명으로 덮어서 흰색 보스바는 글자만 보이게 한다(1.20.2+ 스프라이트 경로)
 BB = os.path.join(PACK, "assets", "minecraft", "textures", "gui", "sprites", "boss_bar")
 png(os.path.join(BB, "white_background.png"), 182, 5, lambda x, y: T)
@@ -82,13 +84,14 @@ for k in range(11):
     adv[chr(0xE000 + k)] = 2 ** k
     adv[chr(0xE010 + k)] = -(2 ** k)
 providers.append({"type": "space", "advances": adv})
-TP = MAP_PX // TILES   # 조각 하나의 화면 크기(GUI 픽셀). MAP_PX 는 TILES 로 나눠떨어져야 한다
-for s in range(SLOTS):
-    for r in range(TILES):
-        for c in range(TILES):
-            providers.append({"type": "bitmap", "file": "andornot:font/map%d_%d_%d.png" % (s + 1, r, c),
-                              "ascent": 7 - (MAP_TOP + r * TP), "height": TP,
-                              "chars": [chr(0xE400 + s * 16 + r * TILES + c)]})
+TP = MAP_PX // WIN   # 조각 하나의 화면 크기(GUI 픽셀)
+for s in tile_slots:
+    for r in range(WIN):
+        for R in range(GRID):
+            for C in range(GRID):
+                code = 0xF0000 + ((s - 1) * WIN + r) * 256 + R * GRID + C   # 보조 사설 영역(글자 코드가 모자라서)
+                providers.append({"type": "bitmap", "file": "andornot:font/map%d_%d_%d.png" % (s, R, C),
+                                  "ascent": 7 - (MAP_TOP + r * TP), "height": TP, "chars": [chr(code)]})
 for y in range(MAP_PX):
     providers.append({"type": "bitmap", "file": "andornot:font/dot.png",
                       "ascent": 7 - (MAP_TOP + y - 1), "height": 3, "chars": [chr(0xE200 + y)]})
