@@ -265,8 +265,11 @@ function gsClear():
 
 # ===== 시작 연출 본체 =====
 function gStartIntro(sg: number):
+	# 진단 로그(콘솔): 리로드 직후 연출이 씹히는 문제를 추적하려고 단계마다 남긴다. 원인을 찾으면 지운다.
+	send "[startcine] 시작: gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}% 참가자=%size of {-gplist::*}% 월드=%{-gworld}%" to console
 	# 라인업 자리를 먼저 정한다(항상 정해짐)
 	gsPrepare()
+	send "[startcine] 라인업 자리: ok=%{-gsl::ok}% loc=%{-gsl::loc}%" to console
 	# 시작 카메라: 모두 관전 상태로 이동해 카메라 엔티티를 관전 대상으로 건다(시점/위치 고정). 시작 카메라 위치가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
 	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
 	if {_cam} is not set:
@@ -283,8 +286,10 @@ function gStartIntro(sg: number):
 	{_ce}.setInvulnerable(true)
 	{_ce}.setSilent(true)
 	set {-gstartcam} to {_ce}
+	send "[startcine] 카메라 생성: cam=%{_cam}% 엔티티=%{_ce}%" to console
 	wait 1 tick
 	if gStartAbort({_sg}) is true:
+		send "[startcine] 중단(준비 직후): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 		stop
 	gStartKeep()
 	# 0초: 음악 + 맵 이름 타이틀
@@ -293,9 +298,11 @@ function gStartIntro(sg: number):
 		if {_pl} is online:
 			bgmPlay({_pl}, "gamestart")
 			send title "&f%{-gworld}%" with subtitle "" to {_pl} for 4 seconds with fadein 10 ticks and fade out 10 ticks
+	send "[startcine] 음악/타이틀 전송 완료, 연출 루프 시작" to console
 	set {_tk} to 0
 	while {_tk} < 380:
 		if gStartAbort({_sg}) is true:
+			send "[startcine] 중단(루프 %{_tk}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 			stop
 		# 4.5초: 더미 세우기
 		if {_tk} is 90:
@@ -344,5 +351,7 @@ function gStartIntro(sg: number):
 		add 1 to {_tk}
 		wait 1 tick
 	if gStartAbort({_sg}) is true:
+		send "[startcine] 중단(끝맺기 직전)" to console
 		stop
+	send "[startcine] 연출 끝, 게임 시작" to console
 	gStartFinish({_sg})
