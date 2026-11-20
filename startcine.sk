@@ -4,8 +4,9 @@
 #   {-grcam}(섬멸전 라운드 시작 카운트다운용 카메라 엔티티, 카운트다운이 끝나면 지움) {-grcamt}(그 카메라를 세운 뒤 지난 틱 수)
 # 강한 카메라 잠금 = 카메라 엔티티(텍스트 디스플레이)를 관전 대상으로 걸어 위치/시점을 못 바꾸게 하는 것(웅크리기 등으로 풀려도 매 틱 다시 건다). game.sk 의 PlayerMoveEvent 잠금(카메라 없이 제자리에서 못 움직이게 함)보다 강하다.
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
-#   로딩  모두 관전 상태로 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라를 세우고 3초 동안 강한 카메라 잠금(맵이 불러와지길 기다린다). 액션바에 노란색 "loading..." 만 보이고 소리는 없다.
-#   준비  라인업 자리를 정한 뒤 같은 카메라를 시작 카메라(없으면 라인업 첫 구도 자리)로 옮기고 모두 그 자리로 이동시킨다(로딩 연출 없음). 서버/스크립트 로드 직후 첫 게임에서 클라이언트가 카메라를 아직 몰라 요청이 무시되던 문제는 로딩 구간 0.5초/2초 뒤와 시작 카메라로 옮긴 직후, 연출 시작 0.5초/2초 뒤에 관전 대상을 강제로 다시 걸어 막는다.
+#   로딩  모두 관전 상태로 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라를 세우고 강한 카메라 잠금. 최소 3초, 그리고 모든 참가자의 클라이언트가 그 자리의 청크를 받은 뒤 1.25초까지(최대 20초) 기다린다. 액션바에 노란색 "loading..." 만 보이고 소리는 없다.
+#         오래 안 쓴 월드는 청크가 클라이언트로 늦게 와서, 서버가 관전 대상을 걸어도 클라이언트가 카메라 엔티티를 몰라 요청을 무시한다(서버는 걸렸다고 믿어서 다시 안 걸고 game.sk 의 이동 잠금도 풀어 둔다). 그래서 청크 전송(Player#isChunkSent)을 확인하고, 기다리는 동안 계속 다시 건다.
+#   준비  라인업 자리를 정한 뒤 같은 카메라를 시작 카메라(없으면 라인업 첫 구도 자리)로 옮기고 모두 그 자리로 이동시킨다. 시작 카메라 자리의 청크도 같은 방식으로 확인한 뒤(최소 0.5초, 최대 15초) 연출을 시작한다. 연출 중에는 시작 0.5초/2초 뒤와 라인업으로 카메라가 크게 옮겨진 직후(5.1초/6.5초)에도 관전 대상을 강제로 다시 건다.
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
@@ -18,7 +19,8 @@
 #   리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라({-grcam})를 세워 참가자 전원을 그 자리로 옮기고 강한 카메라 잠금을 건다(카운트다운이 끝나 관전이 풀리거나 게임이 멈추면 카메라를 지운다).
 # 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
 # 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt,
-#   로딩 구간 카메라를 시작 카메라로 teleport 로 옮겨도 관전 대상이 유지되는지(안 되면 바로 뒤 gStartKeepForce 가 다시 건다), 카운트다운 카메라 세우기/지우기(every 1 tick 감시), send action bar "" 로 액션바가 지워지는지.
+#   로딩 구간 카메라를 시작 카메라로 teleport 로 옮겨도 관전 대상이 유지되는지(안 되면 바로 뒤 gStartKeepForce 가 다시 건다), 카운트다운 카메라 세우기/지우기(every 1 tick 감시), send action bar "" 로 액션바가 지워지는지,
+#   Location#getChunk() 와 Player#isChunkSent(Chunk)(Paper 1.20.5+) 호출, 오래 안 쓴 월드에서 청크 전송을 기다리면 카메라 잠금이 실제로 걸리는지(콘솔 [startcine] 로그의 대기 틱/미수신 인원으로 확인).
 
 import:
 	org.bukkit.Bukkit
@@ -304,27 +306,61 @@ function gStartIntro(sg: number):
 		send "[startcine] 중단(로딩 준비 직후): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 		stop
 	gStartKeepForce()
+	# 모든 참가자가 카메라 자리의 청크를 받을 때까지(최소 60틱, 최대 400틱) 기다린다. 받은 뒤에도 25틱 더 기다려 카메라 엔티티가 클라이언트에 도착할 시간을 준다.
+	set {_hck} to {_hl}.getChunk()
 	set {_ht} to 0
-	while {_ht} < 60:
+	set {_rd} to 0
+	set {_done} to false
+	while {_done} is false:
 		if gStartAbort({_sg}) is true:
 			send "[startcine] 중단(로딩 %{_ht}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 			stop
+		set {_all} to true
+		loop {-gplist::*}:
+			set {_pl} to loop-value
+			if {_pl} is online:
+				set {_sent} to {_pl}.isChunkSent({_hck})
+				if {_sent} is not true:
+					set {_all} to false
+		if {_all} is true:
+			add 1 to {_rd}
+		else:
+			set {_rd} to 0
 		if mod({_ht}, 10) is 0:
 			loop {-gplist::*}:
 				if loop-value is online:
 					send action bar colored "&eloading..." to loop-value
-		if {_ht} is 10:
-			gStartKeepForce()
-		else if {_ht} is 40:
+		# 아직 청크를 못 받은 사람이 있으면 10틱마다 강제로 다시 건다. 다 받은 뒤에는 4틱, 20틱 뒤에 한 번씩 강제로 다시 건다.
+		if {_all} is true:
+			if {_rd} is 4:
+				gStartKeepForce()
+			else if {_rd} is 20:
+				gStartKeepForce()
+			else:
+				gStartKeep()
+		else if mod({_ht}, 10) is 5:
 			gStartKeepForce()
 		else:
 			gStartKeep()
 		add 1 to {_ht}
+		if {_ht} >= 60:
+			if {_rd} >= 25:
+				set {_done} to true
+		if {_ht} >= 400:
+			set {_done} to true
+			delete {_late::*}
+			loop {-gplist::*}:
+				set {_pl} to loop-value
+				if {_pl} is online:
+					set {_sent} to {_pl}.isChunkSent({_hck})
+					if {_sent} is not true:
+						add name of {_pl} to {_late::*}
+			send "[startcine] 로딩 시간 초과(20초): 청크를 못 받은 사람=%{_late::*}%" to console
 		wait 1 tick
 	loop {-gplist::*}:
 		if loop-value is online:
 			send action bar "" to loop-value
-	send "[startcine] 로딩 구간 끝" to console
+	send "[startcine] 로딩 구간 끝: %{_ht}%틱 걸림, 전원 청크 수신=%{_all}%" to console
 	# 라인업 자리를 먼저 정한다(항상 정해짐)
 	gsPrepare()
 	send "[startcine] 라인업 자리: ok=%{-gsl::ok}% loc=%{-gsl::loc}%" to console
@@ -345,6 +381,51 @@ function gStartIntro(sg: number):
 		send "[startcine] 중단(준비 직후): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 		stop
 	gStartKeepForce()
+	# 시작 카메라 자리의 청크도 클라이언트가 받을 때까지 기다린다(최소 10틱, 최대 300틱, 받은 뒤 10틱 더).
+	set {_cck} to {_cam}.getChunk()
+	set {_ht2} to 0
+	set {_rd2} to 0
+	set {_done2} to false
+	while {_done2} is false:
+		if gStartAbort({_sg}) is true:
+			send "[startcine] 중단(시작 카메라 대기 %{_ht2}%틱)" to console
+			stop
+		set {_all2} to true
+		loop {-gplist::*}:
+			set {_pl} to loop-value
+			if {_pl} is online:
+				set {_sent} to {_pl}.isChunkSent({_cck})
+				if {_sent} is not true:
+					set {_all2} to false
+		if {_all2} is true:
+			add 1 to {_rd2}
+		else:
+			set {_rd2} to 0
+		if mod({_ht2}, 10) is 0:
+			loop {-gplist::*}:
+				if loop-value is online:
+					send action bar colored "&eloading..." to loop-value
+		if {_all2} is true:
+			if {_rd2} is 5:
+				gStartKeepForce()
+			else:
+				gStartKeep()
+		else if mod({_ht2}, 10) is 5:
+			gStartKeepForce()
+		else:
+			gStartKeep()
+		add 1 to {_ht2}
+		if {_ht2} >= 10:
+			if {_rd2} >= 10:
+				set {_done2} to true
+		if {_ht2} >= 300:
+			set {_done2} to true
+			send "[startcine] 시작 카메라 청크 대기 시간 초과(15초)" to console
+		wait 1 tick
+	loop {-gplist::*}:
+		if loop-value is online:
+			send action bar "" to loop-value
+	send "[startcine] 시작 카메라 준비: %{_ht2}%틱 걸림, 전원 청크 수신=%{_all2}%" to console
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
 		set {_pl} to loop-value
@@ -394,10 +475,14 @@ function gStartIntro(sg: number):
 				set {_pl} to loop-value
 				if {_pl} is online:
 					send title "&f강하를 준비하세요" with subtitle "" to {_pl} for 3 seconds with fadein 10 ticks and fade out 10 ticks
-		# 서버/스크립트 로드 직후 첫 게임에서 클라이언트가 카메라 엔티티를 아직 몰라 처음 건 관전 요청이 무시되던 문제 대응: 연출 시작 직후 두 번만 강제로 다시 건다. 그 뒤에는 풀렸을 때만 다시 건다.
+		# 클라이언트가 카메라 엔티티를 아직 몰라 관전 요청이 무시되던 문제 대응: 연출 시작 직후 두 번, 라인업으로 카메라가 크게 옮겨진 직후(tick 100, 아주 먼 곳일 수 있음) 두 번만 강제로 다시 건다. 그 외에는 풀렸을 때만 다시 건다.
 		if {_tk} is 10:
 			gStartKeepForce()
 		else if {_tk} is 40:
+			gStartKeepForce()
+		else if {_tk} is 102:
+			gStartKeepForce()
+		else if {_tk} is 130:
 			gStartKeepForce()
 		else if mod({_tk}, 2) is 0:
 			gStartKeep()
