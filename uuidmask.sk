@@ -22,6 +22,7 @@
 #
 # 쓰는 법 (op)  가림 대상은 nick.sk 가 접속할 때 자동 배정(가짜 신분이면 가짜 UUID 가 생김). 이 파일의 명령:
 #   /uuidmask status           ProtocolLib 버전/리스너 상태 확인
+#   /uuidmask audit on|off     유출 검사: 보내는 패킷 안에 가려야 할 진짜 이름/UUID 가 있는지 콘솔에 [uuidmask-audit] 로 남김(잠깐만 켤 것, 미검증)
 #   /uuidmask kill / revive    패킷 수정 임시 정지 / 재개 (오류가 계속 날 때 비상용)
 #
 # 변수
@@ -90,6 +91,8 @@ function umRecvWl() :: object:
 # (skript-reflect 의 proxy 핸들러 함수는 첫 인자로 proxy 자신을 받고 두 번째가 실제 인자 = PacketEvent. 로그의 "$Proxy#isReadOnly" 오류로 확인)
 # 보내는 패킷: 종류를 보고 알맞은 함수로 넘겨요. 패킷은 여러 사람에게 같이 쓰일 수 있어서 항상 복사본(shallowClone)에만 써요.
 function umOnSend(px: object, e: object):
+	if {-umaudit} is true:
+		umAudit({_e})
 	if {-umoff} is true:
 		stop
 	if {_e}.isReadOnly() is true:
@@ -105,6 +108,38 @@ function umOnSend(px: object, e: object):
 		umRemove({_e}, {_v})
 	else:
 		umUuidFirst({_e}, {_v})
+
+# 유출 검사(/uuidmask audit on): 보내는 모든 패킷의 문자열 표현(NMS 레코드 toString)에 가려야 할 진짜 이름/UUID 가 들어 있는지 찾아서 콘솔에 남긴다.
+# 이름은 가려진 사람의 진짜 UUID 로 서버가 기억하는 계정 이름(usercache)이고, UUID 는 진짜 UUID 문자열이다. 본인에게 가는 진짜 UUID 는 정상이라 이름만 본다(UUID 는 받는 사람이 본인이 아닐 때만).
+# 느리니 확인할 때만 잠깐 켠다. 패킷 안에 toString 이 값을 안 보여 주는 필드(바이트 배열 등)는 못 찾는다.
+function umAudit(e: object):
+	set {_pk} to {_e}.getPacket()
+	set {_h} to {_pk}.getHandle()
+	set {_s} to {_h}.toString()
+	set {_ls} to {_s}.toLowerCase()
+	set {_t} to {_e}.getPacketType()
+	set {_tn} to {_t}.name()
+	set {_viewer} to {_e}.getPlayer()
+	set {_vn} to {_viewer}.getName()
+	set {_vu} to "%{_viewer}.getUniqueId()%"
+	loop {-umaudit::name::*}:
+		set {_nm} to loop-value
+		if {_ls}.contains({_nm}) is true:
+			set {_ix} to {_ls}.indexOf({_nm})
+			set {_a} to {_ix} - 80
+			if {_a} < 0:
+				set {_a} to 0
+			set {_b} to {_ix} + 120
+			set {_len} to {_ls}.length()
+			if {_b} > {_len}:
+				set {_b} to {_len}
+			set {_sn} to {_s}.substring({_a}, {_b})
+			log "[uuidmask-audit] 진짜 이름 '%{_nm}%' 발견: 패킷=%{_tn}% 받는 사람=%{_vn}% 내용=...%{_sn}%..."
+	loop {-umaudit::uuid::*}:
+		set {_ru} to loop-value
+		if {_ls}.contains({_ru}) is true:
+			if {_vu} is not {_ru}:
+				log "[uuidmask-audit] 진짜 UUID 발견: 패킷=%{_tn}% 받는 사람=%{_vn}%"
 
 # 받는 패킷: 관전 메뉴 텔레포트. 클라이언트가 가짜 UUID 로 보내면 진짜 UUID 로 되돌려요.
 function umOnRecv(px: object, e: object):
@@ -259,12 +294,12 @@ on unload:
 
 command /uuidmask [<text>]:
 	description: UUID 가림 상태 확인/정지 (ProtocolLib 필요)
-	usage: /uuidmask <status|kill|revive>
+	usage: /uuidmask <status|kill|revive|audit>
 	permission: minecraft.command.op
 	permission message: &c권한이 없습니다.
 	trigger:
 		if arg-1 is not set:
-			send "&b/uuidmask status | kill | revive"
+			send "&b/uuidmask status | kill | revive | audit on|off"
 			stop
 		if arg-1 is "status":
 			if Bukkit.getPluginManager().isPluginEnabled("ProtocolLib") is false:
@@ -302,5 +337,25 @@ command /uuidmask [<text>]:
 		if arg-1 is "revive":
 			delete {-umoff}
 			send "&a패킷 수정을 다시 켰어요."
+			stop
+		if arg-1 is "audit":
+			if arg-2 is "on":
+				delete {-umaudit::*}
+				set {_it} to {-umr2f}.keySet().iterator()
+				set {_cnt} to 0
+				while {_it}.hasNext() is true:
+					set {_ru} to {_it}.next()
+					set {_off} to Bukkit.getOfflinePlayer({_ru})
+					set {_rn} to {_off}.getName()
+					if {_rn} is set:
+						add {_rn}.toLowerCase() to {-umaudit::name::*}
+						add 1 to {_cnt}
+					add "%{_ru}%" to {-umaudit::uuid::*}
+				set {-umaudit} to true
+				send "&b유출 검사를 켰어요(진짜 이름 %{_cnt}%개 감시). 시작 연출 등을 돌려 본 뒤 /uuidmask audit off 로 끄고 콘솔의 [uuidmask-audit] 로그를 보세요."
+				stop
+			delete {-umaudit}
+			delete {-umaudit::*}
+			send "&b유출 검사를 껐어요."
 			stop
 		send "&c알 수 없는 하위 명령이에요. /uuidmask"
