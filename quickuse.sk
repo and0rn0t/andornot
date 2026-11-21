@@ -42,14 +42,8 @@ function quickUseId(id: text) :: boolean:
 		return true
 	return false
 
-# 진단(임시): op 에게 단계별로 메시지를 보낸다. 원인을 찾으면 지울 것.
-function quDbg(p: player, m: text):
-	if {_p} is op:
-		send colored "&7[즉시사용] %{_m}%" to {_p}
-
 on PlayerItemHeldEvent:
 	set {_p} to event.getPlayer()
-	quDbg({_p}, "칸 변경 감지, 게임중=%{-ingame}%, 옵션=%quickUseOn({_p})%")
 	if {-ingame} is not true:
 		stop
 	if quickUseOn({_p}) is not true:
@@ -65,7 +59,6 @@ on PlayerItemHeldEvent:
 		stop
 	set {_hs} to {_p}.getInventory().getHeldItemSlot()
 	set {_id} to itemIdAt({_p}, {_ns})
-	quDbg({_p}, "새 칸=%{_ns}%, 손 칸=%{_hs}%, 아이템 id=%{_id}%, 대상=%quickUseId({_id})%")
 	if "%{_hs}%" is not "%{_ns}%":
 		stop
 	if quickUseId({_id}) is not true:
@@ -75,7 +68,6 @@ on PlayerItemHeldEvent:
 	{_ev}.setUseInteractedBlock(QuResult.ALLOW)
 	{_ev}.setUseItemInHand(QuResult.ALLOW)
 	Bukkit.getPluginManager().callEvent({_ev})
-	quDbg({_p}, "가짜 우클릭 호출 완료(취소 상태=%{_ev}.isCancelled()%)")
 	# 사용이 끝나면 원래 들고 있던 칸으로 돌아간다(다른 칸으로 또 바꿨으면 건드리지 않는다)
 	wait 2 ticks
 	if {_p} is online:
