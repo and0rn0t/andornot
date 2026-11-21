@@ -2,7 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 전적/팀 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수: 없음(game.sk 의 {-g*} 를 읽기만 함). 게임 중이 아닐 때는 아무것도 안 하고, 탭 이름은 items.sk 의 tabUpdate(구성 아이템 아이콘)가 맡는다.
 # 플레이어 스킨 아이콘은 탭리스트가 이름 왼쪽에 기본으로 그려 주므로 따로 넣지 않는다.
-# 열 맞추기: 탭리스트는 글꼴이 비례폭이라 공백(4픽셀)으로 칸 너비를 맞춘다. 글자별 너비 표(gtPx)로 이름/숫자를 칸 너비까지 공백으로 채우고,
+# 열 맞추기(K/D/A/DMG 값과 열 제목은 둘 다 칸 가운데 정렬, gtCenPre/gtCenPost): 탭리스트는 글꼴이 비례폭이라 공백(4픽셀)으로 칸 너비를 맞춘다. 글자별 너비 표(gtPx)로 이름/숫자를 칸 너비까지 공백으로 채우고,
 #   열 제목 줄(헤더)도 같은 칸 너비로 만든다. 헤더는 가운데 정렬이고 플레이어 줄은 머리 아이콘 오른쪽부터 왼쪽 정렬이라, 헤더 앞에 머리 아이콘 폭만큼 공백을 둔다.
 #   실제 화면에서 어긋나면 아래 gtNameW/gtKdaW/gtDmgW/gtItemW/gtHeadPad 값만 바꿔서 맞춘다(한글은 9픽셀로 계산).
 # 정렬: setPlayerListOrder(번호, 큰 번호가 위, 미검증)로 팀 순서(gTeamIndex)대로 정렬한다.
@@ -68,6 +68,26 @@ function gtPad(target: number, s: text) :: text:
 	set {_r} to " " repeated {_n} times
 	return "%{_r}%"
 
+# 칸 가운데 정렬용: 글자 s 앞/뒤에 둘 공백(4픽셀 단위). 앞+뒤 = gtPad 와 같은 총 칸 수(최소 1칸)
+function gtCenN(target: number, s: text) :: number:
+	set {_n} to round(({_target} - gtPx({_s})) / 4)
+	if {_n} < 2:
+		return 2
+	return {_n}
+
+function gtCenPre(target: number, s: text) :: text:
+	set {_n} to gtCenN({_target}, {_s})
+	set {_l} to round({_n} / 2)
+	set {_r} to " " repeated {_l} times
+	return "%{_r}%"
+
+function gtCenPost(target: number, s: text) :: text:
+	set {_n} to gtCenN({_target}, {_s})
+	set {_l} to round({_n} / 2)
+	set {_m} to {_n} - {_l}
+	set {_r} to " " repeated {_m} times
+	return "%{_r}%"
+
 function gtColorJ(i: number) :: text:
 	set {_c::*} to "red", "blue", "green", "yellow", "light_purple", "aqua", "gold", "dark_purple"
 	return {_c::%mod({_i} - 1, 8) + 1%}
@@ -120,13 +140,13 @@ function gtEntry(p: player) :: text:
 	set {_c1} to "%{_pre}%,%{_c1}%"
 	set {_t2} to gtPad(gtNameW() - tierPreW({_id}), {_nm})
 	set {_c2} to gtT({_t2}, "white")
-	set {_t3} to "%{_k}%%gtPad(gtKdaW(), {_k})%"
+	set {_t3} to "%gtCenPre(gtKdaW(), {_k})%%{_k}%%gtCenPost(gtKdaW(), {_k})%"
 	set {_c3} to gtT({_t3}, "white")
-	set {_t4} to "%{_d}%%gtPad(gtKdaW(), {_d})%"
+	set {_t4} to "%gtCenPre(gtKdaW(), {_d})%%{_d}%%gtCenPost(gtKdaW(), {_d})%"
 	set {_c4} to gtT({_t4}, "white")
-	set {_t5} to "%{_a}%%gtPad(gtKdaW(), {_a})%"
+	set {_t5} to "%gtCenPre(gtKdaW(), {_a})%%{_a}%%gtCenPost(gtKdaW(), {_a})%"
 	set {_c5} to gtT({_t5}, "white")
-	set {_t6} to "%{_dms}%%gtPad(gtDmgW(), {_dms})%"
+	set {_t6} to "%gtCenPre(gtDmgW(), {_dms})%%{_dms}%%gtCenPost(gtDmgW(), {_dms})%"
 	set {_c6} to gtT({_t6}, "white")
 	return "{""text"":"""",""extra"":[%{_c1}%,%{_c2}%,%{_c3}%,%{_c4}%,%{_c5}%,%{_c6}%%{_ic}%,%{_c7}%]}"
 
@@ -160,14 +180,14 @@ function gtHeader() :: text:
 	set {_padn} to gtPad(gtNameW(), "")
 	set {_lab} to "%{_sp}%%{_padn}%"
 	set {_l1} to gtT({_lab}, "gray")
-	set {_pk} to gtPad(gtKdaW(), "K")
-	set {_l2} to gtT("K%{_pk}%", "gray")
-	set {_pd} to gtPad(gtKdaW(), "D")
-	set {_l3} to gtT("D%{_pd}%", "gray")
-	set {_pa} to gtPad(gtKdaW(), "A")
-	set {_l4} to gtT("A%{_pa}%", "gray")
-	set {_pm} to gtPad(gtDmgW(), "DMG")
-	set {_l5} to gtT("DMG%{_pm}%", "gray")
+	set {_hk} to "K"
+	set {_hd} to "D"
+	set {_ha} to "A"
+	set {_hm} to "DMG"
+	set {_l2} to gtT("%gtCenPre(gtKdaW(), {_hk})%%{_hk}%%gtCenPost(gtKdaW(), {_hk})%", "gray")
+	set {_l3} to gtT("%gtCenPre(gtKdaW(), {_hd})%%{_hd}%%gtCenPost(gtKdaW(), {_hd})%", "gray")
+	set {_l4} to gtT("%gtCenPre(gtKdaW(), {_ha})%%{_ha}%%gtCenPost(gtKdaW(), {_ha})%", "gray")
+	set {_l5} to gtT("%gtCenPre(gtDmgW(), {_hm})%%{_hm}%%gtCenPost(gtDmgW(), {_hm})%", "gray")
 	# ITEM 글자는 아이템 5칸 폭의 가운데쯤 오도록 앞에 공백을 둔다
 	set {_ln} to floor((gtItemW() - gtPx("ITEM")) / 8)
 	set {_lnn} to {_ln}
