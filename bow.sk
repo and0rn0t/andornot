@@ -78,7 +78,7 @@ on rightclick:
 	bowArrow({_p})
 	set {-bowstart::%{_id}%} to now
 	set {_start} to {-bowstart::%{_id}%}
-	# 충전 보스바: 당기는 동안 충전도(0~1)를 매 틱 막대로 보여준다. 최대 충전(3초)이 되면 막대가 초록색으로 바뀌고 소리(제목은 그대로 "집중"). 쏘거나 당기기를 취소하면 사라진다.
+	# 충전 보스바: 당기는 동안 충전도(0~1)를 매 틱 막대로 보여준다. 최대 충전(3초)이 되면 막대와 제목 "집중"이 초록색으로 바뀌고 소리. 쏘거나 당기기를 취소하면 사라진다.
 	# 발사(on shoot)가 {-bowstart} 를 지우거나, 손을 내리는(isHandRaised 가 4틱 연속 false) 걸 보고 끝낸다. 같은 우클릭이 두 번 들어와도 {-bowstart} 값이 달라지면 앞의 루프는 끝난다.
 	set {_t} to colored "&e집중"
 	set {_b} to Bukkit.createBossBar({_t}, BarColor.YELLOW, BarStyle.SOLID)
@@ -110,6 +110,7 @@ on rightclick:
 			if {_full} is false:
 				set {_full} to true
 				{_b}.setColor(BarColor.GREEN)
+				{_b}.setTitle(colored "&a집중")
 				play sound "block.note_block.pling" with volume 0.6 and pitch 2 to {_p}
 	{_b}.removeAll()
 

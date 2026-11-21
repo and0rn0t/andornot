@@ -703,6 +703,47 @@ function itemGuiFill(p: player, inv: inventory, mode: text):
 		set slot 31 of {_inv} to barrier named "&c돌아가기"
 		set {-itemguimap::%{_uid}%::31} to "__back"
 
+# n 번 로드아웃(1~3)의 구성 k 번(1~5) 아이템 id. 랜덤 아이템 모드와 상관없이 저장된 값 기준(저장값이 없거나 카탈로그에서 사라진 id 면 기본값).
+function loadoutIdOf(p: player, n: number, k: number) :: text:
+	set {_ri} to ({_n} - 1) * 5 + {_k}
+	set {_id} to {loadout::%{_p}'s uuid%::%{_ri}%}
+	set {_ids::*} to itemIds()
+	if {_id} is set:
+		if {_ids::*} contains {_id}:
+			return {_id}
+	set {_d::*} to itemDefaults()
+	return {_d::%{_k}%}
+
+# 무기고 GUI 의 로드아웃 선택 유리판: 사용 중이면 초록, 아니면 파랑. 설명란에 그 로드아웃에 들어 있는 아이템 5개의 아이콘을 한 줄로 보여 준다(itemIcon 스프라이트, 미검증).
+function loadoutPane(p: player, n: number, cur: number) :: object:
+	if {_n} is {_cur}:
+		set {_g} to lime stained glass pane named "&a%{_n}%번 로드아웃"
+	else:
+		set {_g} to blue stained glass pane named "&9%{_n}%번 로드아웃"
+	set {_st} to {_g}.getRandom()
+	set {_lb} to ItemLore.lore()
+	if {_n} is {_cur}:
+		set {_h} to "{""text"":""사용 중"",""italic"":false,""color"":""green""}"
+	else:
+		set {_h} to "{""text"":""미사용"",""italic"":false,""color"":""gray""}"
+	{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_h}))
+	set {_ic} to ""
+	loop integers from 1 to 5:
+		set {_k} to loop-value
+		set {_oid} to loadoutIdOf({_p}, {_n}, {_k})
+		set {_pc} to itemIcon({_oid})
+		if {_ic} is "":
+			set {_ic} to {_pc}
+		else:
+			set {_ic} to "%{_ic}%,{""text"":""  ""},%{_pc}%"
+	set {_lj} to "{""text"":"""",""italic"":false,""color"":""white"",""extra"":[%{_ic}%]}"
+	{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_lj}))
+	if {_n} is not {_cur}:
+		{_lb}.addLine(GsonComponentSerializer.gson().deserialize("{""text"":"" "",""italic"":false}"))
+		{_lb}.addLine(GsonComponentSerializer.gson().deserialize("{""text"":""▶ 클릭해서 이 로드아웃 사용"",""italic"":false,""color"":""yellow""}"))
+	{_st}.setData(DataComponentTypes.LORE, {_lb}.build())
+	return {_st}
+
 # 무기고 GUI(2줄): 윗줄 칸 3/4/5 가 로드아웃 1/2/3번 유리판(사용 중 = 초록, 미사용 = 파랑), 아랫줄 3~7번째 칸(칸 11~15)이 사용 중인 로드아웃의 구성 1~5번. 나머지는 회색 색유리판.
 function armoryFill(p: player, inv: inventory):
 	set {_uid} to "%{_p}'s uuid%"
@@ -713,12 +754,7 @@ function armoryFill(p: player, inv: inventory):
 	set {_cur} to loadoutSet({_p})
 	loop integers from 1 to 3:
 		set {_n} to loop-value
-		if {_n} is {_cur}:
-			set {_g} to lime stained glass pane named "&a%{_n}%번 로드아웃"
-			set lore of {_g} to "&a사용 중"
-		else:
-			set {_g} to blue stained glass pane named "&9%{_n}%번 로드아웃"
-			set lore of {_g} to "&7미사용", "", "&e▶ 클릭해서 이 로드아웃 사용"
+		set {_g} to loadoutPane({_p}, {_n}, {_cur})
 		set {_s} to {_n} + 2
 		set slot {_s} of {_inv} to {_g}
 		set {-itemguimap::%{_uid}%::%{_s}%} to "__set%{_n}%"
