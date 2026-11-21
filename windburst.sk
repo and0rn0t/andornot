@@ -36,7 +36,7 @@ function smokeFadeTicks() :: number:
 
 # 격자 한 점당 한 번(2틱)에 뿌리는 구름 개수의 기준. 느리면 줄이고, 덜 덮이면 늘린다.
 function smokeDensity() :: number:
-	return 18
+	return 8
 
 # 반구 배치용 격자 점(중심 기준 벡터)을 한 번만 만들어 {-smokelat::*} 에 둔다. 간격 3칸, 반지름 11.5칸 안의 점 중 y >= 0(위쪽 절반)만 쓴다.
 # 위아래(y)는 smokeYScale() 배율(0.7)로 눌러서 점 위치를 줄인다. 점마다 작은 가우시안(가로 1.2, 세로 0.5)으로 구름을 뿌린다.
@@ -112,7 +112,7 @@ function smokeAround(p: player, f: number, center: location):
 	set {_blocked} to smokeBlocked({_center}, {_eye}, 0)
 	if {_blocked} is true:
 		stop
-	set {_c} to floor(70 * {_f})
+	set {_c} to floor(40 * {_f})
 	if {_c} < 1:
 		stop
 	{_eye}.getWorld().spawnParticle(Particle.CLOUD, {_eye}, {_c}, 1.3, 1.3, 1.3, 0, null, true)
@@ -120,6 +120,13 @@ function smokeAround(p: player, f: number, center: location):
 function smokeCloud(center: location):
 	set {_r} to smokeRadius()
 	set {_pts::*} to smokePoints({_center})
+	# 점이 하나도 안 남으면(중심이 블럭 틈이나 구석에 끼어 광선이 전부 막힘) 연막이 통째로 사라져 보인다. 1칸 위에서 다시 계산하고, 그래도 없으면 막힘 검사 없이 격자 전체를 쓴다.
+	if size of {_pts::*} < 1:
+		set {_center} to {_center} ~ vector(0, 1, 0)
+		set {_pts::*} to smokePoints({_center})
+	if size of {_pts::*} < 1:
+		loop {-smokelat::*}:
+			add {_center} ~ loop-value to {_pts::*}
 	set {_hold} to smokeTicks() / 2
 	set {_fade} to smokeFadeTicks() / 2
 	set {_total} to {_hold} + {_fade}
