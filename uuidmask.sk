@@ -292,7 +292,7 @@ on unload:
 
 # ---------- 명령어 ----------
 
-command /uuidmask [<text>]:
+command /uuidmask [<text>] [<text>]:
 	description: UUID 가림 상태 확인/정지 (ProtocolLib 필요)
 	usage: /uuidmask <status|kill|revive|audit>
 	permission: minecraft.command.op
