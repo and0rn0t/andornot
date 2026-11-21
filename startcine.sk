@@ -2,6 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
 #   {-grcam}(섬멸전 라운드 시작 카운트다운용 카메라 엔티티, 카운트다운이 끝나면 지움) {-grcamt}(그 카메라를 세운 뒤 지난 틱 수)
+#   {-gstartretry::uuid}(시작 연출 중 카메라 재연결 쿨다운, 아래 PlayerMoveEvent 감지가 씀)
 # 강한 카메라 잠금 = 카메라 엔티티(텍스트 디스플레이)를 관전 대상으로 걸어 위치/시점을 못 바꾸게 하는 것(웅크리기 등으로 풀려도 매 틱 다시 건다). game.sk 의 PlayerMoveEvent 잠금(카메라 없이 제자리에서 못 움직이게 함)보다 강하다.
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
 #   로딩  모두 관전 상태로 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라를 세우고 강한 카메라 잠금. 최소 3초, 그리고 모든 참가자의 클라이언트가 그 자리의 청크를 받은 뒤 1.25초까지(최대 20초) 기다린다. 액션바에 노란색 "loading..." 만 보이고 소리는 없다.
@@ -10,6 +11,7 @@
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
+#         [수정] 카메라와 인원을 라인업 첫 구도로 옮긴 직후, 모든 참가자가 그 자리의 청크를 받을 때까지(최대 5초) 카메라를 멈추고 기다리며 계속 다시 건다(받은 뒤 0.3초 더). 기다린 틱 수만큼 연출 시간(tk)을 건너뛰어 음악(19.6초)과 끝나는 때를 맞춘다.
 #   15.5초 "강하를 준비하세요" 타이틀
 #   19초  더미를 치우고 게임 시작(gStartFinish). 음악 길이가 19.6초라 끝날 즈음에 시작한다.
 #   라인업 자리(항상 정해져서 연출이 반드시 나온다): 1) 관리자 메뉴 "팀 라인업 위치 지정"으로 저장한 위치({gamecfg::loc::lineup_<월드>::*}: 서 있는 자리 = 줄 가운데 더미 발 위치, 시선 = 더미가 바라볼 방향(90도 단위), 카메라는 그 앞쪽에 선다)
@@ -18,9 +20,13 @@
 # 섬멸전 라운드 시작 카운트다운(game.sk 의 gRoundNext, "강하를 준비하세요" + 5초): game.sk 는 건드리지 않고 이 파일의 every 1 tick 이 카운트다운 중({-grcount} 가 켜져 있을 때, gSpecIntro())인 것을 보고
 #   리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라({-grcam})를 세워 참가자 전원을 그 자리로 옮기고 강한 카메라 잠금을 건다(카운트다운이 끝나 관전이 풀리거나 게임이 멈추면 카메라를 지운다).
 # 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
+# [수정] 클라이언트 미연결 감지(아래 on PlayerMoveEvent): 서버의 getSpectatorTarget() 은 "서버가 건 것"일 뿐 클라이언트가 실제로 카메라에 붙었다는 뜻이 아니다. 붙은 클라이언트는 이동 패킷을 안 보내고
+#   서버가 매 틱 플레이어를 카메라 자리로 옮기므로, 관전 대상이 걸려 있는데 카메라에서 떨어진 자리로 이동 이벤트가 오면 클라이언트가 카메라를 무시한 것이다. 그때 이동을 취소하고 관전 대상을 다시 건다.
+#   (game.sk 의 이동 잠금은 관전 대상이 걸려 있으면 건너뛰므로 이 경우를 못 막았다.)
 # 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt,
 #   로딩 구간 카메라를 시작 카메라로 teleport 로 옮겨도 관전 대상이 유지되는지(안 되면 바로 뒤 gStartKeepForce 가 다시 건다), 카운트다운 카메라 세우기/지우기(every 1 tick 감시), send action bar "" 로 액션바가 지워지는지,
-#   Location#getChunk() 와 Player#isChunkSent(Chunk)(Paper 1.20.5+) 호출, 오래 안 쓴 월드에서 청크 전송을 기다리면 카메라 잠금이 실제로 걸리는지(콘솔 [startcine] 로그의 대기 틱/미수신 인원으로 확인).
+#   Location#getChunk() 와 Player#isChunkSent(Chunk)(Paper 1.20.5+) 호출, 오래 안 쓴 월드에서 청크 전송을 기다리면 카메라 잠금이 실제로 걸리는지(콘솔 [startcine] 로그의 대기 틱/미수신 인원으로 확인),
+#   [수정분] 라인업 구간 청크 대기가 연출 길이를 음악과 맞추는지(콘솔 "라인업 청크 대기" 로그), 카메라에 붙은 클라이언트가 이동 패킷을 안 보낸다는 가정(안 맞으면 PlayerMoveEvent 감지가 카메라를 자주 다시 건다).
 
 import:
 	org.bukkit.Bukkit
@@ -30,6 +36,7 @@ import:
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
+	org.bukkit.event.player.PlayerMoveEvent
 
 # ===== 배경 음악 =====
 # 재생 음량(0~1). 파일이 이미 -6dB 낮춰져 있다. 아직 크면 이 값을 줄인다.
@@ -455,6 +462,46 @@ function gStartIntro(sg: number):
 				loop {-gplist::*}:
 					if loop-value is online:
 						tpSafe(loop-value, {_cl0})
+				# [수정] 라인업 첫 구도 자리의 청크를 모든 참가자가 받을 때까지(최대 100틱) 카메라를 멈추고 기다린다. 오래 안 쓴 월드는 시작 카메라에서 라인업으로 크게 옮겨지면 청크/카메라 엔티티가
+				# 클라이언트에 늦게 와서 관전 요청이 무시되는데, 서버는 걸렸다고 믿어 다시 안 걸고 이동 잠금도 풀어 두기 때문에(위 머리 주석 참고) 받을 때까지 계속 다시 건다. 받은 뒤 6틱 더 기다려 엔티티가 도착할 시간을 준다.
+				set {_lck} to {_cl0}.getChunk()
+				set {_lw} to 0
+				set {_lrd} to 0
+				set {_ldone} to false
+				while {_ldone} is false:
+					if gStartAbort({_sg}) is true:
+						send "[startcine] 중단(라인업 청크 대기 %{_lw}%틱)" to console
+						stop
+					set {_lall} to true
+					loop {-gplist::*}:
+						set {_pl} to loop-value
+						if {_pl} is online:
+							set {_sent} to {_pl}.isChunkSent({_lck})
+							if {_sent} is not true:
+								set {_lall} to false
+					if {_lall} is true:
+						add 1 to {_lrd}
+					else:
+						set {_lrd} to 0
+					if {_lall} is true:
+						if {_lrd} is 3:
+							gStartKeepForce()
+						else:
+							gStartKeep()
+					else if mod({_lw}, 10) is 2:
+						gStartKeepForce()
+					else:
+						gStartKeep()
+					add 1 to {_lw}
+					if {_lrd} >= 6:
+						set {_ldone} to true
+					if {_lw} >= 100:
+						set {_ldone} to true
+					wait 1 tick
+				gStartKeepForce()
+				send "[startcine] 라인업 청크 대기: %{_lw}%틱 걸림, 전원 청크 수신=%{_lall}%" to console
+				# 기다린 만큼 연출 시간을 건너뛴다(음악은 계속 나오므로 끝나는 때를 맞추려고)
+				add {_lw} to {_tk}
 		if {_tk} >= 100:
 			if {-gsl::ok} is true:
 				if {-gstartcam} is set:
@@ -563,9 +610,44 @@ on PlayerStopSpectatingEntityEvent:
 	if {-gplist::*} contains {_sp}:
 		event.setCancelled(true)
 
+# [수정] 시작 연출 중 클라이언트가 카메라에 안 붙은 것을 잡아낸다(머리 주석 참고). 카메라에 붙은 클라이언트는 이동 패킷을 안 보내고 서버가 매 틱 플레이어를 카메라 자리로 옮기므로,
+# 관전 대상이 걸려 있는데 이동 이벤트의 도착 자리가 카메라에서 떨어져 있으면 클라이언트가 카메라 엔티티를 몰라서 요청을 무시한 것이다. game.sk 의 이동 잠금은 관전 대상이 걸려 있으면 건너뛰므로
+# 이 경우를 못 막는다. 그래서 여기서 이동을 취소하고 관전 대상을 다시 건다(플레이어마다 10틱에 한 번). 관전 대상이 안 걸려 있는 경우는 game.sk 의 이동 잠금이 맡는다.
+on PlayerMoveEvent:
+	if {-gstarting} is not true:
+		stop
+	if {-gstartcam} is not set:
+		stop
+	set {_p} to event.getPlayer()
+	if gamemode of {_p} is not spectator:
+		stop
+	if {-gplist::*} does not contain {_p}:
+		stop
+	if {_p}.getSpectatorTarget() is not set:
+		stop
+	set {_t} to event.getTo()
+	set {_cl} to {-gstartcam}.getLocation()
+	set {_off} to false
+	if {_t}.getWorld() is not {_cl}.getWorld():
+		set {_off} to true
+	else if distance between {_t} and {_cl} > 0.5:
+		set {_off} to true
+	if {_off} is false:
+		stop
+	event.setCancelled(true)
+	set {_id} to "%uuid of {_p}%"
+	if {-gstartretry::%{_id}%} is set:
+		stop
+	set {-gstartretry::%{_id}%} to true
+	{_p}.setSpectatorTarget(null)
+	{_p}.setSpectatorTarget({-gstartcam})
+	wait 10 ticks
+	delete {-gstartretry::%{_id}%}
+
 # 스크립트를 다시 불러올 때 남은 카운트다운 카메라를 지운다
 on load:
 	if {-grcam} is set:
 		{-grcam}.remove()
 	delete {-grcam}
 	delete {-grcamt}
+	delete {-gstartretry::*}
