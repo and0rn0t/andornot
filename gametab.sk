@@ -68,7 +68,6 @@ function gtPad(target: number, s: text) :: text:
 	set {_r} to " " repeated {_n} times
 	return "%{_r}%"
 
-# (K/D/A 값은 실제 화면에서 제목보다 왼쪽에 보여 앞에 공백 1칸을 더 두고 뒤를 1칸 줄였다 = 칸 너비 유지, 값만 4픽셀 오른쪽)
 # 칸 가운데 정렬용: 글자 s 앞/뒤에 둘 공백(4픽셀 단위). 앞+뒤 = gtPad 와 같은 총 칸 수(최소 1칸)
 function gtCenN(target: number, s: text) :: number:
 	set {_n} to round(({_target} - gtPx({_s})) / 4)
@@ -141,11 +140,11 @@ function gtEntry(p: player) :: text:
 	set {_c1} to "%{_pre}%,%{_c1}%"
 	set {_t2} to gtPad(gtNameW() - tierPreW({_id}), {_nm})
 	set {_c2} to gtT({_t2}, "white")
-	set {_t3} to "%gtCenPre(gtKdaW(), {_k})% %{_k}%%gtCenPost(gtKdaW() - 4, {_k})%"
+	set {_t3} to "%gtCenPre(gtKdaW(), {_k})%%{_k}%%gtCenPost(gtKdaW(), {_k})%"
 	set {_c3} to gtT({_t3}, "white")
-	set {_t4} to "%gtCenPre(gtKdaW(), {_d})% %{_d}%%gtCenPost(gtKdaW() - 4, {_d})%"
+	set {_t4} to "%gtCenPre(gtKdaW(), {_d})%%{_d}%%gtCenPost(gtKdaW(), {_d})%"
 	set {_c4} to gtT({_t4}, "white")
-	set {_t5} to "%gtCenPre(gtKdaW(), {_a})% %{_a}%%gtCenPost(gtKdaW() - 4, {_a})%"
+	set {_t5} to "%gtCenPre(gtKdaW(), {_a})%%{_a}%%gtCenPost(gtKdaW(), {_a})%"
 	set {_c5} to gtT({_t5}, "white")
 	set {_t6} to "%gtCenPre(gtDmgW(), {_dms})%%{_dms}%%gtCenPost(gtDmgW(), {_dms})%"
 	set {_c6} to gtT({_t6}, "white")
