@@ -381,6 +381,23 @@ function gStartIntro(sg: number):
 		if gStartAbort({_sg}) is true:
 			send "[startcine] 중단(루프 %{_tk}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 			stop
+		# 진단 로그(콘솔, 1초마다): 다른 월드에서 시작하면 카메라가 안 붙는 문제를 추적하려고 남긴다. 원인을 찾으면 지운다.
+		if mod({_tk}, 20) is 0:
+			loop {-gplist::*}:
+				set {_dp} to loop-value
+				if {_dp} is online:
+					set {_dw} to {_dp}.getWorld().getName()
+					set {_dc} to {-gstartcam}.getWorld().getName()
+					set {_dt} to {_dp}.getSpectatorTarget()
+					set {_da} to false
+					if {_dt} is {-gstartcam}:
+						set {_da} to true
+					set {_dd} to -1
+					if {_dp}.getWorld() is {-gstartcam}.getWorld():
+						set {_dd} to distance between {_dp} and {-gstartcam}
+					set {_dg} to gamemode of {_dp}
+					set {_dpg} to {_dp}.getPing()
+					send "[startcine] 진단 tk=%{_tk}% %{_dp}%: 플레이어월드=%{_dw}% 카메라월드=%{_dc}% 모드=%{_dg}% 관전대상=카메라:%{_da}% 거리=%{_dd}% 핑=%{_dpg}%" to console
 		# 4.5초: 더미 세우기
 		if {_tk} is 90:
 			gsSpawnDummies()
@@ -540,6 +557,8 @@ every 1 tick:
 
 # 카운트다운 동안 카메라(관전 대상)에서 내려오는 것(웅크리기 등)을 막는다. 시작 연출 중에는 game.sk 의 같은 이벤트가 막는다.
 on PlayerStopSpectatingEntityEvent:
+	if {-gstarting} is true:
+		send "[startcine] 진단: 관전 해제 시도 %event.getPlayer()%" to console
 	if {-grcam} is not set:
 		stop
 	set {_sp} to event.getPlayer()
