@@ -40,8 +40,14 @@ function quickUseId(id: text) :: boolean:
 		return true
 	return false
 
+# 진단(임시): op 에게 단계별로 메시지를 보낸다. 원인을 찾으면 지울 것.
+function quDbg(p: player, m: text):
+	if {_p} is op:
+		send colored "&7[즉시사용] %{_m}%" to {_p}
+
 on PlayerItemHeldEvent:
 	set {_p} to event.getPlayer()
+	quDbg({_p}, "칸 변경 감지, 게임중=%{-ingame}%, 옵션=%quickUseOn({_p})%")
 	if {-ingame} is not true:
 		stop
 	if quickUseOn({_p}) is not true:
@@ -53,9 +59,13 @@ on PlayerItemHeldEvent:
 	wait 1 tick
 	if {_p} is not online:
 		stop
-	if {_p}.getInventory().getHeldItemSlot() is not {_ns}:
+	set {_hs} to {_p}.getInventory().getHeldItemSlot()
+	set {_id} to itemIdAt({_p}, {_ns})
+	quDbg({_p}, "새 칸=%{_ns}%, 손 칸=%{_hs}%, 아이템 id=%{_id}%, 대상=%quickUseId({_id})%")
+	if "%{_hs}%" is not "%{_ns}%":
 		stop
-	if quickUseId(itemIdAt({_p}, {_ns})) is not true:
+	if quickUseId({_id}) is not true:
 		stop
 	set {_ev} to new PlayerInteractEvent({_p}, Action.RIGHT_CLICK_AIR, {_p}.getInventory().getItemInMainHand(), null, BlockFace.SELF, EquipmentSlot.HAND)
 	Bukkit.getPluginManager().callEvent({_ev})
+	quDbg({_p}, "가짜 우클릭 호출 완료")
