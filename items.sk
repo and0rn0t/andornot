@@ -780,11 +780,11 @@ function jumpModeItem(p: player) :: itemtype:
 		set {_i} to {_i} with lore (colored "&7스페이스를 두 번 눌러 도약합니다."), (colored "&8F키는 사용하지 않습니다."), (colored "&e초심자 추천"), "" and (colored "&e▶ 클릭해서 F키로 변경")
 	return {_i}
 
-# 즉시 사용 토글 메뉴 아이템(대상: 무기류 제외 버프/디버프/포션류, TNT 제외)
+# 즉시 사용 토글 메뉴 아이템(대상: 무기류 제외 버프/디버프/포션류, TNT 포함)
 function quickUseItem(p: player) :: itemtype:
 	if quickUseOn({_p}) is true:
 		set {_i} to ender eye named colored "&b아이템 사용 방식: &a즉시 사용"
-		set {_i} to {_i} with lore (colored "&7버프/디버프/포션류 아이템으로 칸을 바꾸면 바로 사용합니다."), (colored "&8무기류와 TNT는 해당하지 않습니다."), (colored "&e숙련자 추천"), "" and (colored "&e▶ 클릭해서 우클릭 사용으로 변경")
+		set {_i} to {_i} with lore (colored "&7버프/디버프/포션류 아이템으로 칸을 바꾸면 바로 사용합니다."), (colored "&8무기류는 해당하지 않습니다."), (colored "&e숙련자 추천"), "" and (colored "&e▶ 클릭해서 우클릭 사용으로 변경")
 	else:
 		set {_i} to ender eye named colored "&b아이템 사용 방식: &a우클릭"
 		set {_i} to {_i} with lore (colored "&7우클릭해서 아이템을 사용합니다."), (colored "&8칸을 바꾸는 것만으로는 사용되지 않습니다."), (colored "&e초심자 추천"), "" and (colored "&e▶ 클릭해서 즉시 사용으로 변경")
