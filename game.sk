@@ -1289,8 +1289,6 @@ on PlayerTeleportEvent:
 		stop
 	set {_cause} to event.getCause()
 	set {_cn} to {_cause}.name()
-	if {-gstarting} is true:
-		send "[startcine] 진단: 관전자 텔레포트 원인=%{_cn}% 취소됨=%event.isCancelled()%" to console
 	if {_cn} is not "SPECTATE":
 		stop
 	if gSpecLocked({_tp}) is true:

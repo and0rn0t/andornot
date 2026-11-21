@@ -22,8 +22,8 @@
 #   서버가 매 틱 플레이어를 카메라 자리로 옮기므로, 관전 대상이 걸려 있는데 카메라에서 떨어진 자리로 이동 이벤트가 오면 클라이언트가 카메라를 무시한 것이다. 그때 이동을 취소하고 관전 대상을 다시 건다.
 #   (game.sk 의 이동 잠금은 관전 대상이 걸려 있으면 건너뛰므로 이 경우를 못 막았다.)
 # 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt,
-#   [연결 단계 재작성분] Entity#getTrackedBy() 가 그 사람에게 엔티티가 전송됐다는 신호로 맞는지(다른 월드에서 시작해도 연출이 정상으로 보이는지, 콘솔 "[startcine] 시작 카메라 연결 끝: n틱 걸림" 로그로 확인),
-#   Location#getChunk() 와 Player#isChunkSent(Chunk)(Paper 1.20.5+) 호출, 오래 안 쓴 월드에서 청크 전송을 기다리면 카메라 잠금이 실제로 걸리는지(콘솔 [startcine] 로그의 대기 틱/미수신 인원으로 확인),
+#   [연결 단계 재작성분] Entity#getTrackedBy() 가 그 사람에게 엔티티가 전송됐다는 신호로 맞는지(다른 월드에서 시작해도 연출이 정상으로 보이는지),
+#   Location#getChunk() 와 Player#isChunkSent(Chunk)(Paper 1.20.5+) 호출, 오래 안 쓴 월드에서 청크 전송을 기다리면 카메라 잠금이 실제로 걸리는지,
 #   [수정분] 라인업 구간 청크 대기가 연출 길이를 음악과 맞추는지(콘솔 "라인업 청크 대기" 로그), 카메라에 붙은 클라이언트가 이동 패킷을 안 보낸다는 가정(안 맞으면 PlayerMoveEvent 감지가 카메라를 자주 다시 건다).
 
 import:
@@ -300,11 +300,8 @@ function gsClear():
 
 # ===== 시작 연출 본체 =====
 function gStartIntro(sg: number):
-	# 진단 로그(콘솔): 리로드 직후 연출이 씹히는 문제를 추적하려고 단계마다 남긴다. 원인을 찾으면 지운다.
-	send "[startcine] 시작: gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}% 참가자=%size of {-gplist::*}% 월드=%{-gworld}%" to console
 	# 라인업 자리를 먼저 정한다(항상 정해짐). 시작 카메라가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
 	gsPrepare()
-	send "[startcine] 라인업 자리: ok=%{-gsl::ok}% loc=%{-gsl::loc}%" to console
 	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
 	if {_cam} is not set:
 		set {_cam} to gsShotLoc(1, 0)
@@ -325,14 +322,12 @@ function gStartIntro(sg: number):
 	{_he}.setSilent(true)
 	set {-gstartcam} to {_he}
 	delete {-gstartatt::*}
-	send "[startcine] 시작 카메라 생성: cam=%{_cam}% 엔티티=%{_he}%" to console
 	wait 1 tick
 	# 2) 카메라 엔티티가 전송된 사람부터 관전 대상을 건다. 건 뒤 6틱, 25틱에 한 번씩 더 강제로 다시 건다(이동/로딩 중 리셋 대비). 전원이 건 지 12틱 지나면 끝(최대 300틱).
 	set {_ht} to 0
 	set {_done} to false
 	while {_done} is false:
 		if gStartAbort({_sg}) is true:
-			send "[startcine] 중단(카메라 연결 %{_ht}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 			stop
 		set {_tr} to {-gstartcam}.getTrackedBy()
 		set {_all} to true
@@ -364,48 +359,20 @@ function gStartIntro(sg: number):
 		add 1 to {_ht}
 		if {_ht} >= 300:
 			set {_done} to true
-			delete {_late::*}
-			loop {-gplist::*}:
-				set {_pl} to loop-value
-				if {_pl} is online:
-					set {_has} to {-gstartcam}.getTrackedBy().contains({_pl})
-					if {_has} is not true:
-						add name of {_pl} to {_late::*}
-			send "[startcine] 카메라 연결 시간 초과(15초): 카메라를 못 받은 사람=%{_late::*}%" to console
 		else if {_all} is true:
 			set {_done} to true
 		else:
 			wait 1 tick
-	send "[startcine] 시작 카메라 연결 끝: %{_ht}%틱 걸림" to console
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
 			bgmPlay({_pl}, "gamestart")
 			send title "&f%{-gworld}%" with subtitle "" to {_pl} for 4 seconds with fadein 10 ticks and fade out 10 ticks
-	send "[startcine] 음악/타이틀 전송 완료, 연출 루프 시작" to console
 	set {_tk} to 0
 	while {_tk} < 380:
 		if gStartAbort({_sg}) is true:
-			send "[startcine] 중단(루프 %{_tk}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 			stop
-		# 진단 로그(콘솔, 1초마다): 다른 월드에서 시작하면 카메라가 안 붙는 문제를 추적하려고 남긴다. 원인을 찾으면 지운다.
-		if mod({_tk}, 20) is 0:
-			loop {-gplist::*}:
-				set {_dp} to loop-value
-				if {_dp} is online:
-					set {_dw} to {_dp}.getWorld().getName()
-					set {_dc} to {-gstartcam}.getWorld().getName()
-					set {_dt} to {_dp}.getSpectatorTarget()
-					set {_da} to false
-					if {_dt} is {-gstartcam}:
-						set {_da} to true
-					set {_dd} to -1
-					if {_dp}.getWorld() is {-gstartcam}.getWorld():
-						set {_dd} to distance between {_dp} and {-gstartcam}
-					set {_dg} to gamemode of {_dp}
-					set {_dpg} to {_dp}.getPing()
-					send "[startcine] 진단 tk=%{_tk}% %{_dp}%: 플레이어월드=%{_dw}% 카메라월드=%{_dc}% 모드=%{_dg}% 관전대상=카메라:%{_da}% 거리=%{_dd}% 핑=%{_dpg}%" to console
 		# 4.5초: 더미 세우기
 		if {_tk} is 90:
 			gsSpawnDummies()
@@ -431,7 +398,6 @@ function gStartIntro(sg: number):
 				set {_ldone} to false
 				while {_ldone} is false:
 					if gStartAbort({_sg}) is true:
-						send "[startcine] 중단(라인업 청크 대기 %{_lw}%틱)" to console
 						stop
 					set {_lall} to true
 					loop {-gplist::*}:
@@ -460,7 +426,6 @@ function gStartIntro(sg: number):
 						set {_ldone} to true
 					wait 1 tick
 				gStartKeepForce()
-				send "[startcine] 라인업 청크 대기: %{_lw}%틱 걸림, 전원 청크 수신=%{_lall}%" to console
 				# 기다린 만큼 연출 시간을 건너뛴다(음악은 계속 나오므로 끝나는 때를 맞추려고)
 				add {_lw} to {_tk}
 		if {_tk} >= 100:
@@ -497,9 +462,7 @@ function gStartIntro(sg: number):
 		add 1 to {_tk}
 		wait 1 tick
 	if gStartAbort({_sg}) is true:
-		send "[startcine] 중단(끝맺기 직전)" to console
 		stop
-	send "[startcine] 연출 끝, 게임 시작" to console
 	gStartFinish({_sg})
 
 # ===== 섬멸전 라운드 시작 카운트다운의 강한 카메라 잠금 =====
@@ -568,8 +531,6 @@ every 1 tick:
 on PlayerStopSpectatingEntityEvent:
 	if {-gspecforce} is true:
 		stop
-	if {-gstarting} is true:
-		send "[startcine] 진단: 관전 해제 시도 %event.getPlayer()%" to console
 	if {-grcam} is not set:
 		stop
 	set {_sp} to event.getPlayer()
