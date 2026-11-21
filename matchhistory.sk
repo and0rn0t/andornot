@@ -108,7 +108,7 @@ command /matchreview <number> [<text>]:
 			stop
 		if arg-2 is not set:
 			set {-mhawait::%player's uuid%} to {_n}
-			send "&e채팅창에 한 줄 리뷰를 입력하십시오. &7(40자까지, 비우려면 &f-&7, 취소는 &f취소&7)"
+			send "&b채팅창에 한 줄 리뷰를 입력하십시오. &7(40자까지, 비우려면 &f-&7, 취소는 &f취소&7)"
 			stop
 		set {_t} to gmCleanReview(arg-2)
 		set {_uid} to "%player's uuid%"

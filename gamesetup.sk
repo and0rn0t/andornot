@@ -21,7 +21,7 @@ function gcModeName(id: text) :: text:
 	if {_id} is "bounty":
 		return "바운티"
 	if {_id} is "annihilation":
-		return "섬멸전"
+		return "녹아웃"
 	return "%{_id}%"
 
 function gcModeDesc(id: text) :: texts:
@@ -31,7 +31,7 @@ function gcModeDesc(id: text) :: texts:
 		return "&7모두 목숨이 1개예요.", "&7마지막까지 살아남은 팀이 승점 1점을 얻고", "&7전투가 다시 시작돼요.", "&7먼저 목표 승점을 쌓은 팀/플레이어가 승리해요."
 	return "&7설명 없음"
 
-# 목표 스코어(바운티)/목표 승점(섬멸전). 기본값은 아래 gcTargetDefault, 관리자 설정은 저장 변수 {gamecfg::target::모드}.
+# 목표 스코어(바운티)/목표 승점(녹아웃). 기본값은 아래 gcTargetDefault, 관리자 설정은 저장 변수 {gamecfg::target::모드}.
 function gcTargetDefault(mode: text) :: number:
 	if {_mode} is "annihilation":
 		return 3
@@ -188,7 +188,7 @@ on inventory click:
 		if {_v} > 99:
 			set {_v} to 99
 		set {gamecfg::target::%{_m}%} to {_v}
-		gcAnnounce({_who}, "%gcTargetName({_m})%을(를) &e%{_v}%&7(으)로 변경했습니다.")
+		gcAnnounce({_who}, "%gcTargetName({_m})%을(를) &b%{_v}%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 11:
 		set {_n} to gcTeams()
@@ -207,7 +207,7 @@ on inventory click:
 			else:
 				set {_n} to {_n} + 1
 		set {gamecfg::teams} to {_n}
-		gcAnnounce({_who}, "팀 수를 &e%gcTeamLabel({_n})%&7(으)로 변경했습니다.")
+		gcAnnounce({_who}, "팀 수를 &b%gcTeamLabel({_n})%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 13:
 		set {_ids::*} to gcModeIds()
@@ -226,7 +226,7 @@ on inventory click:
 			if {_idx} > {_cnt}:
 				set {_idx} to 1
 		set {gamecfg::mode} to {_ids::%{_idx}%}
-		gcAnnounce({_who}, "게임모드를 &e%gcModeName({_ids::%{_idx}%})%&7(으)로 변경했습니다.")
+		gcAnnounce({_who}, "게임모드를 &b%gcModeName({_ids::%{_idx}%})%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 15:
 		if gcRandom() is true:
@@ -241,7 +241,7 @@ on inventory click:
 			set {gamecfg::teammode} to "random"
 		else:
 			set {gamecfg::teammode} to "mmr"
-		gcAnnounce({_who}, "팀 구성 방식을 &e%gcTeamModeName(gcTeamMode())%&7(으)로 변경했습니다.")
+		gcAnnounce({_who}, "팀 구성 방식을 &b%gcTeamModeName(gcTeamMode())%&7(으)로 변경했습니다.")
 		gcFill({_p}'s current inventory)
 	else if {_raw} is 22:
 		adminOpen({_p})

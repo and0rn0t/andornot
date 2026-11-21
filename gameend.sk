@@ -734,7 +734,7 @@ function gfDummy(p: player, loc: location, id: text, yaw: number):
 	{_meq}.setBoots({_inv}.getBoots())
 	add {_m} to {-gdummies::*}
 
-# 라운드 승리자 더미: p 와 똑같이 생긴(스킨/방어구) 더미를 loc 에 yaw 방향으로 세우고 돌려준다. 섬멸전 라운드 종료 연출(killcine.sk)이 쓴다. gfClearDummies() 로 지워진다.
+# 라운드 승리자 더미: p 와 똑같이 생긴(스킨/방어구) 더미를 loc 에 yaw 방향으로 세우고 돌려준다. 녹아웃 라운드 종료 연출(killcine.sk)이 쓴다. gfClearDummies() 로 지워진다.
 function gfDummyAt(p: player, loc: location, yaw: number) :: object:
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
 	set {_pf} to nickProfile({_p})
@@ -837,7 +837,7 @@ function gameFinale():
 		else:
 			loop all players:
 				if loop-player is op:
-					send "&e로비 월드(%{_lw}%)에 결과 무대가 저장되어 있지 않아 로비에는 더미를 놓지 못했습니다. 관리자 메뉴의 결과 무대 위치 설정을 로비에서 눌러 주세요." to loop-player
+					send "&b로비 월드(%{_lw}%)에 결과 무대가 저장되어 있지 않아 로비에는 더미를 놓지 못했습니다. 관리자 메뉴의 결과 무대 위치 설정을 로비에서 눌러 주세요." to loop-player
 	gmRecord()
 	delete {-gvote}
 	delete {-gpotm::*}
@@ -872,7 +872,7 @@ function gfPotmAnnounce():
 					set {_names} to "%{_names}%, %gfName(loop-value)%"
 		set {-gpotmres} to "%{_names}% (%{_best}%표)"
 	loop all players:
-		send title "&6Player Of The Match" with subtitle colored "&f%{-gpotmres}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+		send title "&bPlayer Of The Match" with subtitle colored "&f%{-gpotmres}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "entity.player.levelup" with volume 0.8 to loop-player
 	gfDummyRefresh()
 	gfDisplayRefresh()

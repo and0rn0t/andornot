@@ -264,7 +264,7 @@ command /uuidmask [<text>]:
 	permission message: &c권한이 없습니다.
 	trigger:
 		if arg-1 is not set:
-			send "&e/uuidmask status | kill | revive"
+			send "&b/uuidmask status | kill | revive"
 			stop
 		if arg-1 is "status":
 			if Bukkit.getPluginManager().isPluginEnabled("ProtocolLib") is false:

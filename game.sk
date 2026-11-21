@@ -1,27 +1,28 @@
-# [game.sk] 게임 진행: 시작/종료, 팀 배정, 전적(K/D/A/가한 피해), 바운티(별/현상금 스코어), 섬멸전(목숨 1개, 라운드 승점), 승리 판정.
+# [game.sk] 게임 진행: 시작/종료, 팀 배정, 전적(K/D/A/가한 피해), 바운티(별/현상금 스코어), 녹아웃(목숨 1개, 라운드 승점), 승리 판정.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 리스폰 위치: 아래 "리스폰 위치" 절 참고(월드별 리스폰 지점 + 바운티는 팀원 근처 50칸).
 # 이 파일이 쓰는 변수(RAM 전용):
 #   {-ingame}          게임 진행 중(true). items.sk 가 읽어서 무기고를 치운다.
 #   {-gover}           승패가 난 뒤(종연출 중)면 true. 새 킬/점수를 더 받지 않는다.
 #   {-gmode}           이번 게임모드 id(bounty/annihilation, 시작 때 gcMode() 를 복사)
-#   {-gtarget}         이번 게임의 목표 스코어(바운티)/목표 승점(섬멸전, 시작 때 복사)
+#   {-gtarget}         이번 게임의 목표 스코어(바운티)/목표 승점(녹아웃, 시작 때 복사)
 #   {-gteams}          이번 게임의 팀 수(0 = 개인전)
 #   {-gplist::*}       이번 게임 참가자(시작 때 접속해 있던 플레이어, 순서 유지)
 #   {-gteamlist::*}    팀 키 목록(정렬됨). 팀전은 {-team} 의 팀 이름("1팀"), 개인전은 "p_플레이어uuid"
 #   {-gname::팀키}      팀 이름(팀전은 {-team} 의 팀 이름, 개인전은 플레이어 이름). 화면에는 gTeamName() 이 만든 색 약자 3글자(RED, BLU ...)로 표시한다.
 #   {-gpteam::uuid} {-gpname::uuid}   시작 때 기록한 참가자의 팀 키/이름(중간에 나가도 결과창에 남기려고)
-#   {-gscore::팀키}     팀 스코어(바운티)/승점(섬멸전)
+#   {-gscore::팀키}     팀 스코어(바운티)/승점(녹아웃)
 #   {-gk::uuid} {-gd::uuid} {-ga::uuid} {-gdmg::uuid}   킬/데스/어시스트/가한 피해(실 체력, 적에게 준 것만)
 #   {-gstar::uuid}     바운티 별 개수(기본 gStarBase())
 #   {-gstar_d::uuid}   머리 위 별 표시(텍스트 디스플레이)
-#   {-gdead::uuid}     섬멸전에서 이번 라운드에 죽은 플레이어
-#   {-groundend}       섬멸전에서 라운드가 끝나는 중(true)
-#   {-grnum}           섬멸전 현재 라운드 번호(게임 시작 때 1, gRoundNext 가 라운드를 시작할 때마다 +1, "n라운드" 타이틀에 씀)
+#   {-gdead::uuid}     녹아웃에서 이번 라운드에 죽은 플레이어
+#   {-groundend}       녹아웃에서 라운드가 끝나는 중(true)
+#   {-grnum}           녹아웃 현재 라운드 번호(게임 시작 때 1, gRoundNext 가 라운드를 시작할 때마다 +1, "n라운드" 타이틀에 씀)
 #   {-groundwin}       이번 라운드 승리 팀 키(무승부는 ""). killcine.sk 의 라운드 종료 연출이 읽는다.
 #   {-glastdmg::피격자uuid::공격자uuid}   마지막으로 피해를 준 시각(어시스트 판정용)
 # 킬 처리 연결: killcine.sk 의 killScoreHook() 가 gameOnKill() 을 부르고, 치명타 피해량은 gameDamageRecord() 로 넘긴다. 치명타가 아닌 피해는 아래 on damage 가 센다.
 import:
+	java.lang.Math
 	org.bukkit.Bukkit
 	org.bukkit.ChatColor
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
@@ -84,7 +85,7 @@ function gInGame(p: player) :: boolean:
 		return true
 	return false
 
-# 살아 있는 참가자(접속 중이고 섬멸전에서 죽지 않음)
+# 살아 있는 참가자(접속 중이고 녹아웃에서 죽지 않음)
 function gAlive(p: player) :: boolean:
 	if {_p} is not online:
 		return false
@@ -217,7 +218,7 @@ function gJoinTeam(pid: text, ids: texts) :: text:
 		add 1 to {_t}
 	return "%{_best}%팀"
 
-# 중간 참가: 게임 중인 월드에서 관전 중인 사람이 /참가 를 입력하면 팀(팀전)이나 새 개인(개인전)으로 들어간다. 섬멸전은 진행 중인 라운드가 끝날 때까지 관전, 바운티는 바로 투입.
+# 중간 참가: 게임 중인 월드에서 관전 중인 사람이 /참가 를 입력하면 팀(팀전)이나 새 개인(개인전)으로 들어간다. 녹아웃은 진행 중인 라운드가 끝날 때까지 관전, 바운티는 바로 투입.
 function gJoinMid(p: player):
 	set {_id} to "%uuid of {_p}%"
 	if {-gteams} > 0:
@@ -252,7 +253,7 @@ function gJoinMid(p: player):
 		gRollLoadout({_p})
 		loadoutClearAll({_p})
 	loop all players:
-		send colored "&e[중간 참가] &f%name of {_p}% &7님이 %gTeamLabel({_k})% &7에 참가했습니다." to loop-player
+		send colored "&b[중간 참가] &f%name of {_p}% &7님이 %gTeamLabel({_k})% &7에 참가했습니다." to loop-player
 	if {-gmode} is "annihilation":
 		if {-groundend} is not true:
 			set {-gdead::%{_id}%} to true
@@ -279,7 +280,7 @@ command /참가:
 			stop
 		gJoinMid(player)
 
-# 접속: 게임이 진행 중이 아니면 로비로, 진행 중이면 게임 월드에서 관전 상태로 보낸다. 이미 참가자였던 사람(재접속)은 바운티면 바로 복귀, 섬멸전이면 다음 라운드까지 관전.
+# 접속: 게임이 진행 중이 아니면 로비로, 진행 중이면 게임 월드에서 관전 상태로 보낸다. 이미 참가자였던 사람(재접속)은 바운티면 바로 복귀, 녹아웃이면 다음 라운드까지 관전.
 on join:
 	wait 1 tick
 	if player is not online:
@@ -308,7 +309,7 @@ on join:
 		stop
 	set gamemode of player to spectator
 	tpSafe(player, {_gw}.getSpawnLocation())
-	send "&e게임이 진행 중입니다. &7중간 참가는 &e/참가 &7를 입력하세요. (인원이 적은 팀, 승점 균형 순으로 배치됩니다)" to player
+	send "&b게임이 진행 중입니다. &7중간 참가는 &b/참가 &7를 입력하세요. (인원이 적은 팀, 승점 균형 순으로 배치됩니다)" to player
 
 # 게임 시작 때 팀 구성을 모두에게 알린다(내부 승점은 알리지 않는다).
 function gAnnounceTeams():
@@ -382,7 +383,7 @@ function ratingApply():
 		set {rating::games::%{_id}%} to {_g} + 1
 
 # ===== 리스폰 위치 =====
-# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 리스폰 지점을 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때와 섬멸전 라운드 시작 때 모두 그 지점의 X/Z 로 간다(팀 구분 없이 같은 지점 주변 반경 10칸에 한 명씩 무작위로 흩뿌린다).
+# 관리자 메뉴 "리스폰 위치 지정"으로 월드마다 리스폰 지점을 저장한다(gcLoadLoc(gcRespawnKey(월드 이름))). 게임을 시작할 때와 녹아웃 라운드 시작 때 모두 그 지점의 X/Z 로 간다(팀 구분 없이 같은 지점 주변 반경 10칸에 한 명씩 무작위로 흩뿌린다).
 # 지점이 없는 월드는 예전처럼 동작한다(시작 때 제자리, 리스폰은 월드 스폰).
 # 리스폰은 실제로는 그 지점의 Y 높이에서 시작해 겉날개로 활강한다(아래 "상공 낙하" 절). 바운티: 죽은 뒤 리스폰은 살아 있는 같은 월드 팀원 근처 50칸 안의 무작위 위치(팀원이 없으면 리스폰 지점). 게임 중이 아니거나 모드가 없으면 로비로 리스폰한다(kcRespawnLoc).
 # 팀원 근처 무작위 위치: 그 자리의 가장 높은 블럭 위, 물/용암이 아닌 곳, 팀원과 높이 차이 12칸 이내. 20번 안에 못 찾으면 팀원 위치를 쓴다.
@@ -861,7 +862,7 @@ function gStartFinish(sg: number):
 	set {-ingame} to true
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
-	# 섬멸전 첫 라운드 시작 시각(5분 뒤 체력 감소, gStormTick)
+	# 녹아웃 첫 라운드 시작 시각(5분 뒤 체력 감소, gStormTick)
 	set {-grstart} to now
 	set {-grnum} to 1
 	delete {-gstartprev::*}
@@ -921,8 +922,14 @@ function gameForceStop(by: text):
 				stop
 	gameCleanup()
 	gfAbort()
+	# 모든 플레이어(참가자, 중간 관전자 포함)를 로비로 보낸다. 관전 중이던 사람은 모드를 어드벤처로 되돌린다.
+	set {_lobby} to gameLobbyLoc()
 	loop all players:
-		send "&7게임을 강제로 종료했습니다." to loop-player
+		set {_pl} to loop-player
+		if gamemode of {_pl} is spectator:
+			set gamemode of {_pl} to adventure
+		tpSafe({_pl}, {_lobby})
+		send "&7게임을 강제로 종료했습니다." to {_pl}
 
 # ===== 전적 =====
 # 피해 기록: 적에게 준 피해(실 체력)를 누적하고 어시스트 판정용 시각을 남긴다. 본인/아군에게 준 피해는 세지 않는다.
@@ -1049,7 +1056,7 @@ function gBountyKill(v: player, a: entity, kill: boolean):
 	if {-gscore::%{_tk}%} >= {-gtarget}:
 		gameWin({_tk})
 
-# ===== 섬멸전 =====
+# ===== 녹아웃 =====
 # 살아 있는 팀이 1개 이하면 라운드 종료. 마지막 한 팀이 승점 1점, 전원 사망이면 무승부.
 function gAnnCheck():
 	if {-ingame} is not true:
@@ -1133,11 +1140,11 @@ function gRoundNext():
 	loop all players:
 		send title "&f%{-grnum}%라운드" with subtitle "&7%gcModeName({-gmode})%" to loop-player for 2 seconds with fadein 0 ticks and fade out 10 ticks
 
-# ===== 섬멸전 체력 감소(자기장 대신) =====
-# 라운드가 시작되고({-grstart}) 5분이 지나면 매 초 살아 있는 참가자의 체력이 깎인다. 리스폰 지점(없으면 월드 스폰)에서 가로(x,z)로 먼 사람부터 순서대로 더 깎는다(높이 y 는 안 봄):
+# ===== 녹아웃 체력 감소(자기장 대신) =====
+# 라운드가 시작되고({-grstart}) 5분이 지나면(서든 데스) 3초마다 살아 있는 참가자의 체력이 깎인다. 5분이 되는 순간 "서든 데스" 타이틀/채팅 안내(gStormAnnounce), 이후 액션바로 리스폰 지점 방향/거리 안내(gStormCompass). 리스폰 지점(없으면 월드 스폰)에서 가로(x,z)로 먼 사람부터 순서대로 더 깎는다(높이 y 는 안 봄):
 #   가까운 순서 r(0 = 제일 가까움)마다 기본 1 + r x 0.5 (실 체력), 최대 gStormMax() 까지. 거리가 같으면 같은 순서.
 # 라운드 종료 연출 중({-groundend}), 킬 연출 중({-kc}), 죽은 사람, 관전자는 제외. 피해는 attacker 없는 일반 피해라 치명타면 킬 연출 + 마지막으로 피해를 준 적(10초 안)에게 킬 인정(기존 규칙).
-# 미검증: 연속 피해가 무적 시간에 막히는지, 갑옷/버프로 줄어드는지(실제 피해량 확인 필요).
+# 미검증: Math.atan2/toDegrees 호출로 화살표 방향이 맞는지(Minecraft yaw 기준: 0 = +z, 시계방향 증가), 액션바가 다른 액션바(킬 알림)와 겹칠 때 깜빡이는지, 연속 피해가 무적 시간에 막히는지, 갑옷/버프로 줄어드는지(실제 피해량 확인 필요).
 function gStormDelaySec() :: number:
 	return 300
 
@@ -1155,39 +1162,61 @@ function gStormCloser(mine: number, dists: numbers) :: number:
 			add 1 to {_c}
 	return {_c}
 
-function gStormTick():
+# 5분이 지나 체력 감소(서든 데스)가 진행 중인지(라운드 진행 중일 때만)
+function gStormOn() :: boolean:
 	if {-ingame} is not true:
-		stop
+		return false
 	if {-gmode} is not "annihilation":
-		stop
+		return false
 	if {-groundend} is true:
-		stop
+		return false
 	if {-gover} is true:
-		stop
+		return false
 	if {-gstarting} is true:
-		stop
+		return false
 	if {-grcount} is set:
-		stop
+		return false
 	if {-grstart} is not set:
-		stop
+		return false
 	set {_el} to difference between {-grstart} and now
 	if {_el} < 5 minutes:
-		stop
+		return false
+	return true
+
+# 체력 감소의 기준점(리스폰 지점, 없으면 월드 스폰)
+function gStormCenter() :: location:
 	set {_c} to gcLoadLoc(gcRespawnKey("%{-gworld}%"))
 	if {_c} is not set:
 		set {_gw} to gcWorld("%{-gworld}%")
 		set {_c} to {_gw}.getSpawnLocation()
+	return {_c}
+
+# 체력 감소를 받는 사람인지(살아 있고, 킬 연출 중/관전이 아님)
+function gStormTarget(p: player) :: boolean:
+	if {_p} is not online:
+		return false
+	if gAlive({_p}) is not true:
+		return false
+	if {-kc::%uuid of {_p}%} is set:
+		return false
+	if gamemode of {_p} is spectator:
+		return false
+	return true
+
+# 3초마다: 거리 순서대로 체력을 깎는다
+function gStormTick():
+	if gStormOn() is not true:
+		stop
+	set {_c} to gStormCenter()
 	set {_cx} to {_c}.getX()
 	set {_cz} to {_c}.getZ()
 	delete {_d::*}
 	loop {-gplist::*}:
 		set {_p} to loop-value
-		if gAlive({_p}) is true:
-			if {-kc::%uuid of {_p}%} is not set:
-				if gamemode of {_p} is not spectator:
-					set {_dx} to {_p}.getLocation().getX() - {_cx}
-					set {_dz} to {_p}.getLocation().getZ() - {_cz}
-					set {_d::%uuid of {_p}%} to {_dx} * {_dx} + {_dz} * {_dz}
+		if gStormTarget({_p}) is true:
+			set {_dx} to {_p}.getLocation().getX() - {_cx}
+			set {_dz} to {_p}.getLocation().getZ() - {_cz}
+			set {_d::%uuid of {_p}%} to {_dx} * {_dx} + {_dz} * {_dz}
 	loop {-gplist::*}:
 		set {_p} to loop-value
 		set {_id} to "%uuid of {_p}%"
@@ -1198,10 +1227,54 @@ function gStormTick():
 				set {_dmg} to gStormMax()
 			damage {_p} by hp({_dmg}) hearts
 
-every second:
+# 5분이 되는 순간 한 번(라운드마다): "서든 데스" 타이틀 + 채팅 안내
+function gStormAnnounce():
+	if gStormOn() is not true:
+		stop
+	set {_k} to "%{-grstart}%"
+	if {-gstormann} is {_k}:
+		stop
+	set {-gstormann} to {_k}
+	loop {-gplist::*}:
+		set {_p} to loop-value
+		if {_p} is online:
+			send title "&c서든 데스" with subtitle "&f체력이 감소합니다" to {_p} for 4 seconds with fadein 10 ticks and fade out 20 ticks
+			send "&c리스폰에서 멀수록 받는 데미지가 강해집니다." to {_p}
+			play sound "entity.wither.spawn" with volume 0.5 and pitch 1 to {_p}
+
+# 리스폰 지점 방향 안내(액션바): 5분이 지난 뒤 체력 감소를 받는 사람에게 화살표와 거리를 보여 준다. 화살표는 지금 보는 방향 기준(↑ 앞, → 오른쪽 ...).
+function gStormCompass():
+	if gStormOn() is not true:
+		stop
+	set {_c} to gStormCenter()
+	set {_cx} to {_c}.getX()
+	set {_cz} to {_c}.getZ()
+	set {_ar::*} to "↑", "↗", "→", "↘", "↓", "↙", "←", "↖"
+	loop {-gplist::*}:
+		set {_p} to loop-value
+		if gStormTarget({_p}) is true:
+			set {_pl} to {_p}.getLocation()
+			set {_dx} to {_cx} - {_pl}.getX()
+			set {_dz} to {_cz} - {_pl}.getZ()
+			set {_dist} to round(sqrt({_dx} * {_dx} + {_dz} * {_dz}))
+			set {_ty} to 0 - Math.toDegrees(Math.atan2({_dx}, {_dz}))
+			set {_rel} to {_ty} - {_pl}.getYaw() + 720
+			set {_rel} to mod({_rel}, 360)
+			set {_ix} to floor(({_rel} + 22.5) / 45)
+			set {_ix} to mod({_ix}, 8) + 1
+			set {_a} to {_ar::%{_ix}%}
+			send action bar colored "&c리스폰 &f%{_a}% &7%{_dist}%m" to {_p}
+
+every 3 seconds:
 	gStormTick()
 
-# 연출 중에 부활을 막을지(섬멸전에서 죽은 사람은 라운드가 끝날 때까지 관전). killcine.sk 의 리스폰 단계가 부른다.
+every second:
+	gStormAnnounce()
+
+every 5 ticks:
+	gStormCompass()
+
+# 연출 중에 부활을 막을지(녹아웃에서 죽은 사람은 라운드가 끝날 때까지 관전). killcine.sk 의 리스폰 단계가 부른다.
 function gKeepDead(v: player) :: boolean:
 	if {-ingame} is not true:
 		return false
@@ -1219,11 +1292,11 @@ function gameWin(key: text):
 	set {-gover} to true
 	set {-gwinner} to {_key}
 	# 킬 연출이 진행 중이면(killcine.sk 가 {-kc} 를 켜 둠) 그 연출을 모두가 본 뒤 killcine.sk 가 gameFinale() 을 부른다.
-	# 킬 연출 없이 승리가 정해진 경우(접속 종료로 섬멸전이 끝남 등)는 바로 종료 연출(gameend.sk)을 시작한다.
+	# 킬 연출 없이 승리가 정해진 경우(접속 종료로 녹아웃이 끝남 등)는 바로 종료 연출(gameend.sk)을 시작한다.
 	if size of {-kc::*} is 0:
 		gameFinale()
 
-# 시작 연출(startcine.sk) 또는 섬멸전 라운드 시작 카운트다운(gRoundNext) 중인지
+# 시작 연출(startcine.sk) 또는 녹아웃 라운드 시작 카운트다운(gRoundNext) 중인지
 function gSpecIntro() :: boolean:
 	if {-gstarting} is true:
 		return true
@@ -1246,7 +1319,7 @@ function gSpecLocked(p: player) :: boolean:
 
 # 연출을 보거나 리스폰을 기다리는 관전 상태 참가자만 제자리에서 못 움직이게 한다. 시선 회전은 허용.
 #   대상: 킬 연출 중/리스폰 대기 중인 사람({-kc} 가 켜진 사람), 승패가 난 뒤 마지막 킬 연출을 보는 사람({-gover}), 종료 연출 중인 사람({-gfinale}).
-#   "게임 중"인지는 보지 않는다(종료 연출 중에는 게임이 진행 중이 아니어도 막아야 해서). 섬멸전에서 죽어 라운드를 기다리는 관전자는 자유롭게 움직인다.
+#   "게임 중"인지는 보지 않는다(종료 연출 중에는 게임이 진행 중이 아니어도 막아야 해서). 녹아웃에서 죽어 라운드를 기다리는 관전자는 자유롭게 움직인다.
 # 카메라를 따라가는 관전(setSpectatorTarget)은 건드리지 않는다. 미검증: 관전자의 PlayerMoveEvent 취소가 서버에서 제자리로 되돌리는지.
 on PlayerMoveEvent:
 	set {_p} to event.getPlayer()
