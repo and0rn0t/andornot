@@ -771,10 +771,10 @@ function armoryFill(p: player, inv: inventory):
 function jumpModeItem(p: player) :: itemtype:
 	if jumpMode({_p}) is "f":
 		set {_i} to feather named colored "&b도약 발동 키: &aF키"
-		set {_i} to {_i} with lore (colored "&7F키(손 바꾸기)로 도약합니다."), (colored "&8더블 점프는 사용하지 않습니다."), (colored "&e더블 점프는 초심자 추천, F키는 숙련자 추천"), "" and (colored "&e▶ 클릭해서 더블 점프로 변경")
+		set {_i} to {_i} with lore (colored "&7F키(손 바꾸기)로 도약합니다."), (colored "&8더블 점프는 사용하지 않습니다."), (colored "&e숙련자 추천"), "" and (colored "&e▶ 클릭해서 더블 점프로 변경")
 	else:
 		set {_i} to feather named colored "&b도약 발동 키: &a더블 점프"
-		set {_i} to {_i} with lore (colored "&7스페이스를 두 번 눌러 도약합니다."), (colored "&8F키는 사용하지 않습니다."), (colored "&e더블 점프는 초심자 추천, F키는 숙련자 추천"), "" and (colored "&e▶ 클릭해서 F키로 변경")
+		set {_i} to {_i} with lore (colored "&7스페이스를 두 번 눌러 도약합니다."), (colored "&8F키는 사용하지 않습니다."), (colored "&e초심자 추천"), "" and (colored "&e▶ 클릭해서 F키로 변경")
 	return {_i}
 
 # GUI 열기. mode: armory(무기고) / select(아이템 변경, idx = 구성 번호 1~5) / order(순서 편집).
@@ -970,8 +970,15 @@ on inventory click:
 				set {_c} to loop-value
 				if {_c} is not {_k}:
 					if loadoutGet({_p}, {_c}) is {_id}:
-						send "&c이미 구성에 있는 아이템입니다." to {_p}
-						play sound "entity.villager.no" with volume 0.5 to {_p}
+						# 이미 다른 구성 칸에 있는 아이템이면 두 구성 칸의 아이템만 서로 맞바꾼다(인벤토리 속 아이템은 그대로)
+						set {_ra} to loadoutIdx({_p}, {_k})
+						set {_rb} to loadoutIdx({_p}, {_c})
+						set {_oa} to loadoutGet({_p}, {_k})
+						set {loadout::%{_uid}%::%{_ra}%} to {_id}
+						set {loadout::%{_uid}%::%{_rb}%} to {_oa}
+						tabUpdate({_p})
+						play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
+						itemGuiOpen({_p}, "armory")
 						stop
 			set {_old} to loadoutGet({_p}, {_k})
 			set {_os} to loadoutFind({_p}, {_old})
