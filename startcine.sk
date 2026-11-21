@@ -1,13 +1,11 @@
-# [startcine.sk] 게임 시작 연출(로딩 3초 + 19초, 음악 gamestart 길이에 맞춤)과 배경 음악 재생 함수, 라운드 시작 카운트다운의 강한 카메라 잠금.
+# [startcine.sk] 게임 시작 연출(카메라 연결 후 19초, 음악 gamestart 길이에 맞춤)과 배경 음악 재생 함수, 라운드 시작 카운트다운의 강한 카메라 잠금.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
 # 이 파일이 쓰는 변수(RAM): {-gsl::*}(라인업 자리: ok/loc(맨 가운데 더미 발 위치)/ux,uz(줄 방향)/fx,fz(앞 방향, 카메라가 서는 쪽)/yaw(더미 방향)/len(줄 길이)/n(한 줄 최대 인원)), {-gsdummies::*}(보여주기용 더미)
 #   {-grcam}(섬멸전 라운드 시작 카운트다운용 카메라 엔티티, 카운트다운이 끝나면 지움) {-grcamt}(그 카메라를 세운 뒤 지난 틱 수)
-#   {-gstartretry::uuid}(시작 연출 중 카메라 재연결 쿨다운, 아래 PlayerMoveEvent 감지가 씀)
+#   {-gstartretry::uuid}(시작 연출 중 카메라 재연결 쿨다운, 아래 PlayerMoveEvent 감지가 씀) {-gstartatt::uuid}(카메라 연결 단계에서 그 사람에게 관전 대상을 건 틱)
 # 강한 카메라 잠금 = 카메라 엔티티(텍스트 디스플레이)를 관전 대상으로 걸어 위치/시점을 못 바꾸게 하는 것(웅크리기 등으로 풀려도 매 틱 다시 건다). game.sk 의 PlayerMoveEvent 잠금(카메라 없이 제자리에서 못 움직이게 함)보다 강하다.
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
-#   로딩  모두 관전 상태로 리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라를 세우고 강한 카메라 잠금. 최소 3초, 그리고 모든 참가자의 클라이언트가 그 자리의 청크를 받은 뒤 1.25초까지(최대 20초) 기다린다. 액션바에 노란색 "loading..." 만 보이고 소리는 없다.
-#         오래 안 쓴 월드는 청크가 클라이언트로 늦게 와서, 서버가 관전 대상을 걸어도 클라이언트가 카메라 엔티티를 몰라 요청을 무시한다(서버는 걸렸다고 믿어서 다시 안 걸고 game.sk 의 이동 잠금도 풀어 둔다). 그래서 청크 전송(Player#isChunkSent)을 확인하고, 기다리는 동안 계속 다시 건다.
-#   준비  라인업 자리를 정한 뒤 같은 카메라를 시작 카메라(없으면 라인업 첫 구도 자리)로 옮기고 모두 그 자리로 이동시킨다. 시작 카메라 자리의 청크도 같은 방식으로 확인한 뒤(최소 0.5초, 최대 15초) 연출을 시작한다. 연출 중에는 시작 0.5초/2초 뒤와 라인업으로 카메라가 크게 옮겨진 직후(5.1초/6.5초)에도 관전 대상을 강제로 다시 건다.
+#   연결  라인업 자리와 시작 카메라 자리를 정하고 모두 관전 상태로 그 자리로 보낸 뒤(월드가 다르면 이 때 월드 이동) 카메라 엔티티를 세운다. 각자에게 카메라 엔티티가 실제로 전송된 것(Entity#getTrackedBy)을 확인한 뒤에 관전 대상을 걸고(강한 카메라 잠금), 6/25틱 뒤에 한 번씩 더 강제로 다시 건다. 별도의 로딩 구간은 없다.
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
 #   5초   라인업 시작: 팀전이면 각자 자기 팀 이름 타이틀(개인전은 없음). 카메라 3구도: ~9초 정면 넓게(천천히 다가감) / ~13초 옆으로 훑기(가까이) / ~19초 낮은 정면 클로즈업(천천히 물러남)
@@ -24,7 +22,7 @@
 #   서버가 매 틱 플레이어를 카메라 자리로 옮기므로, 관전 대상이 걸려 있는데 카메라에서 떨어진 자리로 이동 이벤트가 오면 클라이언트가 카메라를 무시한 것이다. 그때 이동을 취소하고 관전 대상을 다시 건다.
 #   (game.sk 의 이동 잠금은 관전 대상이 걸려 있으면 건너뛰므로 이 경우를 못 막았다.)
 # 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt,
-#   로딩 구간 카메라를 시작 카메라로 teleport 로 옮겨도 관전 대상이 유지되는지(안 되면 바로 뒤 gStartKeepForce 가 다시 건다), 카운트다운 카메라 세우기/지우기(every 1 tick 감시), send action bar "" 로 액션바가 지워지는지,
+#   [연결 단계 재작성분] Entity#getTrackedBy() 가 그 사람에게 엔티티가 전송됐다는 신호로 맞는지(다른 월드에서 시작해도 연출이 정상으로 보이는지, 콘솔 "[startcine] 시작 카메라 연결 끝: n틱 걸림" 로그로 확인),
 #   Location#getChunk() 와 Player#isChunkSent(Chunk)(Paper 1.20.5+) 호출, 오래 안 쓴 월드에서 청크 전송을 기다리면 카메라 잠금이 실제로 걸리는지(콘솔 [startcine] 로그의 대기 틱/미수신 인원으로 확인),
 #   [수정분] 라인업 구간 청크 대기가 연출 길이를 음악과 맞추는지(콘솔 "라인업 청크 대기" 로그), 카메라에 붙은 클라이언트가 이동 패킷을 안 보낸다는 가정(안 맞으면 PlayerMoveEvent 감지가 카메라를 자주 다시 건다).
 
@@ -63,7 +61,7 @@ function gsSearchCenter() :: location:
 		set {_c} to {_w}.getSpawnLocation()
 	return {_c}
 
-# 로딩 구간/라운드 카운트다운에서 카메라를 세울 자리: 리스폰 지점(저장한 위치와 시점 그대로), 없으면 시작 카메라, 없으면 월드 스폰.
+# 라운드 카운트다운에서 카메라를 세울 자리: 리스폰 지점(저장한 위치와 시점 그대로), 없으면 시작 카메라, 없으면 월드 스폰.
 function gHoldLoc() :: location:
 	set {_w} to gcWorld("%{-gworld}%")
 	set {_l} to gcLoadLoc(gcRespawnKey("%{-gworld}%"))
@@ -293,146 +291,84 @@ function gsClear():
 function gStartIntro(sg: number):
 	# 진단 로그(콘솔): 리로드 직후 연출이 씹히는 문제를 추적하려고 단계마다 남긴다. 원인을 찾으면 지운다.
 	send "[startcine] 시작: gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}% 참가자=%size of {-gplist::*}% 월드=%{-gworld}%" to console
-	# 로딩 3초: 모두 관전 상태로 리스폰 지점에 세운 카메라에 건다(강한 카메라 잠금). 맵이 불러와질 시간을 벌고, 액션바에 노란색 loading... 만 보여 준다(소리 없음).
-	set {_hl} to gHoldLoc()
+	# 라인업 자리를 먼저 정한다(항상 정해짐). 시작 카메라가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
+	gsPrepare()
+	send "[startcine] 라인업 자리: ok=%{-gsl::ok}% loc=%{-gsl::loc}%" to console
+	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
+	if {_cam} is not set:
+		set {_cam} to gsShotLoc(1, 0)
+	# 1) 모두 관전 상태로 시작 카메라 자리로 보낸다(게임 월드가 지금 월드와 다르면 여기서 월드 이동). 카메라 엔티티는 이동이 끝난 뒤에 세운다.
+	#    [원인 수정] 예전에는 이동과 같은 틱에 카메라를 세우고 바로 관전 대상을 걸었다. 다른 월드로 옮겨진 클라이언트는 새 월드를 불러오는 중이라 카메라 엔티티를 아직 몰라서
+	#    관전 요청을 무시하고, 서버는 걸렸다고 믿어서 다시 안 걸었다(같은 월드면 클라이언트가 이미 엔티티를 알아서 정상). 그래서 아래 2)에서 "그 사람에게 카메라 엔티티가
+	#    실제로 전송됐는지(getTrackedBy)"를 확인한 뒤에만 관전 대상을 건다. 엔티티 생성 패킷이 관전 대상 패킷보다 먼저 가므로 클라이언트가 순서대로 처리하면 반드시 붙는다.
 	loop {-gplist::*}:
 		set {_pl} to loop-value
 		if {_pl} is online:
 			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
 			set gamemode of {_pl} to spectator
-			tpSafe({_pl}, {_hl})
-	set {_hw} to {_hl}.getWorld()
-	set {_he} to {_hw}.spawnEntity({_hl}, EntityType.TEXT_DISPLAY)
+			tpSafe({_pl}, {_cam})
+	set {_cw} to {_cam}.getWorld()
+	set {_he} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
 	{_he}.setGravity(false)
 	{_he}.setInvulnerable(true)
 	{_he}.setSilent(true)
 	set {-gstartcam} to {_he}
-	send "[startcine] 로딩 구간 카메라 생성: loc=%{_hl}% 엔티티=%{_he}%" to console
+	delete {-gstartatt::*}
+	send "[startcine] 시작 카메라 생성: cam=%{_cam}% 엔티티=%{_he}%" to console
 	wait 1 tick
-	if gStartAbort({_sg}) is true:
-		send "[startcine] 중단(로딩 준비 직후): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
-		stop
-	gStartKeepForce()
-	# 모든 참가자가 카메라 자리의 청크를 받을 때까지(최소 60틱, 최대 400틱) 기다린다. 받은 뒤에도 25틱 더 기다려 카메라 엔티티가 클라이언트에 도착할 시간을 준다.
-	set {_hck} to {_hl}.getChunk()
+	# 2) 카메라 엔티티가 전송된 사람부터 관전 대상을 건다. 건 뒤 6틱, 25틱에 한 번씩 더 강제로 다시 건다(이동/로딩 중 리셋 대비). 전원이 건 지 12틱 지나면 끝(최대 300틱).
 	set {_ht} to 0
-	set {_rd} to 0
 	set {_done} to false
 	while {_done} is false:
 		if gStartAbort({_sg}) is true:
-			send "[startcine] 중단(로딩 %{_ht}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
+			send "[startcine] 중단(카메라 연결 %{_ht}%틱): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
 			stop
+		set {_tr} to {-gstartcam}.getTrackedBy()
 		set {_all} to true
 		loop {-gplist::*}:
 			set {_pl} to loop-value
 			if {_pl} is online:
-				set {_sent} to {_pl}.isChunkSent({_hck})
-				if {_sent} is not true:
+				set {_id} to "%uuid of {_pl}%"
+				if gamemode of {_pl} is not spectator:
+					set gamemode of {_pl} to spectator
+				set {_has} to {_tr}.contains({_pl})
+				if {_has} is true:
+					if {-gstartatt::%{_id}%} is not set:
+						set {-gstartatt::%{_id}%} to {_ht}
+						{_pl}.setSpectatorTarget(null)
+						{_pl}.setSpectatorTarget({-gstartcam})
+					else:
+						set {_age} to {_ht} - {-gstartatt::%{_id}%}
+						if {_age} is 6:
+							{_pl}.setSpectatorTarget(null)
+							{_pl}.setSpectatorTarget({-gstartcam})
+						else if {_age} is 25:
+							{_pl}.setSpectatorTarget(null)
+							{_pl}.setSpectatorTarget({-gstartcam})
+						else:
+							set {_cur} to {_pl}.getSpectatorTarget()
+							if {_cur} is not {-gstartcam}:
+								{_pl}.setSpectatorTarget({-gstartcam})
+						if {_age} < 12:
+							set {_all} to false
+				else:
 					set {_all} to false
-		if {_all} is true:
-			add 1 to {_rd}
-		else:
-			set {_rd} to 0
-		if mod({_ht}, 10) is 0:
-			loop {-gplist::*}:
-				if loop-value is online:
-					send action bar colored "&eloading..." to loop-value
-		# 아직 청크를 못 받은 사람이 있으면 10틱마다 강제로 다시 건다. 다 받은 뒤에는 4틱, 20틱 뒤에 한 번씩 강제로 다시 건다.
-		if {_all} is true:
-			if {_rd} is 4:
-				gStartKeepForce()
-			else if {_rd} is 20:
-				gStartKeepForce()
-			else:
-				gStartKeep()
-		else if mod({_ht}, 10) is 5:
-			gStartKeepForce()
-		else:
-			gStartKeep()
 		add 1 to {_ht}
-		if {_ht} >= 60:
-			if {_rd} >= 25:
-				set {_done} to true
-		if {_ht} >= 400:
+		if {_ht} >= 300:
 			set {_done} to true
 			delete {_late::*}
 			loop {-gplist::*}:
 				set {_pl} to loop-value
 				if {_pl} is online:
-					set {_sent} to {_pl}.isChunkSent({_hck})
-					if {_sent} is not true:
+					set {_has} to {-gstartcam}.getTrackedBy().contains({_pl})
+					if {_has} is not true:
 						add name of {_pl} to {_late::*}
-			send "[startcine] 로딩 시간 초과(20초): 청크를 못 받은 사람=%{_late::*}%" to console
-		wait 1 tick
-	loop {-gplist::*}:
-		if loop-value is online:
-			send action bar "" to loop-value
-	send "[startcine] 로딩 구간 끝: %{_ht}%틱 걸림, 전원 청크 수신=%{_all}%" to console
-	# 라인업 자리를 먼저 정한다(항상 정해짐)
-	gsPrepare()
-	send "[startcine] 라인업 자리: ok=%{-gsl::ok}% loc=%{-gsl::loc}%" to console
-	# 시작 카메라: 로딩 구간 카메라를 시작 카메라 위치로 옮기고 모두 그 자리로 보낸다(관전 대상으로 걸린 카메라가 시점/위치를 고정). 시작 카메라 위치가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
-	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
-	if {_cam} is not set:
-		set {_cam} to gsShotLoc(1, 0)
-	teleport {-gstartcam} to {_cam}
-	loop {-gplist::*}:
-		set {_pl} to loop-value
-		if {_pl} is online:
-			if gamemode of {_pl} is not spectator:
-				set gamemode of {_pl} to spectator
-			tpSafe({_pl}, {_cam})
-	send "[startcine] 카메라 이동: cam=%{_cam}% 엔티티=%{-gstartcam}%" to console
-	wait 1 tick
-	if gStartAbort({_sg}) is true:
-		send "[startcine] 중단(준비 직후): gstarting=%{-gstarting}% gen=%{-gstartgen}% sg=%{_sg}%" to console
-		stop
-	gStartKeepForce()
-	# 시작 카메라 자리의 청크도 클라이언트가 받을 때까지 기다린다(최소 10틱, 최대 300틱, 받은 뒤 10틱 더).
-	set {_cck} to {_cam}.getChunk()
-	set {_ht2} to 0
-	set {_rd2} to 0
-	set {_done2} to false
-	while {_done2} is false:
-		if gStartAbort({_sg}) is true:
-			send "[startcine] 중단(시작 카메라 대기 %{_ht2}%틱)" to console
-			stop
-		set {_all2} to true
-		loop {-gplist::*}:
-			set {_pl} to loop-value
-			if {_pl} is online:
-				set {_sent} to {_pl}.isChunkSent({_cck})
-				if {_sent} is not true:
-					set {_all2} to false
-		if {_all2} is true:
-			add 1 to {_rd2}
+			send "[startcine] 카메라 연결 시간 초과(15초): 카메라를 못 받은 사람=%{_late::*}%" to console
+		else if {_all} is true:
+			set {_done} to true
 		else:
-			set {_rd2} to 0
-		if mod({_ht2}, 10) is 0:
-			loop {-gplist::*}:
-				if loop-value is online:
-					send action bar colored "&eloading..." to loop-value
-		if {_all2} is true:
-			if {_rd2} is 5:
-				gStartKeepForce()
-			else:
-				gStartKeep()
-		else if mod({_ht2}, 10) is 5:
-			gStartKeepForce()
-		else:
-			gStartKeep()
-		add 1 to {_ht2}
-		if {_ht2} >= 10:
-			if {_rd2} >= 10:
-				set {_done2} to true
-		if {_ht2} >= 300:
-			set {_done2} to true
-			send "[startcine] 시작 카메라 청크 대기 시간 초과(15초)" to console
-		wait 1 tick
-	loop {-gplist::*}:
-		if loop-value is online:
-			send action bar "" to loop-value
-	send "[startcine] 시작 카메라 준비: %{_ht2}%틱 걸림, 전원 청크 수신=%{_all2}%" to console
+			wait 1 tick
+	send "[startcine] 시작 카메라 연결 끝: %{_ht}%틱 걸림" to console
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
 		set {_pl} to loop-value

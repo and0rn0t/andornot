@@ -24,6 +24,14 @@ import:
 	org.bukkit.Particle
 
 # 킬 연출 사용 여부
+# 관전 상태가 아닌 사람에게 setSpectatorTarget 을 부르면 "Player must be in spectator mode" 예외가 난다(킬 연출 중 리스폰/모드 변경 등). 관전 중일 때만 건다.
+function kcSpec(p: player, e: object):
+	if {_e} is not set:
+		stop
+	if gamemode of {_p} is not spectator:
+		stop
+	{_p}.setSpectatorTarget({_e})
+
 function kcEnabled() :: boolean:
 	return true
 
@@ -266,7 +274,7 @@ on damage with priority highest:
 	set gamemode of {_v} to spectator
 	tpSafe({_v}, {_cl})
 	wait 1 tick
-	{_v}.setSpectatorTarget({_cam})
+	kcSpec({_v}, {_cam})
 	play sound "mck:knockout" with volume 1.5 and pitch 1 to {_v}
 	if {_atk} is set:
 		if {_atk} is online:
@@ -297,14 +305,14 @@ on damage with priority highest:
 		{_m}.setFireTicks(0)
 		set {_cur} to {_v}.getSpectatorTarget()
 		if {_cur} is not {_cam}:
-			{_v}.setSpectatorTarget({_cam})
+			kcSpec({_v}, {_cam})
 		if {_all} is true:
 			loop {-gplist::*}:
 				set {_o} to loop-value
 				if {_o} is online:
 					set {_cur2} to {_o}.getSpectatorTarget()
 					if {_cur2} is not {_cam}:
-						{_o}.setSpectatorTarget({_cam})
+						kcSpec({_o}, {_cam})
 		add 1 to {_t}
 		wait 1 tick
 	# 6) 콰직! 소리 + 붉은 조각이 튀는 파티클(레드스톤 블록 조각, reflect 로 직접 호출, 미검증), 스켈레톤 제거
@@ -342,7 +350,7 @@ on damage with priority highest:
 				wait 1 tick
 				loop {-gplist::*}:
 					if loop-value is online:
-						loop-value.setSpectatorTarget({_cam2})
+						kcSpec(loop-value, {_cam2})
 				{_cam}.remove()
 				set {_t} to 0
 				while {_t} < 60:
@@ -351,7 +359,7 @@ on damage with priority highest:
 						if {_o} is online:
 							set {_cur3} to {_o}.getSpectatorTarget()
 							if {_cur3} is not {_cam2}:
-								{_o}.setSpectatorTarget({_cam2})
+								kcSpec({_o}, {_cam2})
 					add 1 to {_t}
 					wait 1 tick
 		{_cam2}.remove()
@@ -390,7 +398,7 @@ on damage with priority highest:
 			wait 1 tick
 			loop {-gplist::*}:
 				if loop-value is online:
-					loop-value.setSpectatorTarget({_cam2})
+					kcSpec(loop-value, {_cam2})
 			{_cam}.remove()
 		set {_wl} to ""
 		if {_wk} is not "":
@@ -410,7 +418,7 @@ on damage with priority highest:
 				if {_o} is online:
 					set {_cur3} to {_o}.getSpectatorTarget()
 					if {_cur3} is not {_cam2}:
-						{_o}.setSpectatorTarget({_cam2})
+						kcSpec({_o}, {_cam2})
 			add 1 to {_t}
 			wait 1 tick
 		{_cam2}.remove()
@@ -431,7 +439,7 @@ on damage with priority highest:
 			stop
 		set {_cur} to {_v}.getSpectatorTarget()
 		if {_cur} is not {_cam}:
-			{_v}.setSpectatorTarget({_cam})
+			kcSpec({_v}, {_cam})
 		if {_kd} is false:
 			if mod({_t}, 20) is 0:
 				set {_sec} to 5 - floor({_t} / 20)
