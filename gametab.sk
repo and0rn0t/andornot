@@ -154,7 +154,7 @@ function gtEntry(p: player) :: text:
 	set {_c7} to gtT({_rsp}, "white")
 	set {_cn} to gtColorJ({_ci})
 	set {_c1} to gtT({_nm}, {_cn})
-	# 닉네임 앞에 티어 아이콘 + 로마 숫자
+	# 닉네임 앞에 티어 아이콘
 	set {_tic} to tierIconJ(tierIdx({_id}))
 	set {_tsp} to gtT(" ", "white")
 	set {_pre} to "%{_tic}%,%{_tsp}%"

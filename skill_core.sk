@@ -156,7 +156,7 @@
 #   - nick.sk       : op 전용 영구 가짜 신분(/nick <이름> [스킨 계정] -> /nick confirm, 이후 /nick name <새 이름> 닉네임 변경, /nick skin). 접속 때(AsyncPlayerPreLoginEvent) 프로필을 같은 UUID+가짜 이름+스킨으로 교체(서버 안 UUID 는 못 바꿈: 1.19+ 채팅 서명 키 검증)하고 패킷용 가짜 UUID 표({-umr2f}/{-umf2r})를 채움. nickProfile(p) 는 마네킹용 가짜 UUID 프로필(gameend/startcine 사용). 헤더 주석 참고, 전부 미검증
 #   - uuidmask.sk   : ProtocolLib 로 다른 사람에게 가는 패킷(PLAYER_INFO/SPAWN_ENTITY/CHAT 등) 속 진짜 UUID 를 nick.sk 의 가짜 UUID 로 교체(핵 클라이언트 대비). ProtocolLib 1.21.11 호환 빌드 필요, /uuidmask status|kill|revive, 전부 미검증
 #   - cmdhide.sk    : op 가 아닌 사람에게 nick/uuidmask/ProtocolLib/Skript/plugins/version 계열 명령을 숨김(실행하면 알 수 없는 명령 메시지, 탭 자동완성에서 제거). 목록은 cmdHidden 함수, 미검증
-#   - tier.sk       : 티어 시스템(승점 -> 브론즈~챌린저, 닉네임 앞 아이콘 + 로마 숫자. 탭리스트/게임 결과/매치 기록에만 표시, 채팅/킬로그 제외)
+#   - tier.sk       : 티어 시스템(승점 -> 브론즈~챌린저, 닉네임 앞 티어 아이콘. 탭리스트/게임 결과/매치 기록에만 표시, 채팅/킬로그 제외)
 #   - flintsteel.sk : 부싯돌과 부시 스킬(취약 + 불태움)
 #   - totem.sk      : 불사의 토템 스킬
 #   - sword.sk      : 검 패시브(피해 1회 막기, 쿨 20초, 준비 중 체력바 하늘색). 판정은 main.sk 첫 on damage, 색은 healthbar.sk

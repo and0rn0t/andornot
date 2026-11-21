@@ -1,4 +1,4 @@
-# [tier.sk] 티어 시스템: 내부 승점({rating::uuid})으로 티어를 계산하고, 닉네임 앞에 붙일 표기(아이콘 + 로마 숫자)를 만든다.
+# [tier.sk] 티어 시스템: 내부 승점({rating::uuid})으로 티어를 계산하고, 닉네임 앞에 붙일 표기(티어 아이콘)를 만든다.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {ratingsince::uuid}(저장: 지금 승점에 도달한 시각, 밀리초. 동 레이팅 순위에서 먼저 달성한 사람이 앞서게 함. game.sk 의 ratingApply 가 기록)
 # 티어 체계(낮은 순): 브론즈(구리 주괴) - 실버(철 주괴) - 골드(금 주괴) - 에메랄드(초록색 철 주괴) - 다이아몬드(푸른색 철 주괴) - 마스터(보라색 네더의 별) - 그랜드마스터(붉은색 네더의 별) - 챌린저(네더의 별).
@@ -6,7 +6,7 @@
 #   브론즈 I 0~14, II 15~29, III 30~44, 실버 I 45~59 ... 골드 I 90~104 ... 다이아몬드 III 210~224, 마스터 225점 이상.
 #   마스터 이상은 세부 티어를 표기하지 않고 승점과 순위로 정한다: 승점 225 이상인 사람 중 서버 순위 1위 = 챌린저, 2~5위 = 그랜드마스터, 나머지 = 마스터.
 #   순위는 승점 내림차순, 동점이면 {ratingsince} 가 이른 사람이 앞선다. 순위는 그때그때 계산하므로 밀려나면 바로 강등 표기가 된다.
-# 표기 원칙: 아이콘 + 로마 숫자 + 닉네임. 탭리스트(로비/게임 중), 게임 결과, 매치 기록에만 쓰고 채팅과 킬로그에는 쓰지 않는다.
+# 표기 원칙: 아이콘 + 닉네임(세부 티어/로마 숫자는 표기하지 않음, 내부 계산에는 그대로 쓴다). 탭리스트(로비/게임 중), 게임 결과, 매치 기록에만 쓰고 채팅과 킬로그에는 쓰지 않는다.
 # 미검증: 아이콘 색(JSON 의 color 로 스프라이트 색조, 포션 아이콘과 같은 방식), System.currentTimeMillis().
 
 import:
@@ -63,21 +63,9 @@ function tierName(idx: number) :: text:
 	set {_g} to tierGroup({_idx})
 	return {_n::%{_g} + 1%}
 
-# 세부 티어 로마 숫자. 마스터 이상은 빈 글자.
-function tierRoman(idx: number) :: text:
-	if {_idx} >= 15:
-		return ""
-	set {_r::*} to "I", "II", "III"
-	set {_k} to mod({_idx}, 3)
-	return {_r::%{_k} + 1%}
-
-# 사람이 읽는 티어 이름(예: 골드 I, 마스터)
+# 사람이 읽는 티어 이름(예: 골드, 마스터). 세부 티어는 표기하지 않는다.
 function tierLabel(id: text) :: text:
-	set {_i} to tierIdx({_id})
-	set {_r} to tierRoman({_i})
-	if {_r} is "":
-		return tierName({_i})
-	return "%tierName({_i})% %{_r}%"
+	return tierName(tierIdx({_id}))
 
 # 글자 색(JSON 색: #RRGGBB)
 function tierColor(idx: number) :: text:
@@ -97,23 +85,17 @@ function tierIconJ(idx: number) :: text:
 		replace "}" in {_j} with ",""color"":""%{_tc}%""}"
 	return {_j}
 
-# 닉네임 앞에 붙일 JSON 조각(쉼표로 이어 붙일 수 있게 컴포넌트 두 개): 아이콘, "로마숫자 "(마스터 이상은 " ")
+# 닉네임 앞에 붙일 JSON 조각(쉼표로 이어 붙일 수 있게 컴포넌트 두 개): 티어 아이콘, 공백 한 칸. 세부 티어(로마 숫자)는 표기하지 않는다.
 function tierPreJ(id: text) :: text:
 	set {_i} to tierIdx({_id})
 	set {_ic} to tierIconJ({_i})
-	set {_rm} to tierRoman({_i})
-	set {_tx} to "%{_rm}% "
-	set {_cl} to tierColor({_i})
-	set {_t} to gtT({_tx}, {_cl})
-	return "%{_ic}%,%{_t}%"
+	set {_sp} to gtT(" ", "white")
+	return "%{_ic}%,%{_sp}%"
 
-# 위 조각의 폭(픽셀): 아이콘 gtIconPx() + 글자 폭
+# 위 조각의 폭(픽셀): 아이콘 gtIconPx() + 공백 4
 function tierPreW(id: text) :: number:
-	set {_i} to tierIdx({_id})
-	set {_rm} to tierRoman({_i})
-	set {_tx} to "%{_rm}% "
-	return gtIconPx() + gtPx({_tx})
+	return gtIconPx() + 4
 
-# 가장 넓은 표기(세부 티어 III)의 폭. 이름 칸 폭에 더한다.
+# 표기 폭(누구나 같음). 이름 칸 폭에 더한다.
 function tierPreMax() :: number:
-	return gtIconPx() + gtPx("III ")
+	return gtIconPx() + 4
