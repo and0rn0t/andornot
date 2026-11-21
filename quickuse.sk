@@ -4,7 +4,7 @@
 # 대상 아이템: itemCategory 3(cc기) 또는 4(포션류/버프). 1, 2(무기류)는 제외. 3 중에서 TNT 는 공격용이라 제외한다(quickUseId).
 # 동작: PlayerItemHeldEvent(칸 변경) -> 1틱 뒤 그 칸이 아직 손에 들려 있으면, 가짜 PlayerInteractEvent(RIGHT_CLICK_AIR, 메인핸드)를 Bukkit 으로 호출한다.
 #   각 스킬의 on rightclick 이 그 이벤트를 받아 평소와 똑같이 처리한다(쿨타임/스턴/잠금 판정 포함). 오프핸드는 건드리지 않는다.
-# 사용 뒤(2틱) 원래 들고 있던 칸(getPreviousSlot)으로 되돌린다.
+# 사용 뒤(1틱) 원래 들고 있던 칸(getPreviousSlot)으로 되돌린다.
 # 로비(게임 중이 아닐 때)에서도 동작한다.
 # 미검증: skript-reflect 로 PlayerItemHeldEvent 받기, PlayerInteractEvent 생성자(player, Action, ItemStack, Block, BlockFace, EquipmentSlot) 호출,
 #   Skript 의 on rightclick 이 플러그인이 직접 호출한 이벤트도 받는지.
@@ -67,7 +67,7 @@ on PlayerItemHeldEvent:
 	{_ev}.setUseItemInHand(QuResult.ALLOW)
 	Bukkit.getPluginManager().callEvent({_ev})
 	# 사용이 끝나면 원래 들고 있던 칸으로 돌아간다(다른 칸으로 또 바꿨으면 건드리지 않는다)
-	wait 2 ticks
+	wait 1 tick
 	if {_p} is online:
 		if "%{_p}.getInventory().getHeldItemSlot()%" is "%{_ns}%":
 			{_p}.getInventory().setHeldItemSlot({_ps})
