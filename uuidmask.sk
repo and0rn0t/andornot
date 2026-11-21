@@ -40,6 +40,7 @@ import:
 	ch.njol.skript.Skript as SkriptMain
 	java.util.ArrayList
 	java.util.HashSet
+	java.lang.reflect.Array
 	com.comphenix.protocol.ProtocolLibrary
 	com.comphenix.protocol.PacketType$Play$Server as PTServer
 	com.comphenix.protocol.PacketType$Play$Client as PTClient
@@ -341,10 +342,13 @@ command /uuidmask [<text>] [<text>]:
 		if arg-1 is "audit":
 			if arg-2 is "on":
 				delete {-umaudit::*}
-				set {_it} to {-umr2f}.keySet().iterator()
+				set {_arr} to {-umr2f}.keySet().toArray()
+				set {_an} to Array.getLength({_arr})
+				set {_ai} to 0
 				set {_cnt} to 0
-				while {_it}.hasNext() is true:
-					set {_ru} to {_it}.next()
+				while {_ai} < {_an}:
+					set {_ru} to Array.get({_arr}, {_ai})
+					add 1 to {_ai}
 					set {_off} to Bukkit.getOfflinePlayer({_ru})
 					set {_rn} to {_off}.getName()
 					if {_rn} is set:

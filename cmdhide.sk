@@ -6,10 +6,11 @@
 #   pl/plugins(플러그인 목록), ver/version/about/icanhasbukkit(버전/플러그인 정보). 앞에 "bukkit:", "minecraft:", "paper:" 같은 네임스페이스가 붙은 것도 같이 처리합니다.
 # 추가하려면 cmdHidden 함수의 목록에 소문자로 넣습니다. op 는 영향 없습니다.
 # 한계: 플러그인 이름은 이 명령 말고도 다른 경로(서버 응답 지연 특징, 일부 핵 클라이언트의 탐지)로 짐작될 수 있습니다. 완전한 은닉은 아닙니다.
-# 미검증: PlayerCommandSendEvent 를 skript-reflect 로 받아 getCommands() 에서 iterator.remove() 가 되는지, on command 의 command 값(슬래시 없는 라벨)
+# 미검증: PlayerCommandSendEvent 를 skript-reflect 로 받아 getCommands() 에서 Collection#remove 가 되는지(순회는 toArray + Array.get: 비공개 반복자 클래스는 skript-reflect 가 못 부른다), on command 의 command 값(슬래시 없는 라벨)
 
 import:
 	org.bukkit.event.player.PlayerCommandSendEvent
+	java.lang.reflect.Array
 
 function cmdHidden(c: text) :: boolean:
 	set {_x} to {_c}.toLowerCase()
@@ -37,8 +38,11 @@ on PlayerCommandSendEvent:
 	set {_pl} to event.getPlayer()
 	if {_pl}.isOp() is true:
 		stop
-	set {_it} to event.getCommands().iterator()
-	while {_it}.hasNext() is true:
-		set {_c} to {_it}.next()
+	set {_arr} to event.getCommands().toArray()
+	set {_n} to Array.getLength({_arr})
+	set {_i} to 0
+	while {_i} < {_n}:
+		set {_c} to Array.get({_arr}, {_i})
+		add 1 to {_i}
 		if cmdHidden({_c}) is true:
-			{_it}.remove()
+			event.getCommands().remove({_c})

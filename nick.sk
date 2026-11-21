@@ -20,7 +20,7 @@
 # RAM 변수: {-nickpend::uuid}(확정 대기 이름) {-nickpskin::uuid}(확정 대기 스킨 계정) {-nickquiet::uuid}(퇴장 메시지 숨김) {-umr2f}/{-umf2r}(UUID 표, uuidmask.sk 도 읽음)
 # 스킨 속성 소독: textures JSON 속 출처 계정 이름/UUID 를 가짜로 바꿔 넣는다(nickCleanTex, 미검증: Base64/JString 호출, 서명 없는 스킨이 클라이언트에서 그려지는지, 재접속해야 적용).
 # 미검증: AsyncPlayerPreLoginEvent#setPlayerProfile 이 이름을 실제로 바꾸는지(Paper), 비동기 이벤트에서 Skript 변수 읽기, ProfileProperty 생성, PlayerProfile#complete(true) 로 스킨 가져오기,
-#   Array.getLength/Array.get 으로 Bukkit.getOfflinePlayers() 순회, getProperties().iterator(), String#replaceAll/new File(부모, 이름), PlayerJoinEvent#joinMessage(null)/PlayerQuitEvent#quitMessage(null), Player#setOp, 닉네임 변경 후 재접속.
+#   Array.getLength/Array.get 으로 Bukkit.getOfflinePlayers() 순회, getProperties().toArray(), String#replaceAll/new File(부모, 이름), PlayerJoinEvent#joinMessage(null)/PlayerQuitEvent#quitMessage(null), Player#setOp, 닉네임 변경 후 재접속.
 
 import:
 	org.bukkit.Bukkit
@@ -186,9 +186,12 @@ command /nick [<text>] [<text>]:
 					send "&c스킨 계정 '%arg-2%' 을(를) 찾지 못했습니다."
 					stop
 				set {_found} to false
-				set {_it} to {_sp}.getProperties().iterator()
-				while {_it}.hasNext() is true:
-					set {_pr} to {_it}.next()
+				set {_parr} to {_sp}.getProperties().toArray()
+				set {_pn} to Array.getLength({_parr})
+				set {_pi} to 0
+				while {_pi} < {_pn}:
+					set {_pr} to Array.get({_parr}, {_pi})
+					add 1 to {_pi}
 					if {_pr}.getName() is "textures":
 						set {nick::tex::%{_ru}%::value} to {_pr}.getValue()
 						set {nick::tex::%{_ru}%::sig} to {_pr}.getSignature()
@@ -222,9 +225,12 @@ command /nick [<text>] [<text>]:
 				set {_sp} to Bukkit.createProfile({_sk})
 				set {_ok} to {_sp}.complete(true)
 				if {_ok} is true:
-					set {_it} to {_sp}.getProperties().iterator()
-					while {_it}.hasNext() is true:
-						set {_pr} to {_it}.next()
+					set {_parr} to {_sp}.getProperties().toArray()
+					set {_pn} to Array.getLength({_parr})
+					set {_pi} to 0
+					while {_pi} < {_pn}:
+						set {_pr} to Array.get({_parr}, {_pi})
+						add 1 to {_pi}
 						if {_pr}.getName() is "textures":
 							set {nick::tex::%{_id}%::value} to {_pr}.getValue()
 							set {nick::tex::%{_id}%::sig} to {_pr}.getSignature()
