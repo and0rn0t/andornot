@@ -826,8 +826,7 @@ function gStartKeepForce():
 		set {_pl} to loop-value
 		if {_pl} is online:
 			if gamemode of {_pl} is spectator:
-				{_pl}.setSpectatorTarget(null)
-				{_pl}.setSpectatorTarget({-gstartcam})
+				gSpecForce({_pl}, {-gstartcam})
 
 function gStartCamRelease():
 	loop {-gplist::*}:
@@ -1274,6 +1273,8 @@ on PlayerMoveEvent:
 
 # 시작 연출 중 카메라(관전 대상)에서 내려오는 것을 막는다(웅크리기 등). 미검증: PlayerStopSpectatingEntityEvent 가 취소되는지.
 on PlayerStopSpectatingEntityEvent:
+	if {-gspecforce} is true:
+		stop
 	set {_sp} to event.getPlayer()
 	if {-gstarting} is true:
 		if {-gplist::*} contains {_sp}:

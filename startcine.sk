@@ -38,6 +38,17 @@ import:
 
 # ===== 배경 음악 =====
 # 재생 음량(0~1). 파일이 이미 -6dB 낮춰져 있다. 아직 크면 이 값을 줄인다.
+# 관전 대상을 풀었다가 다시 건다(강제 재연결). [원인 수정] Paper 는 setSpectatorTarget(null) 때도 PlayerStopSpectatingEntityEvent 를 부르는데, 연출 중에는 이 이벤트를 취소해서(웅크리기로 내려오는 것 방지)
+# 풀기가 무시되고, 이어서 같은 대상을 거는 것도 "바뀐 게 없음"이라 클라이언트에 카메라 패킷이 다시 안 갔다. 그래서 첫 연결 패킷을 클라이언트가 놓친 경우(다른 월드로 옮겨진 직후 등)
+# 아무리 다시 걸어도 소용이 없었다. {-gspecforce} 가 켜져 있는 동안은 아래 이벤트 처리기들이 취소하지 않는다.
+function gSpecForce(p: player, e: object):
+	if gamemode of {_p} is not spectator:
+		stop
+	set {-gspecforce} to true
+	{_p}.setSpectatorTarget(null)
+	delete {-gspecforce}
+	{_p}.setSpectatorTarget({_e})
+
 function bgmVolume() :: number:
 	return 0.8
 
@@ -335,16 +346,13 @@ function gStartIntro(sg: number):
 				if {_has} is true:
 					if {-gstartatt::%{_id}%} is not set:
 						set {-gstartatt::%{_id}%} to {_ht}
-						{_pl}.setSpectatorTarget(null)
-						{_pl}.setSpectatorTarget({-gstartcam})
+						gSpecForce({_pl}, {-gstartcam})
 					else:
 						set {_age} to {_ht} - {-gstartatt::%{_id}%}
 						if {_age} is 6:
-							{_pl}.setSpectatorTarget(null)
-							{_pl}.setSpectatorTarget({-gstartcam})
+							gSpecForce({_pl}, {-gstartcam})
 						else if {_age} is 25:
-							{_pl}.setSpectatorTarget(null)
-							{_pl}.setSpectatorTarget({-gstartcam})
+							gSpecForce({_pl}, {-gstartcam})
 						else:
 							set {_cur} to {_pl}.getSpectatorTarget()
 							if {_cur} is not {-gstartcam}:
@@ -526,14 +534,14 @@ function grCamTick():
 		if {_pl} is online:
 			if gamemode of {_pl} is spectator:
 				if {_force} is true:
-					{_pl}.setSpectatorTarget(null)
-					{_pl}.setSpectatorTarget({-grcam})
+					gSpecForce({_pl}, {-grcam})
 				else:
 					set {_cur} to {_pl}.getSpectatorTarget()
 					if {_cur} is not {-grcam}:
 						{_pl}.setSpectatorTarget({-grcam})
 
 function grCamRelease():
+	set {-gspecforce} to true
 	if {-grcam} is set:
 		loop {-gplist::*}:
 			set {_pl} to loop-value
@@ -543,6 +551,7 @@ function grCamRelease():
 		{-grcam}.remove()
 	delete {-grcam}
 	delete {-grcamt}
+	delete {-gspecforce}
 
 every 1 tick:
 	# 시작 연출 중에는 gStartIntro/game.sk 가 카메라를 맡는다
@@ -557,6 +566,8 @@ every 1 tick:
 
 # 카운트다운 동안 카메라(관전 대상)에서 내려오는 것(웅크리기 등)을 막는다. 시작 연출 중에는 game.sk 의 같은 이벤트가 막는다.
 on PlayerStopSpectatingEntityEvent:
+	if {-gspecforce} is true:
+		stop
 	if {-gstarting} is true:
 		send "[startcine] 진단: 관전 해제 시도 %event.getPlayer()%" to console
 	if {-grcam} is not set:
@@ -594,8 +605,7 @@ on PlayerMoveEvent:
 	if {-gstartretry::%{_id}%} is set:
 		stop
 	set {-gstartretry::%{_id}%} to true
-	{_p}.setSpectatorTarget(null)
-	{_p}.setSpectatorTarget({-gstartcam})
+	gSpecForce({_p}, {-gstartcam})
 	wait 10 ticks
 	delete {-gstartretry::%{_id}%}
 
