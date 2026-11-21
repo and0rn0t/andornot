@@ -71,7 +71,7 @@
 #   {gamecfg::loc::startcam_<월드>::world|x|y|z|yaw|pitch} 월드별 시작 카메라 위치(저장 변수)  admin, game(gcStartCamKey)
 #   {gamecfg::loc::lineup_<월드>::world|x|y|z|yaw|pitch} 월드별 팀 라인업 위치(시작 연출 더미 줄 가운데, 저장 변수)  admin, startcine(gcLineupKey)
 #   {-gstarting} {-gstartgen} {-gstartprev::uuid} 게임 시작 연출(시작 카메라/팀 더미 라인업, 19초) 상태(RAM)  game, startcine
-#   {-gsl::*}(라인업 자리) {-gsdummies::*}(보여주기용 더미)  startcine   /   {-grgen} 녹아웃 라운드 시작 연출 세대(RAM)  game
+#   {-gsl::*}(라인업 자리) {-gsdummies::*}(보여주기용 더미)  startcine   /   {-grgen} 녹아웃 라운드 시작 연출 세대(RAM)  game   /   {-grcam::<uuid>} 라운드 시작 카운트다운 카메라 엔티티(RAM)  game
 #   {gamecfg::loc::training::world|x|y|z|yaw|pitch} 훈련장 위치(저장 변수, 월드 이름+좌표)  lobby
 #   {matchcount}, {matchlog::번호::json|mode|winner|map|rand|time|potm|rv::uuid|rvn::uuid}, {matchshelf::월드_x_y_z} 매치 기록/리뷰/등록 독서대(저장 변수)  matchhistory
 #   {gamecfg::unlock}  관리자 설정 잠금 해제 표시(저장 변수, true 면 잠금 꺼짐, 없으면 잠금 켜짐)  admin

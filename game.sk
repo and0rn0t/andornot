@@ -26,6 +26,7 @@ import:
 	org.bukkit.Bukkit
 	org.bukkit.ChatColor
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	org.bukkit.entity.EntityType
 	org.bukkit.event.player.PlayerMoveEvent
 	org.bukkit.event.player.PlayerTeleportEvent
 	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
@@ -884,6 +885,8 @@ function gameCleanup():
 	add 1 to {-grgen}
 	delete {-grstart}
 	gStartCamRelease()
+	gRoundCamClear()
+	delete {-grcount}
 	gsClear()
 	bgmStopAll()
 	delete {-gstartprev::*}
@@ -1096,6 +1099,48 @@ function gRoundEnd(w: text):
 # 다음 라운드 시작: "강하를 준비하세요" 타이틀과 5초 카운트다운(소리 없음, 카운트다운은 부제목의 숫자) 뒤 모두 부활시키고 "n라운드" 타이틀(소리 없음). n = {-grnum}(게임 시작 때 1, 라운드가 시작될 때마다 +1).
 # 카운트다운 동안 참가자는 관전 상태로 둔다(죽은 사람과 산 사람이 섞여 싸우지 않게, 부활은 gameRespawn 이 어드벤처로 되돌린다).
 # 강제 종료/게임 종료로 상태가 바뀌었으면({-grgen} 이 올라감) 아무것도 안 한다. 변수(RAM): {-grgen}(라운드 연출 세대)
+# 라운드 시작 카운트다운 중 시점 고정: 참가자마다 자기 눈 위치/방향에 카메라 엔티티({-grcam::<uuid>})를 세우고 관전 대상으로 건다(시작 연출과 같은 방식이라 시점이 안 흔들림).
+#   미검증: 이미 관전 중인(죽어서 기다리는) 사람의 위치가 이전 킬 연출 대상 근처일 수 있음, 관전자의 getEyeLocation 값.
+function gRoundCamSet():
+	delete {-grcam::*}
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			set {_loc} to {_pl}.getEyeLocation()
+			set {_w} to {_loc}.getWorld()
+			set {_he} to {_w}.spawnEntity({_loc}, EntityType.TEXT_DISPLAY)
+			{_he}.setGravity(false)
+			{_he}.setInvulnerable(true)
+			{_he}.setSilent(true)
+			set {-grcam::%uuid of {_pl}%} to {_he}
+
+function gRoundCamKeep(force: boolean):
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			set {_e} to {-grcam::%uuid of {_pl}%}
+			if {_e} is set:
+				if gamemode of {_pl} is spectator:
+					if {_force} is true:
+						gSpecForce({_pl}, {_e})
+					else:
+						set {_cur} to {_pl}.getSpectatorTarget()
+						if {_cur} is not {_e}:
+							{_pl}.setSpectatorTarget({_e})
+
+function gRoundCamClear():
+	set {-gspecforce} to true
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			if gamemode of {_pl} is spectator:
+				{_pl}.setSpectatorTarget(null)
+	delete {-gspecforce}
+	loop {-grcam::*}:
+		set {_e} to loop-value
+		{_e}.remove()
+	delete {-grcam::*}
+
 function gRoundNext():
 	if {-ingame} is not true:
 		stop
@@ -1108,16 +1153,22 @@ function gRoundNext():
 		set {_pl} to loop-value
 		if {_pl} is online:
 			set gamemode of {_pl} to spectator
-	# 카운트다운 동안 관전자의 위치/시점을 잠근다(gSpecIntro)
+	# 카운트다운 동안 관전자의 위치/시점을 잠근다(gSpecIntro) + 카메라 엔티티로 시점 고정
 	set {-grcount} to {_rg}
+	gRoundCamSet()
+	wait 1 tick
+	gRoundCamKeep(true)
 	set {_c} to 5
 	while {_c} > 0:
 		if {-ingame} is not true:
+			gRoundCamClear()
 			stop
 		if {-gover} is true:
+			gRoundCamClear()
 			stop
 		if {-grgen} is not {_rg}:
 			stop
+		gRoundCamKeep(false)
 		loop {-gplist::*}:
 			set {_pl} to loop-value
 			if {_pl} is online:
@@ -1125,12 +1176,15 @@ function gRoundNext():
 		wait 1 second
 		remove 1 from {_c}
 	if {-ingame} is not true:
+		gRoundCamClear()
 		stop
 	if {-gover} is true:
+		gRoundCamClear()
 		stop
 	if {-grgen} is not {_rg}:
 		stop
 	delete {-grcount}
+	gRoundCamClear()
 	loop {-gplist::*}:
 		if loop-value is online:
 			gameRespawn(loop-value)
@@ -1349,7 +1403,7 @@ on PlayerStopSpectatingEntityEvent:
 	if {-gspecforce} is true:
 		stop
 	set {_sp} to event.getPlayer()
-	if {-gstarting} is true:
+	if gSpecIntro() is true:
 		if {-gplist::*} contains {_sp}:
 			event.setCancelled(true)
 
