@@ -489,15 +489,10 @@ function gDropColorName(i: number) :: text:
 	set {_c::*} to "RED", "BLUE", "GREEN", "YELLOW", "LIGHT_PURPLE", "AQUA", "GOLD", "DARK_PURPLE"
 	return {_c::%mod({_i} - 1, 8) + 1%}
 
-# 발광 색용 스코어보드 팀에 넣을 항목들. 보통은 이름 하나. /nick 가짜 신분이면 다른 사람 화면에서 그 사람을 가리키는 이름이 이름 말고도
-# 패킷용 가짜 UUID(uuidmask.sk 의 {-umr2f})로 잡힐 수 있어서 그 문자열도 같이 넣는다(진짜 이름/진짜 UUID 는 절대 넣지 않는다: 팀 패킷으로 새기 때문).
-# 팀 추가/제거는 항상 이 목록 전체에 한다. 원래 팀 복구는 이름 항목({_p}.getName())만 기억한다.
+# 발광 색용 스코어보드 팀에 넣을 항목들(플레이어 이름 하나).
+# 팀 추가/제거는 항상 이 목록 전체에 한다.
 function scEntries(p: player) :: texts:
 	add {_p}.getName() to {_r::*}
-	if {-umr2f} is set:
-		set {_f} to {-umr2f}.get({_p}.getUniqueId())
-		if {_f} is set:
-			add "%{_f}%" to {_r::*}
 	return {_r::*}
 
 function scAdd(team: object, p: player):

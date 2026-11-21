@@ -2,7 +2,7 @@
 # 숨기는 두 가지 방법:
 #   1) 명령어 실행 막기: 해당 명령을 치면 없는 명령어인 것처럼 "알 수 없는 명령" 메시지만 보냅니다("권한이 없습니다" 라고 하면 명령이 있다는 걸 알려주므로).
 #   2) 탭 자동완성/명령어 목록에서 제거(PlayerCommandSendEvent): 접속할 때와 명령 목록이 다시 보내질 때 숨길 명령을 지웁니다.
-# 숨기는 명령: nick, uuidmask(이 서버의 가짜 신분/UUID 가림), protocol/packet/packetlog/protocollib(ProtocolLib), sk/skript(Skript),
+# 숨기는 명령: nick, uuidmask(예전 가짜 신분 기능 명령, 지금은 없지만 계속 숨김), protocol/packet/packetlog/protocollib(ProtocolLib), sk/skript(Skript),
 #   pl/plugins(플러그인 목록), ver/version/about/icanhasbukkit(버전/플러그인 정보). 앞에 "bukkit:", "minecraft:", "paper:" 같은 네임스페이스가 붙은 것도 같이 처리합니다.
 # 추가하려면 cmdHidden 함수의 목록에 소문자로 넣습니다. op 는 영향 없습니다.
 # 한계: 플러그인 이름은 이 명령 말고도 다른 경로(서버 응답 지연 특징, 일부 핵 클라이언트의 탐지)로 짐작될 수 있습니다. 완전한 은닉은 아닙니다.
