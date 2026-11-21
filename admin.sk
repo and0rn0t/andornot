@@ -29,7 +29,7 @@ function adminLockDeny(p: player, what: text):
 	send "&c이미 설정된 %{_what}%을(를) 바꿀 수 없습니다. 관리자 메뉴의 '설정 잠금'을 끈 뒤 다시 시도해 주십시오." to {_p}
 	play sound "block.note_block.bass" with volume 1 and pitch 0.6 to {_p}
 
-# 8번 슬롯에 고정되는 관리자 메뉴 아이템(op 전용, 고정/제거는 items.sk)
+# 7번 슬롯(인덱스 6)에 고정되는 관리자 메뉴 아이템(op 전용, 고정/제거는 items.sk)
 function adminItemName() :: text:
 	return "&c관리자 메뉴"
 

@@ -544,10 +544,14 @@ function loadoutFind(p: player, id: text) :: number:
 	return -1
 
 # 구성 아이템을 넣을 빈 칸(0부터). 선호 칸(pref)이 비어 있으면 그 칸, 아니면 핫바, 그 다음 인벤토리 순. 없으면 -1.
-# 게임 중이 아닐 때 8번 칸(9번 슬롯)은 무기고 자리라 쓰지 않는다.
+# 게임 중이 아닐 때 7/8/9번 칸(인덱스 6/7/8)은 관리자 메뉴/준비 블록/무기고 자리라 쓰지 않는다.
 function loadoutEmpty(p: player, pref: number) :: number:
 	set {_res} to true
 	if {-ingame} is not true:
+		if {_pref} is 6:
+			set {_res} to false
+		if {_pref} is 7:
+			set {_res} to false
 		if {_pref} is 8:
 			set {_res} to false
 	if {_res} is true:
@@ -557,6 +561,10 @@ function loadoutEmpty(p: player, pref: number) :: number:
 		set {_s} to loop-value
 		set {_ok} to true
 		if {-ingame} is not true:
+			if {_s} is 6:
+				set {_ok} to false
+			if {_s} is 7:
+				set {_ok} to false
 			if {_s} is 8:
 				set {_ok} to false
 		if {_ok} is true:
@@ -577,6 +585,14 @@ function loadoutGive(p: player):
 			else:
 				set slot {_s} of {_p}'s inventory to itemBuild({_id})
 
+# 로비(게임 중이 아님)에서 준비 상태를 닉네임 색으로: 준비됨 = 녹색, 준비 안 됨 = 붉은색. 컴포넌트 JSON 에 덧붙일 조각(,"color":"#...")을 돌려준다. 해당 없으면 빈 문자열.
+function readyColorJ(p: player) :: text:
+	if readyActive() is not true:
+		return ""
+	if readyOn({_p}) is true:
+		return ",""color"":""#55ff55"""
+	return ",""color"":""#ff5555"""
+
 # 탭리스트의 플레이어 이름 옆에 구성 1~5번 아이콘을 붙인다(킬로그와 같은 스프라이트 컴포넌트, 미검증).
 function tabUpdate(p: player):
 	# 게임 중 참가자의 탭 이름은 gametab.sk 가 만든다(전적 표시)
@@ -585,7 +601,8 @@ function tabUpdate(p: player):
 	set {_gap} to "{""text"":"" ""}"
 	set {_nm} to name of {_p}
 	set {_pre} to tierPreJ("%uuid of {_p}%")
-	set {_ex} to "%{_pre}%,{""text"":""%{_nm}%""}"
+	set {_nc} to readyColorJ({_p})
+	set {_ex} to "%{_pre}%,{""text"":""%{_nm}%""%{_nc}%}"
 	# 아이콘 순서는 구성 번호와 상관없이 GUI 정렬 순서(itemOrder: 금속 -> 나무 -> cc기 -> 포션류)를 따른다.
 	loop integers from 1 to 5:
 		add loadoutGet({_p}, loop-value) to {_ld::*}
@@ -620,19 +637,19 @@ function armoryEnsure(p: player):
 		if {_o} is armoryName():
 			clear slot 40 of {_p}'s inventory
 
-# op 는 8번 슬롯(인덱스 7)에 관리자 메뉴 아이템을 고정한다(게임 중이 아닐 때). op 가 아니면 그 칸의 관리자 아이템을 치운다.
+# op 는 7번 슬롯(인덱스 6)에 관리자 메뉴 아이템을 고정한다(게임 중이 아닐 때). op 가 아니면 그 칸의 관리자 아이템을 치운다.
 function adminItemEnsure(p: player):
-	set {_n} to name of slot 7 of {_p}'s inventory
+	set {_n} to name of slot 6 of {_p}'s inventory
 	set {_has} to false
 	if {_n} is set:
 		if {_n} is adminItemName():
 			set {_has} to true
 	if {_p} is op:
 		if {_has} is false:
-			set slot 7 of {_p}'s inventory to adminItem()
+			set slot 6 of {_p}'s inventory to adminItem()
 	else:
 		if {_has} is true:
-			clear slot 7 of {_p}'s inventory
+			clear slot 6 of {_p}'s inventory
 	set {_o} to name of slot 40 of {_p}'s inventory
 	if {_o} is set:
 		if {_o} is adminItemName():
@@ -641,7 +658,7 @@ function adminItemEnsure(p: player):
 # 게임이 시작되면 무기고/관리자 메뉴 아이템을 치운다(고정 칸과 왼손).
 function armoryClear(p: player):
 	loop 3 times:
-		set {_s} to 7
+		set {_s} to 6
 		if loop-value is 2:
 			set {_s} to 8
 		if loop-value is 3:
@@ -829,6 +846,9 @@ on inventory click:
 				cancel the event
 				stop
 			if {_sl} is 7:
+				cancel the event
+				stop
+			if {_sl} is 6:
 				if player is op:
 					cancel the event
 					stop
@@ -839,6 +859,8 @@ on inventory click:
 			if {_hb} is 8:
 				cancel the event
 			if {_hb} is 7:
+				cancel the event
+			if {_hb} is 6:
 				if player is op:
 					cancel the event
 		stop
