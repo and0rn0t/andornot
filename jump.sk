@@ -10,10 +10,13 @@
 #   - 두 이벤트의 도약 본문은 같다(Skript 함수는 wait 를 못 써서 복사해 둠). 고칠 때 둘 다 고칠 것.
 
 function jumpFlightOn(p: player):
-	if gamemode of {_p} is survival:
-		set flight mode of {_p} to (jumpMode({_p}) is "double")
-	else if gamemode of {_p} is adventure:
-		set flight mode of {_p} to (jumpMode({_p}) is "double")
+	if gamemode of {_p} is not survival:
+		if gamemode of {_p} is not adventure:
+			stop
+	if jumpMode({_p}) is "double":
+		set flight mode of {_p} to true
+	else:
+		set flight mode of {_p} to false
 
 # 도약 발동 키: "double"(더블 점프, 기본) / "f"(F키)
 function jumpMode(p: player) :: text:
