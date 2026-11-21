@@ -14,6 +14,7 @@
 # 숨기는 범위: 다른 플레이어에게 보이는 모든 곳(이름표, 탭, 채팅, 접속/퇴장 메시지, 킬로그, 명령 대상)이 가짜 이름이고 패킷 속 UUID 도 가짜다. 확정/닉네임 변경 직후 접속을 끊을 때의 퇴장 메시지는 숨긴다.
 #   못 숨기는 것: 서버 콘솔/로그, 서버 파일(variables.csv 의 매핑, usercache, playerdata), 서버 소유자, op 의 /data 같은 명령. 변경 전에 다른 사람이 이미 본 이름, 나가고 들어오는 타이밍으로 눈치채는 것. uuidmask.sk 가 못 막는 경로(펫 주인 UUID 등)는 그 파일 주석 참고.
 #   프로필 교체가 안 먹혀서 진짜 이름으로 들어왔다면(매핑이 있는데 이름이 다름) 접속 메시지를 숨기고 바로 접속을 끊는다.
+# 기능 끄기: /nick off (콘솔 가능) 로 끄면 다음 접속부터 가짜 프로필/UUID 가림을 적용하지 않는다(저장된 데이터는 그대로, /nick on 으로 다시 켜면 이어짐). 저장 변수 {nick::off}.
 # 저장 변수: {nick::map::uuid}(가짜 이름, 있으면 가짜 신분) {nick::names::소문자이름}(쓰인 가짜 이름) {nick::tex::uuid::value|sig}(스킨 속성)
 # RAM 변수: {-nickpend::uuid}(확정 대기 이름) {-nickpskin::uuid}(확정 대기 스킨 계정) {-nickquiet::uuid}(퇴장 메시지 숨김) {-umr2f}/{-umf2r}(UUID 표, uuidmask.sk 도 읽음)
 # 미검증: AsyncPlayerPreLoginEvent#setPlayerProfile 이 이름을 실제로 바꾸는지(Paper), 비동기 이벤트에서 Skript 변수 읽기, ProfileProperty 생성, PlayerProfile#complete(true) 로 스킨 가져오기,
@@ -94,12 +95,27 @@ command /nick [<text>] [<text>]:
 	permission message: &c권한이 없습니다.
 	description: op 전용 영구 가짜 신분
 	usage: /nick <이름> [스킨 계정] | /nick confirm | /nick name <새 이름> | /nick skin <계정>
-	executable by: players
+	executable by: players and console
 	trigger:
+		# 기능 켜기/끄기(콘솔에서도 가능). 끄면 다음 접속부터 가짜 프로필/UUID 가림이 적용되지 않고 진짜 이름/UUID 로 들어온다. 저장된 가짜 신분 데이터는 그대로라 다시 켜면 이어진다.
+		if arg-1 is "off":
+			set {nick::off} to true
+			send "&b가짜 신분 기능을 껐습니다. 다음 접속부터 진짜 이름과 UUID 로 접속하며, 이미 접속 중인 사람은 그대로입니다. /nick on 으로 다시 켤 수 있습니다."
+			stop
+		if arg-1 is "on":
+			delete {nick::off}
+			send "&b가짜 신분 기능을 켰습니다. 다음 접속부터 저장된 가짜 신분이 적용됩니다."
+			stop
+		if sender is not a player:
+			send "플레이어만 쓸 수 있는 명령입니다. (콘솔은 /nick on, /nick off 만 가능)"
+			stop
 		set {_p} to player
 		set {_id} to "%uuid of {_p}%"
 		if player is not op:
 			send "&c권한이 없습니다."
+			stop
+		if {nick::off} is true:
+			send "&c가짜 신분 기능이 꺼져 있습니다. /nick on 으로 켜세요."
 			stop
 		if {nick::map::%{_id}%} is set:
 			# 가짜 신분: 닉네임 변경(/nick name <새 이름>)과 스킨 변경(/nick skin <계정>|default)만 가능
@@ -109,7 +125,7 @@ command /nick [<text>] [<text>]:
 					stop
 				set {_nn} to arg-2
 				set {_cur} to {nick::map::%{_id}%}
-				if {_nn} is "skin" or "name" or "confirm":
+				if {_nn} is "skin" or "name" or "confirm" or "on" or "off":
 					send "&c그 이름은 쓸 수 없습니다."
 					stop
 				if {_nn} does not match "[A-Za-z0-9_]{3,16}":
@@ -230,7 +246,7 @@ command /nick [<text>] [<text>]:
 				{_f4}.delete()
 			stop
 		set {_nm} to arg-1
-		if {_nm} is "skin" or "name" or "confirm":
+		if {_nm} is "skin" or "name" or "confirm" or "on" or "off":
 			send "&c그 이름은 쓸 수 없습니다."
 			stop
 		if {_nm} does not match "[A-Za-z0-9_]{3,16}":
@@ -255,6 +271,14 @@ on AsyncPlayerPreLoginEvent:
 	set {_u} to event.getUniqueId()
 	set {_ru} to "%{_u}%"
 	set {_fn} to {nick::map::%{_ru}%}
+	if {nick::off} is true:
+		# 기능이 꺼져 있으면 프로필을 바꾸지 않고, 남아 있던 UUID 표 항목도 지운다(패킷도 안 바뀜).
+		delete {_fn}
+		if {-umr2f} is set:
+			set {_oo} to {-umr2f}.get({_u})
+			if {_oo} is set:
+				{-umf2r}.remove({_oo})
+				{-umr2f}.remove({_u})
 	if {_fn} is set:
 		# UUID 는 진짜 그대로 둔다(1.19+ 채팅 서명 키가 UUID 에 묶여 있어 바꾸면 "프로필 공개 키가 잘못되었습니다"로 접속이 거부됨)
 		set {_np} to Bukkit.createProfile({_u}, {_fn})
@@ -279,6 +303,8 @@ on join:
 	set {_id} to "%uuid of player%"
 	# 매핑이 있는데 이름이 가짜 이름이 아니다 = 프로필 교체 실패. 진짜 이름이 드러나기 전에 끊는다
 	set {_fn} to {nick::map::%{_id}%}
+	if {nick::off} is true:
+		delete {_fn}
 	if {_fn} is set:
 		set {_cur} to player.getName()
 		if {_cur} is not {_fn}:
