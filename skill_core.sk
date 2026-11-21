@@ -153,6 +153,7 @@
 #   - windburst.sk  : 연막탄 스킬(반구 모양, 블럭에 막히면 번지지 않음)
 #   - startcine.sk  : 게임 시작 연출(시작 카메라 + 음악 gamestart + 맵 이름, 팀 더미 라인업 3구도 + 팀 이름, "강하를 준비하세요", 19초)과 음악 함수 bgmPlay/bgmStopAll
 #                     리소스팩 mck_pack: resourcepack/mck_pack(원본) + build_pack.py(zip/SHA-1 생성). 소리는 mck:gamestart(ogg -6dB, 재생 음량 bgmVolume()), mck:knockout(킬 연출 시작, 피격자와 공격자, -6dB)과 mck:killsound(더미 부서질 때 공격자에게만, -9.5dB)(killcine.sk, 피격자는 예전 바닐라 소리 3개). 녹아웃 라운드 시작(game.sk gRoundNext)은 5초 카운트다운(소리 없음, roundstart 음악은 제거됨)
+#   - quickuse.sk  : 즉시 사용 옵션({quickuse::uuid}, 무기고 메인 화면 칸 17 토글). 무기류 외 버프/디버프/포션류로 칸을 바꾸면 가짜 우클릭 이벤트로 바로 사용. 도약 토글은 칸 8.
 #   - cmdhide.sk    : op 가 아닌 사람에게 ProtocolLib/Skript/plugins/version 계열 명령을 숨김(실행하면 알 수 없는 명령 메시지, 탭 자동완성에서 제거). 목록은 cmdHidden 함수, 미검증
 #   - ready.sk      : 준비 시스템. 게임 중이 아닐 때 모두의 핫바 8번째 칸(인덱스 7)에 준비 블록(녹색 "준비됨"/붉은색 "준비되지 않음" 콘크리트, 우클릭 토글), 탭리스트 닉네임 색(녹/적, items.sk readyColorJ), 접속자 전원이 준비되면 액션바 5초 카운트다운 뒤 gameStart 자동 실행. 관리자 메뉴 아이템은 7번째 칸(인덱스 6)으로 옮김, 9번째 칸은 무기고. 변수 {-ready::uuid} {-readycd}. 미검증
 #   - mapgen/       : 맵 생성기(cube_map.py -> cube_map.schem, WorldEdit //schem 으로 붙여넣기). 3x3x3 큐브 퍼즐형 플랫폼 맵 v2(조각 13개: 아래 4/가운데 5/위 4, 세로줄마다 색, 가운데 검정, 위층<->가운데 계단길, 가운데층 모서리 4개 순환 다리, 아래층은 장식 지지대만, 밝기 블록 조명). sponge_map.py = 멩거 스펀지형(20조각, 흰 석영 길). 스크립트가 아니라 서버에 안 올라간다
@@ -203,7 +204,7 @@
 #     skript-reflect 의 {_x}.remove() 로 제거한다.
 #
 # 8. 알려진 설계 메모
-#   - 도약 발동: 서바이벌/어드벤처에 비행 허용을 켜 두고 on flight toggle(스페이스 두 번)을 취소하며 도약을 쓴다(jump.sk). F키는 기본적으로 취소만 함. 발동 키는 {leapmode::uuid}("f" = F키, 미설정 = 더블 점프)로 플레이어별 선택, 무기고 메인 화면 칸 16 토글(items.sk jumpModeItem). push 속도 1.1.
+#   - 도약 발동: 서바이벌/어드벤처에 비행 허용을 켜 두고 on flight toggle(스페이스 두 번)을 취소하며 도약을 쓴다(jump.sk). F키는 기본적으로 취소만 함. 발동 키는 {leapmode::uuid}("f" = F키, 미설정 = 더블 점프)로 플레이어별 선택, 무기고 메인 화면 칸 8 토글(items.sk jumpModeItem). push 속도 1.1.
 #     비행 허용은 접속/리스폰/게임모드 변경 때 jumpFlightOn() 으로 다시 켠다. 다른 곳에서 비행 허용을 끄는 코드를 만들면 도약이 안 나가니 주의.
 #   - 도약(jump.sk)은 스킬 아이템이 아니라 기본 이동기. 도약 잠금은 jumplock 출처 키로 분리됨.
 #   - 석궁(crossbow.sk): 화살이 맞은 뒤 5초(wait 100 ticks) 지나면 delete event-projectile 로 제거(이벤트 값을 직접 지우므로

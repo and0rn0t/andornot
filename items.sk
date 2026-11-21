@@ -763,9 +763,12 @@ function armoryFill(p: player, inv: inventory):
 		set {_s} to {_k} + 10
 		set slot {_s} of {_inv} to itemBuild(loadoutGet({_p}, {_k}), "&e▶ 클릭해서 변경")
 		set {-itemguimap::%{_uid}%::%{_s}%} to {_k}
-	# 도약 발동 키 토글(칸 16): 더블 점프 <-> F키
-	set slot 16 of {_inv} to jumpModeItem({_p})
-	set {-itemguimap::%{_uid}%::16} to "__leap"
+	# 도약 발동 키 토글(칸 8, 윗줄 맨 오른쪽): 더블 점프 <-> F키
+	set slot 8 of {_inv} to jumpModeItem({_p})
+	set {-itemguimap::%{_uid}%::8} to "__leap"
+	# 즉시 사용 토글(칸 17, 아랫줄 맨 오른쪽): 우클릭 <-> 칸 바꾸면 즉시 사용(quickuse.sk)
+	set slot 17 of {_inv} to quickUseItem({_p})
+	set {-itemguimap::%{_uid}%::17} to "__quick"
 
 # 도약 발동 키 메뉴 아이템
 function jumpModeItem(p: player) :: itemtype:
@@ -775,6 +778,16 @@ function jumpModeItem(p: player) :: itemtype:
 	else:
 		set {_i} to feather named colored "&b도약 발동 키: &a더블 점프"
 		set {_i} to {_i} with lore (colored "&7스페이스를 두 번 눌러 도약합니다."), (colored "&8F키는 사용하지 않습니다."), (colored "&e초심자 추천"), "" and (colored "&e▶ 클릭해서 F키로 변경")
+	return {_i}
+
+# 즉시 사용 토글 메뉴 아이템(대상: 무기류 제외 버프/디버프/포션류, TNT 제외)
+function quickUseItem(p: player) :: itemtype:
+	if quickUseOn({_p}) is true:
+		set {_i} to ender eye named colored "&b아이템 사용 방식: &a즉시 사용"
+		set {_i} to {_i} with lore (colored "&7버프/디버프/포션류 아이템으로 칸을 바꾸면 바로 사용합니다."), (colored "&8무기류와 TNT는 해당하지 않습니다."), (colored "&e숙련자 추천"), "" and (colored "&e▶ 클릭해서 우클릭 사용으로 변경")
+	else:
+		set {_i} to ender eye named colored "&b아이템 사용 방식: &a우클릭"
+		set {_i} to {_i} with lore (colored "&7우클릭해서 아이템을 사용합니다."), (colored "&8칸을 바꾸는 것만으로는 사용되지 않습니다."), (colored "&e초심자 추천"), "" and (colored "&e▶ 클릭해서 즉시 사용으로 변경")
 	return {_i}
 
 # GUI 열기. mode: armory(무기고) / select(아이템 변경, idx = 구성 번호 1~5) / order(순서 편집).
@@ -952,6 +965,11 @@ on inventory click:
 				loadoutGive({_p})
 				tabUpdate({_p})
 				play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
+			itemGuiOpen({_p}, "armory")
+			stop
+		if {_idt} is "__quick":
+			quickUseToggle({_p})
+			play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
 			itemGuiOpen({_p}, "armory")
 			stop
 		if {_idt} is "__leap":

@@ -1,0 +1,61 @@
+# [quickuse.sk] 즉시 사용 옵션: 무기류가 아닌 버프/디버프/포션류 아이템으로 손에 든 칸을 바꾸면(숫자키, 휠) 우클릭한 것처럼 바로 사용한다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {quickuse::uuid}(저장 변수. true = 즉시 사용, 미설정 = 우클릭으로 사용(기본)). 무기고 메인 화면 칸 17(items.sk quickUseItem)에서 토글한다.
+# 대상 아이템: itemCategory 3(cc기) 또는 4(포션류/버프). 1, 2(무기류)는 제외. 3 중에서 TNT 는 공격용이라 제외한다(quickUseId).
+# 동작: PlayerItemHeldEvent(칸 변경) -> 1틱 뒤 그 칸이 아직 손에 들려 있고 게임 중이면, 가짜 PlayerInteractEvent(RIGHT_CLICK_AIR, 메인핸드)를 Bukkit 으로 호출한다.
+#   각 스킬의 on rightclick 이 그 이벤트를 받아 평소와 똑같이 처리한다(쿨타임/스턴/잠금 판정 포함). 오프핸드는 건드리지 않는다.
+# 게임 중이 아닐 때는 동작하지 않는다(로비에서 칸을 넘길 때 스킬이 나가는 것 방지).
+# 미검증: skript-reflect 로 PlayerItemHeldEvent 받기, PlayerInteractEvent 생성자(player, Action, ItemStack, Block, BlockFace, EquipmentSlot) 호출,
+#   Skript 의 on rightclick 이 플러그인이 직접 호출한 이벤트도 받는지.
+
+import:
+	org.bukkit.Bukkit
+	org.bukkit.event.player.PlayerItemHeldEvent
+	org.bukkit.event.player.PlayerInteractEvent
+	org.bukkit.event.block.Action
+	org.bukkit.block.BlockFace
+	org.bukkit.inventory.EquipmentSlot
+
+function quickUseOn(p: player) :: boolean:
+	if {quickuse::%{_p}'s uuid%} is true:
+		return true
+	return false
+
+function quickUseToggle(p: player):
+	if quickUseOn({_p}) is true:
+		delete {quickuse::%{_p}'s uuid%}
+	else:
+		set {quickuse::%{_p}'s uuid%} to true
+
+# 즉시 사용 대상 아이템 id 인지(무기류 제외, TNT 제외)
+function quickUseId(id: text) :: boolean:
+	if {_id} is "":
+		return false
+	if {_id} is "tnt":
+		return false
+	set {_c} to itemCategory({_id})
+	if {_c} is 3:
+		return true
+	if {_c} is 4:
+		return true
+	return false
+
+on PlayerItemHeldEvent:
+	set {_p} to event.getPlayer()
+	if {-ingame} is not true:
+		stop
+	if quickUseOn({_p}) is not true:
+		stop
+	set {_ns} to event.getNewSlot()
+	set {_ns} to "%{_ns}%" parsed as number
+	if {_ns} is not set:
+		stop
+	wait 1 tick
+	if {_p} is not online:
+		stop
+	if {_p}.getInventory().getHeldItemSlot() is not {_ns}:
+		stop
+	if quickUseId(itemIdAt({_p}, {_ns})) is not true:
+		stop
+	set {_ev} to new PlayerInteractEvent({_p}, Action.RIGHT_CLICK_AIR, {_p}.getInventory().getItemInMainHand(), null, BlockFace.SELF, EquipmentSlot.HAND)
+	Bukkit.getPluginManager().callEvent({_ev})
