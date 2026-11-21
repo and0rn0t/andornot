@@ -13,8 +13,8 @@ import:
 
 # ===== 칸 너비(픽셀) =====
 function gtNameW() :: number:
-	# 닉네임 칸 104 + 티어 표기(아이콘 + 로마 숫자, tier.sk) 최대 폭
-	return 104 + tierPreMax()
+	# 닉네임 칸 104 + 티어 아이콘(gtIconPx) + 공백 1칸(4). 탭리스트에서는 세부 티어(로마 숫자)를 표기하지 않는다(폭이 달라져 열이 밀려서)
+	return 104 + gtIconPx() + 4
 
 function gtKdaW() :: number:
 	return 20
@@ -155,9 +155,11 @@ function gtEntry(p: player) :: text:
 	set {_cn} to gtColorJ({_ci})
 	set {_c1} to gtT({_nm}, {_cn})
 	# 닉네임 앞에 티어 아이콘 + 로마 숫자
-	set {_pre} to tierPreJ({_id})
+	set {_tic} to tierIconJ(tierIdx({_id}))
+	set {_tsp} to gtT(" ", "white")
+	set {_pre} to "%{_tic}%,%{_tsp}%"
 	set {_c1} to "%{_pre}%,%{_c1}%"
-	set {_t2} to gtPad(gtNameW() - tierPreW({_id}), {_nm})
+	set {_t2} to gtPad(gtNameW() - gtIconPx() - 4, {_nm})
 	set {_c2} to gtT({_t2}, "white")
 	set {_t3} to "%gtCenPre(gtKdaW(), {_k})%%{_k}%%gtCenPost(gtKdaW(), {_k})%"
 	set {_c3} to gtT({_t3}, "white")
