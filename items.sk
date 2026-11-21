@@ -763,6 +763,19 @@ function armoryFill(p: player, inv: inventory):
 		set {_s} to {_k} + 10
 		set slot {_s} of {_inv} to itemBuild(loadoutGet({_p}, {_k}), "&e▶ 클릭해서 변경")
 		set {-itemguimap::%{_uid}%::%{_s}%} to {_k}
+	# 도약 발동 키 토글(칸 16): 더블 점프 <-> F키
+	set slot 16 of {_inv} to jumpModeItem({_p})
+	set {-itemguimap::%{_uid}%::16} to "__leap"
+
+# 도약 발동 키 메뉴 아이템
+function jumpModeItem(p: player) :: itemtype:
+	if jumpMode({_p}) is "f":
+		set {_i} to feather named colored "&b도약 발동 키: &aF키"
+		set {_i} to {_i} with lore (colored "&7F키(손 바꾸기)로 도약합니다."), (colored "&8더블 점프는 사용하지 않습니다."), "" and (colored "&e▶ 클릭해서 더블 점프로 변경")
+	else:
+		set {_i} to feather named colored "&b도약 발동 키: &a더블 점프"
+		set {_i} to {_i} with lore (colored "&7스페이스를 두 번 눌러 도약합니다."), (colored "&8F키는 사용하지 않습니다."), "" and (colored "&e▶ 클릭해서 F키로 변경")
+	return {_i}
 
 # GUI 열기. mode: armory(무기고) / select(아이템 변경, idx = 구성 번호 1~5) / order(순서 편집).
 # 상태 변수와 내용은 inventory 를 연 다음에 둔다(이전 GUI 가 닫히며 지우는 것을 피하려고).
@@ -939,6 +952,11 @@ on inventory click:
 				loadoutGive({_p})
 				tabUpdate({_p})
 				play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
+			itemGuiOpen({_p}, "armory")
+			stop
+		if {_idt} is "__leap":
+			jumpModeToggle({_p})
+			play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
 			itemGuiOpen({_p}, "armory")
 			stop
 		itemGuiOpen({_p}, "select", {_id})

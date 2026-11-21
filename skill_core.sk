@@ -205,7 +205,7 @@
 #     skript-reflect 의 {_x}.remove() 로 제거한다.
 #
 # 8. 알려진 설계 메모
-#   - 도약 발동: 서바이벌/어드벤처에 비행 허용을 켜 두고 on flight toggle(스페이스 두 번)을 취소하며 도약을 쓴다(jump.sk). F키는 취소만 함.
+#   - 도약 발동: 서바이벌/어드벤처에 비행 허용을 켜 두고 on flight toggle(스페이스 두 번)을 취소하며 도약을 쓴다(jump.sk). F키는 기본적으로 취소만 함. 발동 키는 {leapmode::uuid}("f" = F키, 미설정 = 더블 점프)로 플레이어별 선택, 무기고 메인 화면 칸 16 토글(items.sk jumpModeItem). push 속도 1.1.
 #     비행 허용은 접속/리스폰/게임모드 변경 때 jumpFlightOn() 으로 다시 켠다. 다른 곳에서 비행 허용을 끄는 코드를 만들면 도약이 안 나가니 주의.
 #   - 도약(jump.sk)은 스킬 아이템이 아니라 기본 이동기. 도약 잠금은 jumplock 출처 키로 분리됨.
 #   - 석궁(crossbow.sk): 화살이 맞은 뒤 5초(wait 100 ticks) 지나면 delete event-projectile 로 제거(이벤트 값을 직접 지우므로

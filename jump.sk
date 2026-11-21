@@ -4,13 +4,30 @@
 # 발동 방식: 서바이벌/어드벤처 플레이어에게 비행 허용(flight mode)을 켜 두면, 스페이스 두 번이 "비행 전환(flight toggle)" 이벤트로 들어온다.
 # 그 이벤트를 취소해서 실제로 날지는 못하게 하고, 그 순간에 도약을 쓴다. (지상에서 두 번 눌러도, 공중에서 두 번 눌러도 발동)
 # 비행 허용은 접속/리스폰/게임모드 변경 때 다시 켠다. 크리에이티브/관전자는 건드리지 않는다.
-# F키(손 바꾸기)는 예전처럼 취소만 한다(도약은 더 이상 F키로 안 나감).
+# 발동 키는 플레이어별 설정 {leapmode::uuid}(저장 변수): 미설정 = 더블 점프(기본), "f" = F키(손 바꾸기). 무기고 메인 화면(items.sk)에서 토글한다.
+#   - 더블 점프 모드: 위 설명대로 비행 허용을 켜 두고 flight toggle 로 발동. F키는 취소만 한다.
+#   - F키 모드: 비행 허용을 끈다(jumpFlightOn 이 모드를 보고 처리). 손 바꾸기 이벤트에서 발동. 스페이스 두 번은 아무 일도 안 한다.
+#   - 두 이벤트의 도약 본문은 같다(Skript 함수는 wait 를 못 써서 복사해 둠). 고칠 때 둘 다 고칠 것.
 
 function jumpFlightOn(p: player):
 	if gamemode of {_p} is survival:
-		set flight mode of {_p} to true
+		set flight mode of {_p} to (jumpMode({_p}) is "double")
 	else if gamemode of {_p} is adventure:
-		set flight mode of {_p} to true
+		set flight mode of {_p} to (jumpMode({_p}) is "double")
+
+# 도약 발동 키: "double"(더블 점프, 기본) / "f"(F키)
+function jumpMode(p: player) :: text:
+	if {leapmode::%{_p}'s uuid%} is "f":
+		return "f"
+	return "double"
+
+# 모드 전환(무기고 메뉴에서 호출). 전환 즉시 비행 허용도 맞춘다.
+function jumpModeToggle(p: player):
+	if jumpMode({_p}) is "f":
+		delete {leapmode::%{_p}'s uuid%}
+	else:
+		set {leapmode::%{_p}'s uuid%} to "f"
+	jumpFlightOn({_p})
 
 # 스크립트를 리로드하면 이미 접속 중인 플레이어는 join 이 다시 일어나지 않으므로 로드 때 한 번 켠다.
 on load:
@@ -32,6 +49,9 @@ on flight toggle:
 	if gamemode of player is not survival:
 		if gamemode of player is not adventure:
 			stop
+	if jumpMode(player) is "f":
+		cancel event
+		stop
 	# 실제 비행은 막는다. 클라이언트의 비행 상태를 되돌리기 위해 한 틱 꺼 뒀다가 다시 켠다.
 	cancel event
 	set flight mode of player to false
@@ -54,7 +74,63 @@ on flight toggle:
 	if {-st::%player's uuid%} >= 25:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
-			push player forwards at speed 0.8
+			push player forwards at speed 1.1
+			play sound "entity.player.attack.sweep" with volume 1 and pitch 1.2 at player
+			add 1 to {-stcap::%player's uuid%}
+			set {-jump::%player's uuid%} to true
+			loop 5 times:
+				remove 2.5 from {-st::%player's uuid%}
+				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
+				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
+				wait 1 ticks
+			delete {-jump::%player's uuid%}
+			# 도약이 시작된 뒤(5틱 후) 비행 허용을 다시 켜서 다음 도약 입력을 받는다
+			jumpFlightOn({_pl})
+			loop 5 times:
+				remove 2.5 from {-st::%player's uuid%}
+				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
+				if {-st::%player's uuid%} <= 0:
+					set level progress of player to 0
+				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
+				wait 1 ticks
+			wait 39 ticks
+			if {-stcap::%player's uuid%} > 0:
+				remove 1 from {-stcap::%player's uuid%}
+		else:
+			wait 1 tick
+			jumpFlightOn({_pl})
+	else:
+		wait 1 tick
+		jumpFlightOn({_pl})
+
+# F키(손 바꾸기): 항상 취소(오프핸드로 안 넘어가게). F키 모드일 때만 도약 발동.
+on swap hand items:
+	cancel event
+	if jumpMode(player) is not "f":
+		stop
+	if gamemode of player is not survival:
+		if gamemode of player is not adventure:
+			stop
+	set {_pl} to player
+	# 리스폰 낙하(겉날개 활강) 중에는 도약을 쓸 수 없다(game.sk 의 {-gdropon})
+	if {-gdropon::%player's uuid%} is true:
+		wait 1 tick
+		jumpFlightOn({_pl})
+		stop
+	if isStunned({_pl}) is true:
+		wait 1 tick
+		jumpFlightOn({_pl})
+		stop
+	if {-jumplock::%player's uuid%::*} is set:
+		# 구속 등으로 도약이 막힌 상태에서 시도하면 틱 소리
+		ccDeny({_pl})
+		wait 1 tick
+		jumpFlightOn({_pl})
+		stop
+	if {-st::%player's uuid%} >= 25:
+		if {-jump::%player's uuid%} is not set:
+			push player upwards at speed 0.25
+			push player forwards at speed 1.1
 			play sound "entity.player.attack.sweep" with volume 1 and pitch 1.2 at player
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
