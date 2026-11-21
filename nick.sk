@@ -11,6 +11,7 @@
 # 게임과의 관계: 서버 안의 UUID/변수/uuid 키는 전부 진짜 UUID 그대로라 게임 스크립트는 영향이 없다. 단, 마네킹(결과 화면/시작 연출 더미)은 프로필을 패킷 메타데이터로 보내 UUID 가 새므로 nickProfile(p) 로 가짜 UUID 프로필을 만들어 쓴다(gameend.sk gfDummy, startcine.sk gsDummy).
 # 확정하면 진짜 신분의 데이터를 전부 지운다(접속을 끊은 2초 뒤): 저장 변수 {rating::id} {rating::games::id} {ratingsince::id} {loadout::id::*} {loadoutset::id}, 매치 기록 속 그 사람의 리뷰, 모든 월드 폴더의 playerdata/stats/advancements 파일.
 #   매치 기록의 결과 JSON/우승/POTM/리뷰 작성자 이름 속 이름은 새 이름으로 바꾼다(정규식 경계로 다른 사람 이름은 안 건드림, nickRenameLogs). RAM 변수({-...::id})는 지우지 않는다.
+# 접속 메시지: 바닐라가 "(formerly known as 진짜이름)" 을 붙여 전체 채팅에 진짜 이름을 내보내던 것을 일반 형태("이름 joined the game")로 덮어쓴다(on join, 미검증: set join message).
 # 숨기는 범위: 다른 플레이어에게 보이는 모든 곳(이름표, 탭, 채팅, 접속/퇴장 메시지, 킬로그, 명령 대상)이 가짜 이름이고 패킷 속 UUID 도 가짜다. 확정/닉네임 변경 직후 접속을 끊을 때의 퇴장 메시지는 숨긴다.
 #   못 숨기는 것: 서버 콘솔/로그, 서버 파일(variables.csv 의 매핑, usercache, playerdata), 서버 소유자, op 의 /data 같은 명령. 변경 전에 다른 사람이 이미 본 이름, 나가고 들어오는 타이밍으로 눈치채는 것. uuidmask.sk 가 못 막는 경로(펫 주인 UUID 등)는 그 파일 주석 참고.
 #   프로필 교체가 안 먹혀서 진짜 이름으로 들어왔다면(매핑이 있는데 이름이 다름) 접속 메시지를 숨기고 바로 접속을 끊는다.
@@ -314,6 +315,9 @@ on join:
 			stop
 		# UUID 는 그대로라 op 도 그대로지만 혹시 풀렸으면 다시 준다
 		player.setOp(true)
+		# [유출 수정] 바닐라는 서버가 기억하는 이 UUID 의 이전 이름(usercache)과 지금 이름이 다르면 접속 메시지를 "가짜이름 (formerly known as 진짜이름) joined the game" 으로 전체 채팅에 보낸다.
+		# 가짜 신분은 항상 이름이 다르니 이 문구로 진짜 이름이 모두에게 노출됐다. 일반 접속 메시지와 같은 모양으로 덮어쓴다.
+		set join message to "&e%{_fn}% joined the game"
 
 on quit:
 	set {_id} to "%uuid of player%"
