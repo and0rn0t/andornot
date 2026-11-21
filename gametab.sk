@@ -88,6 +88,25 @@ function gtCenPost(target: number, s: text) :: text:
 	set {_r} to " " repeated {_m} times
 	return "%{_r}%"
 
+# 열 제목을 칸 안에서 왼쪽으로 4픽셀(공백 1칸) 옮긴 버전(K/D/A 용). 앞 공백 = 가운데 정렬 앞 공백 - 1(최소 0), 뒤 = 총 칸 수 - 앞.
+function gtHdrLead(target: number, s: text) :: number:
+	set {_n} to gtCenN({_target}, {_s})
+	set {_l} to round({_n} / 2) - 1
+	if {_l} < 0:
+		return 0
+	return {_l}
+
+function gtHdrPre(target: number, s: text) :: text:
+	set {_l} to gtHdrLead({_target}, {_s})
+	set {_r} to " " repeated {_l} times
+	return "%{_r}%"
+
+function gtHdrPost(target: number, s: text) :: text:
+	set {_n} to gtCenN({_target}, {_s})
+	set {_m} to {_n} - gtHdrLead({_target}, {_s})
+	set {_r} to " " repeated {_m} times
+	return "%{_r}%"
+
 function gtColorJ(i: number) :: text:
 	set {_c::*} to "red", "blue", "green", "yellow", "light_purple", "aqua", "gold", "dark_purple"
 	return {_c::%mod({_i} - 1, 8) + 1%}
@@ -184,9 +203,9 @@ function gtHeader() :: text:
 	set {_hd} to "D"
 	set {_ha} to "A"
 	set {_hm} to "DMG"
-	set {_l2} to gtT("%gtCenPre(gtKdaW(), {_hk})%%{_hk}%%gtCenPost(gtKdaW(), {_hk})%", "gray")
-	set {_l3} to gtT("%gtCenPre(gtKdaW(), {_hd})%%{_hd}%%gtCenPost(gtKdaW(), {_hd})%", "gray")
-	set {_l4} to gtT("%gtCenPre(gtKdaW(), {_ha})%%{_ha}%%gtCenPost(gtKdaW(), {_ha})%", "gray")
+	set {_l2} to gtT("%gtHdrPre(gtKdaW(), {_hk})%%{_hk}%%gtHdrPost(gtKdaW(), {_hk})%", "gray")
+	set {_l3} to gtT("%gtHdrPre(gtKdaW(), {_hd})%%{_hd}%%gtHdrPost(gtKdaW(), {_hd})%", "gray")
+	set {_l4} to gtT("%gtHdrPre(gtKdaW(), {_ha})%%{_ha}%%gtHdrPost(gtKdaW(), {_ha})%", "gray")
 	set {_l5} to gtT("%gtCenPre(gtDmgW(), {_hm})%%{_hm}%%gtCenPost(gtDmgW(), {_hm})%", "gray")
 	# ITEM 글자는 아이템 5칸 폭의 가운데쯤 오도록 앞에 공백을 둔다
 	set {_ln} to floor((gtItemW() - gtPx("ITEM")) / 8)
