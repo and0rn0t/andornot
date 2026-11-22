@@ -1,7 +1,7 @@
 # [potions.sk] 포션 3종 스킬(우클릭, 마시지 않고 효과만): 체력 포션(쿨 7초, 체력 5 회복), 스태미너 포션(쿨 7초, 스태미너 50 회복),
 #   투명 포션(쿨 18초, 4초간 투명화 - 피해를 입거나 입히면 풀림). 메인핸드 우선, 오프핸드도 작동.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 이 파일이 쓰는 변수: {-potcd}(종류별 쿨타임 종료 시각), {-invis}(투명 효과 종료 시각), {-healok}(회복이 전투 중 차단을 통과하는 표시, main.sk 가 읽음)
+# 이 파일이 쓰는 변수: {-potcd}(종류별 쿨타임 종료 시각), {-invis}(투명 효과 종료 시각), {-invishid}(손 아이템을 숨겨 둔 상태 표시), {-healok}(회복이 전투 중 차단을 통과하는 표시, main.sk 가 읽음)
 # 포션 종류 판정(potionKind), 종류별 쿨타임 확인(potionReady), skillHand 와의 우선순위는 skill_core.sk 에 있다.
 # 쿨타임: 종류별 {-potcd} 로 계산한다. 화면의 회색 쿨타임 게이지는 포션마다 쿨타임 그룹(use_cooldown 컴포넌트의 cooldown_group)을
 #   달리 줘서 따로 돌게 한다(potionVisual, Paper 데이터 컴포넌트 API 를 skript-reflect 로 호출, 미검증). 이 함수가 실패해도 효과/쿨타임 로직은 이미 끝난 뒤라 동작한다.
@@ -11,6 +11,9 @@ import:
 	io.papermc.paper.datacomponent.DataComponentTypes
 	io.papermc.paper.datacomponent.item.UseCooldown
 	net.kyori.adventure.key.Key
+	org.bukkit.Material
+	org.bukkit.inventory.ItemStack
+	org.bukkit.inventory.EquipmentSlot
 
 # 화면 쿨타임 게이지(쿨타임 그룹). secs 초 동안 이 포션 종류의 그룹에만 쿨타임을 건다.
 # 주의: getEquipment() 는 아이템의 복사본을 줘서 컴포넌트를 달아도 실제 아이템에 안 붙는다(게이지가 안 나왔던 원인으로 추정).
@@ -111,6 +114,44 @@ on rightclick:
 		stop
 	cancel event
 	potionUse(player, {_k})
+
+# 투명화 중에는 손에 든 아이템(메인/오프핸드)이 다른 플레이어에게 보이지 않는다(Player#sendEquipmentChange 로 빈손을 보낸다, bee.sk 의 beeHideHand 와 같은 방식, 미검증).
+#   서버가 장비를 다시 알리는 경우(칸 바꾸기 등)를 따라가려고 투명 중에는 2틱마다 다시 보낸다. 투명이 끝나면(시간 만료/피해로 해제/사망) 진짜 손 아이템을 다시 보낸다.
+#   꿀벌 조종 중에는 bee.sk 가 따로 숨기므로 건너뛴다.
+function invisHideHand(p: player):
+	set {_air} to new ItemStack(Material.AIR)
+	loop all players:
+		set {_v} to loop-player
+		if {_v} is not {_p}:
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.HAND, {_air})
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.OFF_HAND, {_air})
+
+function invisShowHand(p: player):
+	set {_main} to {_p}.getInventory().getItemInMainHand()
+	set {_off} to {_p}.getInventory().getItemInOffHand()
+	loop all players:
+		set {_v} to loop-player
+		if {_v} is not {_p}:
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.HAND, {_main})
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.OFF_HAND, {_off})
+
+every 2 ticks:
+	loop all players:
+		set {_p} to loop-player
+		set {_id} to "%uuid of {_p}%"
+		set {_on} to false
+		if {-invis::%{_id}%} is set:
+			if {-invis::%{_id}%} > now:
+				set {_on} to true
+		if {-beemode::%{_id}%} is "drive":
+			set {_on} to false
+		if {_on} is true:
+			invisHideHand({_p})
+			set {-invishid::%{_id}%} to true
+		else if {-invishid::%{_id}%} is set:
+			delete {-invishid::%{_id}%}
+			if {-beemode::%{_id}%} is not "drive":
+				invisShowHand({_p})
 
 # 투명 포션: 피해를 입거나 입히면 투명이 풀린다
 function invisBreak(e: entity):

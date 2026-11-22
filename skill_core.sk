@@ -96,6 +96,7 @@
 #   {-team::uuid}            소속 팀 이름(텍스트). 같으면 아군. 게임 시작 때 gBuildTeams(game.sk)가 채움   isAlly 로 읽기, tnt
 #   {-potcd::uuid::종류}     포션 쿨타임 종료 시각(종류: heal, stamina, invis)  potions
 #   {-invis::uuid}          투명 포션 효과 종료 시각(피해를 주고받으면 풀림)    potions
+#   {-invishid::uuid}        투명화 중 손 아이템을 숨겨 둔 상태 표시(끝나면 진짜 아이템을 다시 보냄)    potions
 #   {-exhaust::uuid}         불길한 병 탈진 종료 시각(탈진 중 stcap +1)   ominousbottle
 #   {-bottle::uuid}          불길한 병 효과 종료 시각(효과 중이면 지금보다 뒤)   ominousbottle
 #   {-healok::uuid}          전투 중 회복 차단을 통과시키는 표시(회복하는 동안만)  ominousbottle(set/delete), main(on heal 에서 읽기)
