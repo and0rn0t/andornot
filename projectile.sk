@@ -56,6 +56,9 @@ function arrowAssistCheck(ar: entity, a: location, b: location):
 			set {_ok} to false
 	else if {_t}.getType().name() is "IRON_GOLEM":
 		set {_ok} to true
+	else if isEvDummy({_t}) is true:
+		# 연습 더미(evdummy.sk)는 플레이어와 똑같이 보정한다
+		set {_ok} to true
 	if {_ok} is not true:
 		stop
 	set {_sh} to {_ar}.getShooter()

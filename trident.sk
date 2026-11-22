@@ -102,7 +102,8 @@ function tridentBlink(p: player, f: number):
 		if isAlly({_pid}, {_eid}) is true:
 			set {_ok} to false
 		if {_e}.getType().name() is "MANNEQUIN":
-			set {_ok} to false
+			if isEvDummy({_e}) is not true:
+				set {_ok} to false
 		if {_e} is a player:
 			if gamemode of {_e} is spectator:
 				set {_ok} to false
