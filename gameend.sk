@@ -4,7 +4,7 @@
 #   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 # 매치 기록(결과 저장/책장 GUI/리뷰)은 matchhistory.sk. {-gmatchlbl}(이번 매치 이름, 결과 맨 윗줄)
 # 명령: /gamestop(관리자, 게임/연출 중단)
-# 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭해서 한다(좌클릭은 무반응)(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 제외). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
+# 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭해서 한다(좌클릭은 무반응)(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 포함, 개인전은 투표 없음). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
 #   0초   게임 종료 + 승리 팀 타이틀/소리(3초)
@@ -664,7 +664,7 @@ function gfDummyRefresh():
 		if {_did} is set:
 			gfDummyDesc(loop-value, "%{_did}%")
 
-# 플레이어 p 가 더미 e 를 눌렀다: 승리 팀 더미에게만 투표할 수 있고, 투표자는 참가자여야 하며 본인에게는 못 한다. 마감 전에는 바꿀 수 있다.
+# 플레이어 p 가 더미 e 를 눌렀다: 승리 팀 더미에게만 투표할 수 있고, 투표자는 참가자여야 한다(본인에게도 가능, 개인전은 투표 없음). 마감 전에는 바꿀 수 있다.
 function gfVoteClick(p: player, e: entity):
 	set {_id} to {-gdummyid::%{_e}'s uuid%}
 	if {_id} is not set:
