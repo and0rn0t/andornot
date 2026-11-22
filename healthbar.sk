@@ -48,6 +48,13 @@ function hpbar_show(e: living entity):
 					hpbar_remove({_id})
 				stop
 
+	# 꿀벌 조종(bee.sk) 중인 플레이어의 체력바는 꿀벌 위에 앉은 투명한 본인이 아니라 본체 더미에 상시 표시한다. {_host} 가 바를 다는 엔티티.
+	set {_host} to {_e}
+	if {_e} is a player:
+		if {-beemode::%{_id}%} is "drive":
+			if {-beebody::%{_id}%} is set:
+				set {_host} to {-beebody::%{_id}%}
+
 	# 몹은 체력이 가득 차 있으면 바를 숨김
 	if {_e} is not a player:
 		if "{@mob-hide-full}" is "true":
@@ -62,7 +69,7 @@ function hpbar_show(e: living entity):
 		set {_new} to true
 	else if {_d} is dead:
 		set {_new} to true
-	else if vehicle of {_d} is not {_e}:
+	else if vehicle of {_d} is not {_host}:
 		delete entity within {_d}
 		set {_new} to true
 
@@ -96,7 +103,7 @@ function hpbar_show(e: living entity):
 
 	if {_new} is true:
 		# 청크 언로드 등으로 남아 있던 이 엔티티의 낡은 체력바 제거 (중복 방지)
-		loop passengers of {_e}:
+		loop passengers of {_host}:
 			set {_old} to loop-value
 			if {_old} has scoreboard tag "hpbar":
 				delete entity within {_old}
@@ -104,12 +111,12 @@ function hpbar_show(e: living entity):
 			set {_h} to {@player-bar-height}
 		else:
 			set {_h} to {@mob-bar-height}
-		spawn a text display at location of {_e}
+		spawn a text display at location of {_host}
 		set {_d} to last spawned entity
 		add "hpbar" to scoreboard tags of {_d}
 		set billboard of {_d} to center
 		set transformation translation of {_d} to vector(0, {_h}, 0)
-		add {_d} to passengers of {_e}
+		add {_d} to passengers of {_host}
 		set {-hpbar_d::%{_id}%} to {_d}
 
 	set text of {_d} to {_bar}
@@ -124,7 +131,9 @@ every {@check-interval}:
 				if {_e} is not an armor stand:
 					# 킬 연출용 마네킹(killcine.sk, 지금은 스켈레톤을 쓰며 체력이 가득이라 몹 규칙으로 숨겨짐)에는 체력바를 달지 않는다
 					if {_e}.getType().name() is not "MANNEQUIN":
-						hpbar_show({_e})
+						# 꿀벌 드론(bee.sk)은 머리 위 5칸 체력바를 bee.sk 가 따로 단다
+						if {-beeown::%uuid of {_e}%} is not set:
+							hpbar_show({_e})
 
 # 주인이 사라져 떠돌게 된 체력바 정리 (몹 사망, 디스폰 등)
 every 2 seconds:
@@ -152,7 +161,13 @@ on damage:
 	set {_dmg} to round(({_before} - {_after}) * 10) / 10 *2
 	if {_dmg} <= 0:
 		stop
-	set {_loc} to eye location of {_v} offset by vector(random number between -0.4 and 0.4, {@damage-height}, random number between -0.4 and 0.4)
+	# 꿀벌 조종 중인 플레이어가 맞으면 숫자도 꿀벌 위 투명한 본인이 아니라 본체 더미 위에 띄운다
+	set {_hv} to {_v}
+	if {_v} is a player:
+		if {-beemode::%uuid of {_v}%} is "drive":
+			if {-beebody::%uuid of {_v}%} is set:
+				set {_hv} to {-beebody::%uuid of {_v}%}
+	set {_loc} to eye location of {_hv} offset by vector(random number between -0.4 and 0.4, {@damage-height}, random number between -0.4 and 0.4)
 	spawn a text display at {_loc}
 	set {_t} to last spawned entity
 	add "hpdmg" to scoreboard tags of {_t}
