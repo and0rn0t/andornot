@@ -197,7 +197,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "crossbow":
 		return "화살을 발사합니다."
 	if {_id} is "bee":
-		return "꿀벌 드론을 소환합니다.", "꿀벌을 조종하는 동안 플레이어의 본체는 그 자리에 앉아 있습니다.", "꿀벌이 죽으면 쿨타임이 시작됩니다."
+		return "꿀벌 드론을 소환합니다."
 	if {_id} is "bee_sting":
 		return "피해를 입힌 대상을 7초간 중독시킵니다."
 	if {_id} is "bee_bomb":
