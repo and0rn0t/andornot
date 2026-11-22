@@ -38,6 +38,8 @@ import:
 	io.papermc.paper.datacomponent.item.ItemLore
 	net.kyori.adventure.key.Key
 	org.bukkit.Material
+	io.papermc.paper.datacomponent.item.PotionContents
+	org.bukkit.potion.PotionType
 	org.bukkit.inventory.ItemStack
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
@@ -145,7 +147,7 @@ function itemBase(id: text) :: itemtype:
 	if {_id} is "bee":
 		return honeycomb
 	if {_id} is "bee_sting":
-		return arrow of poison
+		return arrow
 	if {_id} is "bee_bomb":
 		return skeleton skull
 	if {_id} is "bee_stop":
@@ -352,6 +354,10 @@ function itemBuild(id: text, extra: text = "") :: itemtype:
 	# id 가 iron_axe 처럼 철 이름이라 id 가 곧 모델 이름이다. 데미지는 코드에서 고정이라 재질과 무관하다.
 	if {_id} starts with "iron_":
 		{_st}.setData(DataComponentTypes.ITEM_MODEL, Key.key("minecraft", {_id}))
+	# 꿀벌 독침(bee.sk): 화살 재질을 독 화살(TIPPED_ARROW)로 바꾸고 독 포션 효과를 붙인다(툴팁은 위 플래그로 숨김, 미검증)
+	if {_id} is "bee_sting":
+		{_st}.setType(Material.TIPPED_ARROW)
+		{_st}.setData(DataComponentTypes.POTION_CONTENTS, PotionContents.potionContents().potion(PotionType.POISON).build())
 	# 석궁: 화살이 장전된 상태로 만든다(charged_projectiles 컴포넌트, 미검증). 발사는 crossbow.sk 가 우클릭을 취소하고 직접 하므로 장전 상태는 계속 유지된다.
 	# 장전 화살 설명 줄은 툴팁에서 숨긴다.
 	if {_id} is "crossbow":

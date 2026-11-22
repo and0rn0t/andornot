@@ -80,7 +80,7 @@ function tridentBlink(p: player, f: number):
 	loop {_pts::*}:
 		set {_c} to loop-value ~ vector(0, 1, 0)
 		loop all living entities in radius 1.5 around {_c}:
-			set {_e} to loop-entity-2
+			set {_e} to loop-entity
 			set {_eid} to "%uuid of {_e}%"
 			if {_done::%{_eid}%} is not set:
 				set {_done::%{_eid}%} to true

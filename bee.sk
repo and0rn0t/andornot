@@ -16,7 +16,7 @@
 #   플레이어 사망/접속 종료/게임 상태가 바뀌면(시작/종료) 꿀벌과 더미를 치운다(쿨타임 없음).
 # 아이템(items.sk 카탈로그에 id 만 있고 무기고 목록에는 없음): bee_sting(독침, 데미지 3 쿨 8초, 맞은 대상 7초 중독), bee_bomb(자폭, 데미지 5, 반경 4), bee_stop(조종 중지).
 # 독침은 근접 공격(좌클릭)이며 피해는 직접 줘서(스킬 피해 표시) main.sk 무기 보정을 받지 않는다. 쿨타임 중에는 공격이 취소된다.
-# 미검증(전부): 마네킹이 갑옷 거치대에 타서 앉은 자세로 보이는지, 꿀벌에 플레이어를 태우고 조종/시선이 되는지, PlayerInputEvent(Paper) 수신, org.spigotmc EntityDismountEvent 취소(웅크리기로 못 내리게),
+# 미검증(전부): 마네킹이 갑옷 거치대에 타서 앉은 자세로 보이는지, 꿀벌에 플레이어를 태우고 조종/시선이 되는지, PlayerInputEvent(Paper) 수신, org.bukkit.event.entity.EntityDismountEvent(Paper) 취소(웅크리기로 못 내리게),
 #   Mob#setAware(false)+setVelocity 로 꿀벌이 움직이는지, 더미 피격 -> 본인 피해(Damageable#damage(double, DamageSource)), 꿀벌 사망 처리, arrow of poison 아이템, Player#setCooldown(Material, ticks).
 
 using damage sources
@@ -30,8 +30,8 @@ import:
 	org.bukkit.boss.BarStyle
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
-	io.papermc.paper.event.player.PlayerInputEvent
-	org.spigotmc.event.entity.EntityDismountEvent
+	org.bukkit.event.player.PlayerInputEvent
+	org.bukkit.event.entity.EntityDismountEvent
 
 on load:
 	set {-skillitems::bee} to honeycomb
@@ -558,7 +558,7 @@ on damage with priority highest:
 
 # 꿀벌 사망: 아이템/경험치 드롭 없음, 쿨타임 시작
 on death of bee:
-	set {_e} to event-entity
+	set {_e} to victim
 	if {-beeown::%uuid of {_e}%} is not set:
 		stop
 	clear drops
