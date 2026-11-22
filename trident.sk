@@ -113,7 +113,7 @@ function tridentBlink(p: player, f: number):
 	teleport {_p} to {_dest}
 	{_w}.strikeLightningEffect({_dest})
 	{_w}.spawnParticle(Particle.ELECTRIC_SPARK, {_ctr}, 40, 1.5, 0.8, 1.5, 0.1, null, true)
-	soundAround("entity.lightning_bolt.impact", {_dest}, 48, 0.8, 1.6)
+	soundAround("entity.lightning_bolt.impact", {_dest}, 0.8, 1.6)
 
 on rightclick:
 	if skillHand(player, trident) is false:

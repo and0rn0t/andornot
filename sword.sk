@@ -29,5 +29,5 @@ function swordReady(e: entity) :: boolean:
 function swordBlock(p: player):
 	set {-swcd::%uuid of {_p}%} to now + 20 seconds
 	set item cooldown of netherite sword for {_p} to 20 seconds
-	play sound "block.anvil.land" with volume 0.8 and pitch 2 at {_p}
-	play sound "entity.iron_golem.damage" with volume 1 and pitch 1.5 at {_p}
+	soundAround("block.anvil.land", location of {_p}, 0.8, 2)
+	soundAround("entity.iron_golem.damage", location of {_p}, 1, 1.5)

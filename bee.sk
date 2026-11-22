@@ -95,7 +95,7 @@ function beeDash(p: player):
 	set {_bee} to {-bee::%{_k}%}
 	if {_bee} is set:
 		set {_bp} to {_bee}.getLocation()
-		play sound "entity.bee.death" with volume 1 and pitch 1 at {_bp}
+		soundAround("entity.bee.death", {_bp}, 1, 1)
 
 # 꿀벌 스태미너 회복(조종/정지 상태 공통, 매 틱): 회복 차단 중이면 차단 시간만 줄이고, 아니면 +1(플레이어와 같은 규칙)
 function beeStTick(k: text):
@@ -449,7 +449,7 @@ on rightclick:
 			if {_bee}.getWorld() is {_p}.getWorld():
 				if distance between {_bee}.getLocation() and {_p}.getLocation() <= 60:
 					beeTake({_p}, {_bee})
-					play sound "entity.bee.loop_aggressive" with volume 1 and pitch 1 at {_p}
+					soundAround("entity.bee.loop_aggressive", location of {_p}, 1, 1)
 					stop
 			send colored "&c꿀벌 드론이 너무 멀리 있습니다." to {_p}
 			stop
@@ -480,7 +480,7 @@ on rightclick:
 	set {-beelock::%{_k}%} to 0
 	set {-beedash::%{_k}%} to 0
 	beeTake({_p}, {_bee})
-	play sound "entity.bee.loop_aggressive" with volume 1 and pitch 1 at {_p}
+	soundAround("entity.bee.loop_aggressive", location of {_p}, 1, 1)
 
 # 아이템 3개의 우클릭(조종 중에만)
 on rightclick:
@@ -524,12 +524,12 @@ function beeExplode(p: player):
 	if {_bee} is not set:
 		stop
 	set {_loc} to {_bee}.getLocation()
-	soundAround("entity.generic.explode", {_loc}, 64, 1.5, 1.2)
+	soundAround("entity.generic.explode", {_loc}, 1.5, 1.2)
 	play 1 explosion emitter at {_loc} in radius of 100
 	# 본체 더미 자리에도 같은 폭발음을 낮게 재생해 자연스럽게 들리게 한다(드론 쪽 소리와 겹치지 않게 볼륨을 줄임)
 	if {-beebody::%{_k}%} is set:
 		set {_bl} to {-beebody::%{_k}%}.getLocation()
-		soundAround("entity.generic.explode", {_bl}, 64, 0.8, 1.2)
+		soundAround("entity.generic.explode", {_bl}, 0.8, 1.2)
 	set {_src} to a custom damage source:
 		set the damage type to player explosion
 		set the causing entity to {_p}
@@ -701,7 +701,7 @@ function beeDrive(p: player, bee: entity, k: text):
 		if {-beesnd::%{_k}%} >= 20:
 			set {-beesnd::%{_k}%} to 0
 			set {_sl} to {_bee}.getLocation()
-			soundAround("entity.bee.loop", {_sl}, 48, 2, 1)
+			soundAround("entity.bee.loop", {_sl}, 2, 1)
 	else:
 		set {-beesnd::%{_k}%} to 20
 
@@ -834,7 +834,7 @@ on damage with priority highest:
 				apply poison potion of tier 1 to {_v} for 7 seconds
 				if {_v} is a player:
 					setStatus({_v}, "bee_%{_ak}%", "중독", 7 seconds)
-			play sound "entity.bee.sting" with volume 1 and pitch 1 at {_ap}
+			soundAround("entity.bee.sting", location of {_ap}, 1, 1)
 
 # 꿀벌 사망: 아이템/경험치 드롭 없음, 쿨타임 시작
 on death of bee:

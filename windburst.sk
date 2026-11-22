@@ -162,7 +162,7 @@ on rightclick:
 		{_b}.setItem(new ItemStack(Material.WIND_CHARGE))
 		set velocity of event-entity to {_vel}
 		set {-wbball::%uuid of event-entity%} to true
-	play sound "entity.wind_charge.throw" with volume 1 and pitch 1 at {_p}
+	soundAround("entity.wind_charge.throw", location of {_p}, 1, 1)
 
 # 우리가 던진 돌풍구가 어딘가에 맞으면 그 자리에 연막을 만든다
 on projectile hit:
@@ -179,7 +179,7 @@ on projectile hit:
 		else:
 			set {_l} to {_l} ~ vector(0, 0.6, 0)
 		delete projectile
-		play sound "entity.generic.explode" with volume 0.6 and pitch 1.6 at {_l}
+		soundAround("entity.generic.explode", {_l}, 0.6, 1.6)
 		smokeCloud({_l})
 
 on join:

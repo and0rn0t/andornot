@@ -24,9 +24,9 @@ on rightclick:
 	setStatus(player, "netherstar", "네더의 별", 6 seconds, "good")
 	apply glowing potion of tier 1 without any particles whilst hiding the potion icon to player for 6 seconds replacing the existing effect
 	# 강렬한 사운드(성스러운/강림 느낌): 비콘 활성화(밝은 종소리) + 위더 스폰(묵직한 울림, 높은 음). 주변 플레이어도 들린다.
-	play sound "block.beacon.activate" with volume 3 and pitch 1.2 at player
-	play sound "entity.wither.spawn" with volume 0.6 and pitch 1.7 at player
-	play sound "entity.player.levelup" with volume 2 and pitch 0.7 at player
+	soundAround("block.beacon.activate", location of player, 3, 1.2)
+	soundAround("entity.wither.spawn", location of player, 0.6, 1.7)
+	soundAround("entity.player.levelup", location of player, 2, 0.7)
 	# 섬광: 몸 중앙에서 flash 파티클이 번쩍
 	set {_c} to player's location ~ vector(0, 1, 0)
 	loop 3 times:
@@ -34,8 +34,8 @@ on rightclick:
 		wait 2 ticks
 	wait 114 ticks
 	if {_p} is online:
-		play sound "block.beacon.deactivate" with volume 2 and pitch 1 at {_p}
-		play sound "block.conduit.deactivate" with volume 2 and pitch 1.2 at {_p}
+		soundAround("block.beacon.deactivate", location of {_p}, 2, 1)
+		soundAround("block.conduit.deactivate", location of {_p}, 2, 1.2)
 
 on join:
 	delete {-nscd::%player's uuid%}

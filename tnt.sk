@@ -22,7 +22,7 @@ function tntRadius() :: number:
 # 던진 본인과 아군(skill_core.sk 의 isAlly: {-team} 변수가 같은 다른 대상)은 피해/기절을 받지 않는다. 팀이 없으면 아군은 없다(본인은 항상 제외).
 function tntBlast(owner: text, ownerp: player, loc: location):
 	set {_r} to tntRadius()
-	play sound "entity.generic.explode" with volume 1 and pitch 1.2 at {_loc}
+	soundAround("entity.generic.explode", {_loc}, 1, 1.2)
 	play 1 explosion emitter at {_loc} in radius of 100
 	# 폭발 범위 안쪽을 2칸 간격 격자로 large explosion 을 깔아서 이펙트 크기를 범위에 맞춘다.
 	set {_n} to ceil({_r} / 2)
@@ -93,32 +93,32 @@ on rightclick:
 		{_t}.setFuseTicks(33)
 		# 바닐라 폭발 피해를 걸러내는 표시(아래 on damage). 변수는 폭발 때 지워지지만 태그는 엔티티에 남아 순서와 상관없이 읽힌다.
 		add "skilltnt" to scoreboard tags of {_t}
-	play sound "entity.tnt.primed" with volume 1 and pitch 1 at {_p}
+	soundAround("entity.tnt.primed", location of {_p}, 1, 1)
 	wait 13 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
-	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	soundAround("block.note_block.pling", {_l}, 2, 1.5)
 	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
-	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	soundAround("block.note_block.pling", {_l}, 2, 1.5)
 	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
-	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	soundAround("block.note_block.pling", {_l}, 2, 1.5)
 	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
-	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	soundAround("block.note_block.pling", {_l}, 2, 1.5)
 	wait 4 ticks
 	if {_t} is not alive:
 		stop
 	set {_l} to location of {_t}
-	play sound "block.note_block.pling" with volume 2 and pitch 1.5 at {_l}
+	soundAround("block.note_block.pling", {_l}, 2, 1.5)
 
 # 던진 TNT 가 바닐라 폭발로 주는 피해는 전부 막는다(피아 구분 없이 바닐라 피해로 들어오던 문제).
 # 폭발 이벤트(on explosion)를 취소해도 엔티티 피해는 따로 들어올 수 있어서, 피해 이벤트에서 직접 출처가 우리 TNT 인 것을 취소한다.

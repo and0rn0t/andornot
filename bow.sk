@@ -153,7 +153,7 @@ on shoot:
 	#   화살 속도 999 라 화살 위치를 읽는 방식은 믿을 수 없어서(맞기 전에 사라지면 위치가 틀어짐) 화살과 별개로 같은 방향 직선을 직접 따라간다.
 	#   블럭 판정은 Block#isPassable(미검증). 엔티티는 통과(화살이 맞아도 선은 끝까지 그린다).
 	if {_f} >= 1:
-		play sound "entity.warden.sonic_boom" with volume 0.7 and pitch 1.4 at {_p}
+		soundAround("entity.warden.sonic_boom", location of {_p}, 0.7, 1.4)
 		set {_eye} to {_p}.getEyeLocation()
 		set {_nd} to normalized {_v}
 		set {_d} to 1

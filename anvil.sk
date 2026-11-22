@@ -32,7 +32,7 @@ on rightclick:
 	set {-anvil::%player's uuid%} to {_n}
 	# 보스바에 모루 중첩 표시(이로운 효과). 지속시간이 없는 버프라 24시간으로 걸어 막대는 거의 가득 찬 채 유지되고, 사용할 때마다 " x중첩" 이 갱신된다. 사망/anvilClear 때 지운다.
 	setStatus(player, "anvil", "모루", 24 hours, "good", " x%{_n}%")
-	play sound "block.anvil.use" with volume 1 and pitch 1 at player
+	soundAround("block.anvil.use", location of player, 1, 1)
 	play sound "entity.player.levelup" with volume 1 and pitch 0.6 to player
 	set {_c} to player's location ~ vector(0, 1, 0)
 	play 20 crit with offset of 0.5, 0.8, 0.5 and speed 0.3 at {_c} in radius of 100

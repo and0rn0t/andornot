@@ -29,7 +29,7 @@ on rightclick:
 	set {-totemend::%{_id}%} to now + 5 seconds
 	set {-jumplock::%{_id}%::totem} to true
 	setStatus({_p}, "totem", "불사의 토템", 5 seconds, "good")
-	play sound "item.totem.use" with volume 1 and pitch 1 at {_p}
+	soundAround("item.totem.use", location of {_p}, 1, 1)
 	# 노란 발광: 발광 외곽선 색은 팀 색이라 노랑 팀 totemyellow 에 5초 동안 넣는다(불길한 병의 obred 와 같은 방식, 스코어보드 API 로 직접 처리).
 	set {_n} to {_p}'s name
 	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
@@ -52,7 +52,7 @@ on rightclick:
 	delete {-totemend::%{_id}%}
 	delete {-jumplock::%{_id}%::totem}
 	if {_p} is online:
-		play sound "block.beacon.deactivate" with volume 1 and pitch 1.5 at {_p}
+		soundAround("block.beacon.deactivate", location of {_p}, 1, 1.5)
 
 on death of player:
 	delete {-totemend::%victim's uuid%}

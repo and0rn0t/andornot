@@ -29,9 +29,9 @@ on rightclick:
 	set {-bottle::%player's uuid%} to now + 7 seconds
 	setStatus(player, "ominousbottle", "불길한 병", 7 seconds, "good")
 	# 강렬한 사운드(불길한/어두운 느낌): 레이드 징조 + 낮은 위더 울음 + 워든 심장박동. 주변 플레이어도 들린다.
-	play sound "event.mob_effect.raid_omen" with volume 3 and pitch 0.8 at player
-	play sound "entity.wither.ambient" with volume 1.5 and pitch 0.5 at player
-	play sound "entity.warden.heartbeat" with volume 3 and pitch 0.7 at player
+	soundAround("event.mob_effect.raid_omen", location of player, 3, 0.8)
+	soundAround("entity.wither.ambient", location of player, 1.5, 0.5)
+	soundAround("entity.warden.heartbeat", location of player, 3, 0.7)
 	# flash 의 색 지정은 1.21.9 이상에서만 가능(skript 문법은 색을 못 받아서 reflect 로 직접 호출). 그 미만 버전이면 이 줄에서 오류가 난다.
 	set {_c} to player's location ~ vector(0, 1, 0)
 

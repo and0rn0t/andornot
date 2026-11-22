@@ -44,7 +44,7 @@ on rightclick:
 	shoot arrow from player at speed 4
 	set {_ar} to last spawned entity
 	arrowTrack({_ar}, location of player)
-	play sound "item.crossbow.shoot" with volume 1 and pitch 1 at player
+	soundAround("item.crossbow.shoot", location of player, 1, 1)
 	set item cooldown of crossbow for player to 16 ticks
 	set {-bowcool::%player's uuid%} to true
 	wait 16 ticks

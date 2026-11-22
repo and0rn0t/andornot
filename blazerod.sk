@@ -33,7 +33,7 @@ function brSpeed() :: number:
 # 폭발: 이펙트 + 범위 안 피해 5(쏜 사람/아군/갑옷 거치대 제외, 블럭 피해 없음)
 function brBlast(owner: player, loc: location):
 	set {_r} to brRadius()
-	play sound "entity.generic.explode" with volume 1 and pitch 1.3 at {_loc}
+	soundAround("entity.generic.explode", {_loc}, 1, 1.3)
 	play 1 large explosion at {_loc} in radius of 100
 	{_loc}.getWorld().spawnParticle(Particle.FLAME, {_loc}, 60, 1.2, 1.2, 1.2, 0.08, null, true)
 	set {_hasp} to false
@@ -79,7 +79,7 @@ function brFire(p: player, from: location, to: location):
 		{_f}.setDirection({_vel})
 		set velocity of event-entity to {_vel}
 	set {_fid} to uuid of {_f}
-	play sound "entity.blaze.shoot" with volume 1 and pitch 1 at {_from}
+	soundAround("entity.blaze.shoot", {_from}, 1, 1)
 	loop 80 times:
 		if {_f} is not alive:
 			exit loop
@@ -108,7 +108,7 @@ on projectile hit:
 		if {_o} is a player:
 			brBlast({_o}, {_l})
 		else:
-			play sound "entity.generic.explode" with volume 1 and pitch 1.3 at {_l}
+			soundAround("entity.generic.explode", {_l}, 1, 1.3)
 
 on rightclick:
 	if skillHand(player, blaze rod) is false:
@@ -138,7 +138,7 @@ on rightclick:
 		set {-brcount::%{_id}%} to 0
 	else:
 		set {-brcount::%{_id}%} to {_n}
-	play sound "item.firecharge.use" with volume 1 and pitch 0.8 at {_p}
+	soundAround("item.firecharge.use", location of {_p}, 1, 0.8)
 	wait 4 ticks
 	if {_p} is not online:
 		stop

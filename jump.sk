@@ -85,7 +85,7 @@ on flight toggle:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
 			push player forwards at speed 1.1
-			play sound "entity.player.attack.sweep" with volume 1 and pitch 1.2 at player
+			soundAround("entity.player.attack.sweep", location of player, 1, 1.2)
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
 			loop 5 times:
@@ -147,7 +147,7 @@ on swap hand items:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
 			push player forwards at speed 1.1
-			play sound "entity.player.attack.sweep" with volume 1 and pitch 1.2 at player
+			soundAround("entity.player.attack.sweep", location of player, 1, 1.2)
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
 			loop 5 times:

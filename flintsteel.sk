@@ -36,8 +36,8 @@ on rightclick:
 	set item cooldown of {-skillitems::flint_steel} for player to 20 seconds
 	set {_p} to player
 	set {_c} to location of {_p}
-	play sound "item.flintandsteel.use" with volume 1 and pitch 1 at {_p}
-	play sound "entity.blaze.shoot" with volume 0.7 and pitch 0.8 at {_p}
+	soundAround("item.flintandsteel.use", location of {_p}, 1, 1)
+	soundAround("entity.blaze.shoot", location of {_p}, 0.7, 0.8)
 	# 주변 10칸 안의 적: 취약 + 불태움
 	loop all players in radius 10 around {_c}:
 		set {_t} to loop-player

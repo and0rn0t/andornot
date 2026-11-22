@@ -236,7 +236,7 @@ on damage:
 						set {_d} to {_d} * 1.5
 						# 도끼 능력 발동: 타격 지점(피격자 위치)에 모루 소리
 						set {_loc} to location of victim
-						play sound "block.anvil.place" with volume 1 and pitch 1 at {_loc}
+						soundAround("block.anvil.place", {_loc}, 1, 1)
 						# 강타 이펙트: 피격자 몸통 높이에 크리티컬 파티클 + 폭발 파티클
 						set {_fx} to location of victim
 						add 1 to y-coordinate of {_fx}
