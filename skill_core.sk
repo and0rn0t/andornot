@@ -483,6 +483,9 @@ function armoryHeld(p: player) :: boolean:
 function skillHand(p: player, t: itemtype) :: boolean:
 	if isStunned({_p}) is true:
 		return false
+	# 꿀벌 조종 중/직후에는 드론 아이템 말고 다른 스킬 아이템을 쓰지 못한다(bee.sk)
+	if beeUseLocked({_p}) is true:
+		return false
 	# 리스폰 낙하(겉날개 활강) 중에는 스킬을 쓸 수 없다(game.sk 의 {-gdropon})
 	if {-gdropon::%{_p}'s uuid%} is true:
 		return false

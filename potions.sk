@@ -97,6 +97,9 @@ function potionUse(p: player, kind: text):
 		potionVisual({_p}, "invis", 18)
 
 on rightclick:
+	# 꿀벌 조종 중/직후에는 포션을 쓰지 못한다(bee.sk)
+	if beeUseLocked(player) is true:
+		stop
 	set {_mk} to potionKind(player, "main")
 	# 메인핸드에 스킬 포션이 있으면 어떤 경우에도 마시지 못하게 막는다
 	if {_mk} is not "":
