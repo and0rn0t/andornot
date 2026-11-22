@@ -844,6 +844,9 @@ function gameFinale():
 	delete {-gpotmres}
 	delete {-gmatchlbl}
 	set {_pl::*} to {-gplist::*}
+	loop all players:
+		if {-gwatch::%uuid of loop-player%} is set:
+			add loop-player to {_pl::*}
 	gameCleanup()
 	loop {_pl::*}:
 		if loop-value is online:

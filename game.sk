@@ -278,6 +278,9 @@ command /참가:
 		if {-gplist::*} contains player:
 			send "&c이미 참가 중입니다."
 			stop
+		if {-gwatch::%uuid of player%} is set:
+			send "&c이번 게임은 관전으로 정해서 중간 참가할 수 없습니다."
+			stop
 		gJoinMid(player)
 
 # 접속: 게임이 진행 중이 아니면 로비로, 진행 중이면 게임 월드에서 관전 상태로 보낸다. 이미 참가자였던 사람(재접속)은 바운티면 바로 복귀, 녹아웃이면 다음 라운드까지 관전.
@@ -309,6 +312,9 @@ on join:
 		stop
 	set gamemode of player to spectator
 	tpSafe(player, {_gw}.getSpawnLocation())
+	if {-gwatch::%uuid of player%} is set:
+		send "&7이번 게임은 관전으로 정해서 구경만 할 수 있어요."
+		stop
 	send "&b게임이 진행 중입니다. &7중간 참가는 &b/참가 &7를 입력하세요. (인원이 적은 팀, 승점 균형 순으로 배치됩니다)" to player
 
 # 게임 시작 때 팀 구성을 모두에게 알린다(내부 승점은 알리지 않는다).
@@ -692,9 +698,15 @@ function gameStart(by: text):
 	set {_n} to gcTeams()
 	set {-gteams} to {_n}
 	delete {-gplist::*}
+	delete {-gwatch::*}
 	loop all players:
-		add loop-player to {-gplist::*}
+		# 게임 관전을 고른 사람은 참가하지 않고 {-gwatch} 에 올린다(spectate.sk). 시작되면 관전 상태로 구경하고, 이 게임에는 중간 참가도 못 한다.
+		if specOn(loop-player) is true:
+			set {-gwatch::%uuid of loop-player%} to true
+		else:
+			add loop-player to {-gplist::*}
 	if size of {-gplist::*} < 1:
+		delete {-gwatch::*}
 		stop
 	# 게임이 진행되는 월드 = 시작한 관리자가 있는 월드(없으면 첫 참가자의 월드). 종료 연출은 이 월드의 결과 무대에서 한다.
 	# 관리자 메뉴의 맵 설정({gamecfg::map}, 또는 랜덤 모드)이 있으면 그 월드가 게임 월드이고, 다른 월드에 있는 참가자는 그 월드 스폰으로 보낸다(같은 월드면 그대로).
@@ -857,6 +869,13 @@ function gStartFinish(sg: number):
 	set {-ingame} to true
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
+	# 게임 관전자: 관전 모드로 게임 월드 중앙에서 구경한다(spectate.sk)
+	set {_wc} to gStormCenter()
+	loop all players:
+		if {-gwatch::%uuid of loop-player%} is set:
+			set gamemode of loop-player to spectator
+			tpSafe(loop-player, {_wc})
+			send "&7이번 게임은 관전 상태로 구경해요." to loop-player
 	# 녹아웃 첫 라운드 시작 시각(5분 뒤 체력 감소, gStormTick)
 	set {-grstart} to now
 	set {-grnum} to 1
@@ -902,6 +921,12 @@ function gameCleanup():
 				loadoutGive({_pl})
 	delete {-grand::*}
 	delete {-grandon}
+	# 게임 관전자는 어드벤처 모드로 돌려 놓는다(로비 이동은 호출한 쪽)
+	loop all players:
+		if {-gwatch::%uuid of loop-player%} is set:
+			if gamemode of loop-player is spectator:
+				set gamemode of loop-player to adventure
+	delete {-gwatch::*}
 	set {_empty} to GsonComponentSerializer.gson().deserialize("{""text"":""""}")
 	loop all players:
 		set {_pl2} to loop-player
