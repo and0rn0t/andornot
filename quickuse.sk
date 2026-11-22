@@ -38,9 +38,7 @@ function quickUseId(id: text) :: boolean:
 		return true
 	if {_c} is 4:
 		return true
-	# 꿀벌 조종 중(bee.sk)의 자폭/조종 중지 아이템(조종 중에만 인벤토리에 있다)
-	if {_id} is "bee_bomb":
-		return true
+	# 꿀벌 조종 중(bee.sk)의 조종 중지 아이템(조종 중에만 인벤토리에 있다). 자폭(bee_bomb)은 실수로 터지지 않게 즉시 사용에서 뺐다.
 	if {_id} is "bee_stop":
 		return true
 	return false
@@ -60,15 +58,13 @@ on PlayerItemHeldEvent:
 		stop
 	set {_hs} to {_p}.getInventory().getHeldItemSlot()
 	set {_id} to itemIdAt({_p}, {_ns})
-	# 꿀벌 조종 중이면 자폭/조종 중지 칸도 즉시 사용 대상이다(카탈로그에 없는 아이템이라 이름으로 판정)
+	# 꿀벌 조종 중이면 조종 중지 칸도 즉시 사용 대상이다(자폭은 제외)(카탈로그에 없는 아이템이라 이름으로 판정)
 	set {_drv} to false
 	if {-beemode::%{_p}'s uuid%} is "drive":
 		set {_drv} to true
 		set {_nm} to name of slot {_ns} of {_p}'s inventory
 		if {_nm} is set:
-			if {_nm} is itemName("bee_bomb"):
-				set {_id} to "bee_bomb"
-			else if {_nm} is itemName("bee_stop"):
+			if {_nm} is itemName("bee_stop"):
 				set {_id} to "bee_stop"
 	if "%{_hs}%" is not "%{_ns}%":
 		stop
