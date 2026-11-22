@@ -10,10 +10,10 @@
 #     꿀벌은 본체에서 50칸 넘게 못 간다(바깥 방향 속도를 지움). 지속시간 제한 없음.
 #   본체 피격: 더미가 맞으면 그 피해를 취소하고, 같은 피해를 플레이어 본인에게 준다(잠깐 무적을 풀고 damage(양, 피해 출처) 로 줘서 킬 판정/킬로그가 그대로 간다). 경고음 + 액션바.
 #     치명타면 조종을 먼저 끝내(인벤토리 복구) 본체 자리로 돌려놓고, 꿀벌/더미를 쿨타임 없이 치운 뒤 그 자리에서 죽게 한다.
-#   체력 표시: 보스바는 없다. 조종 중 플레이어 화면 체력바(하트)에는 꿀벌 체력만 보이고(Player#sendHealthUpdate 로 가짜 체력을 보냄), 본체 체력은 본체 더미 머리 위 체력바로 보인다.
+#   체력 표시: 보스바는 없다. 조종 중 플레이어 화면 체력바(하트)에는 본체 체력이 그대로 보이고, 본체 더미 머리 위에도 체력바가 뜬다(꿀벌 체력은 healthbar.sk 의 몹 체력바).
 #   조종 중 손에 든 아이템은 다른 플레이어에게 보이지 않는다(Player#sendEquipmentChange 로 빈손을 보냄). 조종이 끝나면 원래 손에 든 아이템/체력을 다시 보낸다.
-#   가속(이동 유틸): 도약(jump.sk)과 같은 입력(더블 점프 또는 F키, 플레이어 설정). 꿀벌 스태미너 25 이상에서 발동, 10틱(0.5초) 동안 속도 x2.5, 그동안 스태미너 25 소모.
-#     꿀벌 스태미너는 100에서 시작하고 플레이어 것과 따로 쓴다. 회복은 플레이어와 같다(틱당 +1, 가속을 시작하면 49틱 동안 회복 차단: 도약의 stcap 유지시간과 같음). 조종 중에는 경험치 바에 꿀벌 스태미너가 보인다.
+#   가속(이동 유틸): 도약(jump.sk)과 같은 입력(더블 점프 또는 F키, 플레이어 설정). 꿀벌 스태미너 25 이상에서 발동, 2초(40틱) 동안 속도 x2.5, 그동안 스태미너 25를 천천히 소모(틱당 0.625).
+#     꿀벌 스태미너는 100에서 시작하고 플레이어 것과 따로 쓴다. 회복은 플레이어와 같다(틱당 +1, 가속을 시작하면 79틱 동안 회복 차단 = 소모가 끝난 뒤 39틱: 도약과 같은 규칙). 조종 중에는 경험치 바에 꿀벌 스태미너가 보인다.
 #   조종이 끝나면 손에 든 칸이 꿀벌 아이템을 쓰던 칸으로 돌아간다. 움직이는 동안 꿀벌 소리(entity.bee.loop_aggressive)를 1초마다 꿀벌 위치에서 크게 낸다.
 #   꿀벌 체력 회복: 마지막 피격 8초 뒤부터 0.75초마다 체력 +2(main.sk 의 비전투 회복과 같은 규칙).
 #   꿀벌 사망(자폭 포함): 조종 중이면 끝내고 쿨타임 75초 시작(아이템 쿨타임 표시 포함). 정지(hold) 상태에서 죽어도 즉시 쿨타임이 돈다.
@@ -21,7 +21,7 @@
 #   플레이어 사망/접속 종료/게임 상태가 바뀌면(시작/종료) 꿀벌과 더미를 치운다(쿨타임 없음).
 # 아이템(items.sk 카탈로그에 id 만 있고 무기고 목록에는 없음): bee_sting(독침, 데미지 3 쿨 8초, 맞은 대상 7초 중독), bee_bomb(자폭, 데미지 5, 반경 4), bee_stop(조종 중지).
 # 독침은 근접 공격(좌클릭)이며 피해는 직접 줘서(스킬 피해 표시) main.sk 무기 보정을 받지 않는다. 쿨타임 중에는 공격이 취소된다.
-# 미검증(전부): 조종 중(탑승 상태)에 더블 점프(flight toggle)가 들어오는지(안 들어오면 F키 모드로 쓴다), 경험치 바에 꿀벌 스태미너 표시, Player#sendHealthUpdate(double,int,float) / sendEquipmentChange, 더미 머리 위 텍스트 디스플레이 높이, bee spawn egg 별칭, 이동 소리 간격, 마네킹이 갑옷 거치대에 타서 앉은 자세로 보이는지, 꿀벌에 플레이어를 태우고 조종/시선이 되는지, PlayerInputEvent(Paper) 수신, org.bukkit.event.entity.EntityDismountEvent(Paper) 취소(웅크리기로 못 내리게),
+# 미검증(전부): 조종 중(탑승 상태)에 더블 점프(flight toggle)가 들어오는지(안 들어오면 F키 모드로 쓴다), 경험치 바에 꿀벌 스태미너 표시, Player#sendEquipmentChange, 더미 머리 위 텍스트 디스플레이 높이, bee spawn egg 별칭, 이동 소리 간격, 마네킹이 갑옷 거치대에 타서 앉은 자세로 보이는지, 꿀벌에 플레이어를 태우고 조종/시선이 되는지, PlayerInputEvent(Paper) 수신, org.bukkit.event.entity.EntityDismountEvent(Paper) 취소(웅크리기로 못 내리게),
 #   Mob#setAware(false)+setVelocity 로 꿀벌이 움직이는지, 더미 피격 -> 본인 피해(Damageable#damage(double, DamageSource)), 꿀벌 사망 처리, arrow of poison 아이템, Player#setCooldown(Material, ticks).
 
 using damage sources
@@ -71,8 +71,8 @@ function beeDash(p: player):
 		stop
 	if {-beedash::%{_k}%} > 0:
 		stop
-	set {-beedash::%{_k}%} to 10
-	set {-beelock::%{_k}%} to 49
+	set {-beedash::%{_k}%} to 40
+	set {-beelock::%{_k}%} to 79
 	set {_bee} to {-bee::%{_k}%}
 	if {_bee} is set:
 		set {_bp} to {_bee}.getLocation()
@@ -284,8 +284,6 @@ function beeRelease(p: player, restore: boolean):
 	delete {-beeflag::%{_k}%}
 	{_p}.setInvisible(false)
 	{_p}.setInvulnerable(false)
-	# 가짜로 보냈던 체력(꿀벌 체력)을 진짜 체력으로 되돌린다
-	{_p}.sendHealthUpdate()
 	if {_restore} is true:
 		beeItemsRestore({_p})
 		# 손에 든 칸을 꿀벌 아이템이 있던 칸으로(즉시 사용 아이템과 칸이 엇갈리지 않게)
@@ -536,11 +534,11 @@ function beeDrive(p: player, bee: entity, k: text):
 		set {_rx} to (0 - {_dz}) / {_hl}
 		set {_rz} to {_dx} / {_hl}
 	set {_sp} to beeSpeed()
-	# 가속 중: 속도 x2.5, 10틱 동안 스태미너 25 소모(틱당 2.5)
+	# 가속 중: 속도 x2.5, 40틱(2초) 동안 스태미너 25 소모(틱당 0.625, 천천히 닳음)
 	set {_dash} to {-beedash::%{_k}%}
 	if {_dash} > 0:
 		set {_sp} to {_sp} * 2.5
-		remove 2.5 from {-beest::%{_k}%}
+		remove 0.625 from {-beest::%{_k}%}
 		if {-beest::%{_k}%} < 0:
 			set {-beest::%{_k}%} to 0
 		remove 1 from {-beedash::%{_k}%}
@@ -565,16 +563,7 @@ function beeDrive(p: player, bee: entity, k: text):
 				send action bar colored "&e더 멀리 갈 수 없습니다." to {_p}
 	{_bee}.setVelocity({_vel})
 	{_bee}.setRotation({_p}.getLocation().getYaw(), 0)
-	# 화면 체력바(하트)에는 꿀벌 체력만 보인다(가짜 체력 전송). 본체 체력은 더미 머리 위 체력바로 보인다.
-	set {_mh} to {_p}.getAttribute(Attribute.MAX_HEALTH).getValue()
-	set {_bh} to {_bee}.getHealth()
-	set {_bpr} to {_bh} / 10
-	if {_bpr} > 1:
-		set {_bpr} to 1
-	set {_fh} to {_bpr} * {_mh}
-	if {_fh} < 0.1:
-		set {_fh} to 0.1
-	{_p}.sendHealthUpdate({_fh}, {_p}.getFoodLevel(), {_p}.getSaturation())
+	# 화면 체력바(하트)는 본체 체력 그대로다(가짜 체력을 보내지 않는다).
 	beeBodyBar({_p}, {_k})
 	# 경험치 바에는 꿀벌 스태미너를 보인다(main.sk 는 조종 중 본체 스태미너를 바에 쓰지 않는다)
 	set {_lp} to {-beest::%{_k}%} * 0.01 - 0.001
