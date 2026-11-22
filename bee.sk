@@ -634,12 +634,17 @@ function beeDrive(p: player, bee: entity, k: text):
 		if {-beest::%{_k}%} < 0:
 			set {-beest::%{_k}%} to 0
 		remove 1 from {-beedash::%{_k}%}
-		# 파티클은 한 틱 늦게: 지난 틱에 저장해 둔 자리에서 재생하고, 이번 틱 자리(발 위치 +0.3)를 저장해 둔다
-		if {-beedashpos::%{_k}%} is set:
-			set {_pp} to {-beedashpos::%{_k}%}
+		# 파티클은 2틱 늦게: 2틱 전 자리(pos2)에서 재생하고, 자리를 한 칸씩 밀어 이번 틱 자리(발 위치 +0.3)를 pos1 에 저장해 둔다
+		if {-beedashpos2::%{_k}%} is set:
+			set {_pp} to {-beedashpos2::%{_k}%}
 			play 2 spit with offset of 0.05, 0.05, 0.05 and speed 0 at {_pp} in radius of 100
+		if {-beedashpos1::%{_k}%} is set:
+			set {-beedashpos2::%{_k}%} to {-beedashpos1::%{_k}%}
 		set {_dl0} to {_bee}.getLocation()
-		set {-beedashpos::%{_k}%} to {_dl0} ~ vector(0, 0.3, 0)
+		set {-beedashpos1::%{_k}%} to {_dl0} ~ vector(0, 0.3, 0)
+	else:
+		delete {-beedashpos1::%{_k}%}
+		delete {-beedashpos2::%{_k}%}
 	else:
 		delete {-beedashpos::%{_k}%}
 	set {_vx} to ({_dx} * {_fw} + {_rx} * {_st}) * {_sp}
