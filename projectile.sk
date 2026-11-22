@@ -32,9 +32,9 @@ on spawn of projectile:
 				arrowAssistCheck({_e}, {_prev}, {_c})
 		set {_prev} to {_c}
 
-# 화살이 플레이어를 "맞춘 것으로 보는" 여유(칸). 몸 판정을 이만큼 사방으로 부풀린다(0.5 = 사방 반 칸 널널하게, 처음엔 1 이었으나 너무 세서 줄임). 직접 수정용: 이 한 곳만 고치면 된다.
+# 화살이 플레이어를 "맞춘 것으로 보는" 여유(칸). 몸 판정을 이만큼 사방으로 부풀린다(1 = 대략 1블럭 널널하게. 0.5 로 줄였다가 다시 1 로 되돌림). 직접 수정용: 이 한 곳만 고치면 된다.
 function arrowAssist() :: number:
-	return 0.5
+	return 1
 
 # 구간 a -> b 에서 부풀린 판정에 걸리는 플레이어를 찾아 피해를 준다(대상: 플레이어 + 철 골렘. 쏜 사람/아군/관전자 제외, 블럭에 먼저 막히면 무시). 미검증: World#rayTraceEntities(Location, Vector, double, double), rayTraceBlocks.
 function arrowAssistCheck(ar: entity, a: location, b: location):
