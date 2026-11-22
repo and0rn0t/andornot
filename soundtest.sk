@@ -24,15 +24,15 @@ function sndSrc(p: player, d: number, dn: text) :: location:
 	set {_fz} to {_fz} / {_len}
 	set {_v} to vector({_fx}, 0, {_fz})
 	if {_dn} is "뒤":
-		set {_v} to vector(-{_fx}, 0, -{_fz})
+		set {_v} to vector(0 - {_fx}, 0, 0 - {_fz})
 	else if {_dn} is "좌":
-		set {_v} to vector({_fz}, 0, -{_fx})
+		set {_v} to vector({_fz}, 0, 0 - {_fx})
 	else if {_dn} is "우":
-		set {_v} to vector(-{_fz}, 0, {_fx})
+		set {_v} to vector(0 - {_fz}, 0, {_fx})
 	else if {_dn} is "위":
 		set {_v} to vector(0, 1, 0)
 	else if {_dn} is "아래":
-		set {_v} to vector(0, -1, 0)
+		set {_v} to vector(0, 0 - 1, 0)
 	return {_l} ~ ({_v} * {_d})
 
 function sndTestPlay(p: player, d: number, dn: text, sn: text):
