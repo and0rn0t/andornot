@@ -437,6 +437,11 @@ on rightclick:
 	if gamemode of {_p} is not survival:
 		if gamemode of {_p} is not adventure:
 			stop
+	# 쿨타임 중(새로 소환하려는 경우)에는 공중 안내 메시지도 띄우지 않고 조용히 끝낸다
+	if {-beemode::%{_k}%} is not set:
+		if {-beecd::%{_k}%} is set:
+			if {-beecd::%{_k}%} > now:
+				stop
 	# 공중에서는 시작/재개할 수 없다(본체 더미가 허공에 서게 되므로)
 	if {_p}.isOnGround() is not true:
 		send colored "&c공중에서는 꿀벌을 조종할 수 없습니다." to {_p}
