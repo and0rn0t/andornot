@@ -247,7 +247,7 @@ function itemCooldownText(id: text) :: text:
 	if {_id} is "fishing_rod":
 		return "9"
 	if {_id} is "iron_sword":
-		return "20"
+		return "30"
 	if {_id} is "tnt":
 		return "12"
 	if {_id} is "nether_star":
