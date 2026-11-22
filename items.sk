@@ -648,13 +648,18 @@ function loadoutEmpty(p: player, pref: number) :: number:
 	return -1
 
 # 구성 1~5번 아이템이 인벤토리에 없으면 채운다. 이미 어디든 있으면 건드리지 않는다(핫바 어느 칸에 두든 자유).
-# 새로 넣을 때 칸은 loadoutSlot() 이 정한 선호 칸이 비어 있으면 거기, 아니면 빈 칸. 확인하는 때: 입장, 리스폰, 구성 변경(이 파일의 호출부).
+# 새로 넣을 때 칸은 (게임 중이고 로비에서 정리해 둔 칸이 기억돼 있으면 그 칸, 아니면) loadoutSlot() 이 정한 선호 칸이 비어 있으면 거기, 아니면 빈 칸. 확인하는 때: 입장, 리스폰, 구성 변경(이 파일의 호출부).
 function loadoutGive(p: player):
 	loop integers from 1 to 5:
 		set {_k} to loop-value
 		set {_id} to loadoutGet({_p}, {_k})
 		if loadoutFind({_p}, {_id}) < 0:
-			set {_s} to loadoutEmpty({_p}, loadoutSlot({_k}) - 1)
+			set {_pf} to loadoutSlot({_k}) - 1
+			# 게임 중에는 로비에서 정리해 둔 칸(game.sk 의 gSlotRemember)이 있으면 그 칸에 먼저 넣는다
+			if {-ingame} is true:
+				if {-gslot::%{_p}'s uuid%::%{_id}%} is a number:
+					set {_pf} to {-gslot::%{_p}'s uuid%::%{_id}%}
+			set {_s} to loadoutEmpty({_p}, {_pf})
 			if {_s} < 0:
 				send "&c인벤토리가 가득 차서 %itemName({_id})% &c을(를) 지급하지 못했습니다." to {_p}
 			else:

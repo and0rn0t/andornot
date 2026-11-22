@@ -666,6 +666,16 @@ every second:
 			gStarSync(loop-value)
 
 # ===== 시작/리스폰/종료 =====
+# 로비에서 플레이어가 정리해 둔 구성 아이템의 칸(0~35)을 {-gslot::uuid::아이템id} 에 기억한다. 게임 시작 때 인벤토리를 비우기 전에 부르고, 게임 중 loadoutGive(items.sk)가
+# 이 칸을 먼저 쓴다(시작/리스폰 때 아이템 순서가 기본 칸 배치로 초기화되지 않게). gameCleanup 이 지운다. 같은 아이템이 여러 칸이면 앞 칸 하나만 기억한다.
+function gSlotRemember(p: player):
+	delete {-gslot::%{_p}'s uuid%::*}
+	loop integers from 0 to 35:
+		set {_id} to itemIdAt({_p}, loop-value)
+		if {_id} is not "":
+			if {-gslot::%{_p}'s uuid%::%{_id}%} is not set:
+				set {-gslot::%{_p}'s uuid%::%{_id}%} to loop-value
+
 # 한 명을 시작/라운드 시작 상태로 되돌린다: 상태 정리, 체력/스태미너 회복, 아이템 구성 지급, 어드벤처 모드, 스폰 위치로.
 function gameRespawn(p: player):
 	set {_id} to "%uuid of {_p}%"
@@ -856,6 +866,10 @@ function gStartFinish(sg: number):
 	# 보여주기용 더미 치우기(음악은 게임 시작 즈음 알아서 끝난다)
 	gsClear()
 	# 인벤토리 완전 초기화: 메인 인벤토리, 핫바, 오프핸드, 방어구를 전부 비운다(로비에서 오프핸드 등을 이용해 구성보다 많이 가져온 아이템을 없앤다). 구성 아이템은 아래 gameRespawn -> loadoutGive 가 새로 지급한다.
+	# 비우기 전에 구성 아이템 칸을 기억해 둔다(랜덤 아이템 모드는 새로 뽑으므로 기억하지 않음)
+	if gcRandom() is not true:
+		loop {-gplist::*}:
+			gSlotRemember(loop-value)
 	loop {-gplist::*}:
 		loop-value.getInventory().clear()
 	# 게임 설정의 랜덤 아이템 모드(gcRandom): 참가자마다 아이템 5개를 새로 뽑고, 지금 들고 있는 구성 아이템은 치운다(저장된 구성은 그대로, 게임이 끝나면 돌려줌).
@@ -908,6 +922,7 @@ function gameCleanup():
 	delete {-groundend}
 	delete {-gpteam::*}
 	delete {-gpname::*}
+	delete {-gslot::*}
 	loop {-gplist::*}:
 		gStarRemove("%uuid of loop-value%")
 		delete {-gdead::%uuid of loop-value%}
