@@ -13,6 +13,7 @@
 #   {-gpteam::uuid} {-gpname::uuid}   시작 때 기록한 참가자의 팀 키/이름(중간에 나가도 결과창에 남기려고)
 #   {-gscore::팀키}     팀 스코어(바운티)/승점(녹아웃)
 #   {-gk::uuid} {-gd::uuid} {-ga::uuid} {-gdmg::uuid}   킬/데스/어시스트/가한 피해(실 체력, 적에게 준 것만)
+#   {-gbstart}         바운티 시작 시각(제한시간 gBountyLimit() 기준, gStartFinish 가 켜고 gameCleanup 이 지움)
 #   {-gstar::uuid}     바운티 별 개수(기본 gStarBase())
 #   {-gstar_d::uuid}   머리 위 별 표시(텍스트 디스플레이)
 #   {-gdead::uuid}     녹아웃에서 이번 라운드에 죽은 플레이어
@@ -35,6 +36,10 @@ import:
 # ===== 기본값/조회 =====
 function gStarBase() :: number:
 	return 2
+
+# 바운티 제한시간(분). 시간이 다 되면 스코어가 가장 높은 팀이 승리(동점이면 팀 킬 합계, 그래도 같으면 무작위)
+function gBountyLimit() :: number:
+	return 8
 
 # 어시스트로 인정하는 시간(이 시간 안에 피해를 줬어야 함)
 function gAssistSec() :: number:
@@ -893,6 +898,9 @@ function gStartFinish(sg: number):
 	# 녹아웃 첫 라운드 시작 시각(5분 뒤 체력 감소, gStormTick)
 	set {-grstart} to now
 	set {-grnum} to 1
+	delete {-gbstart}
+	if {-gmode} is "bounty":
+		set {-gbstart} to now
 	loop {-gplist::*}:
 		anvilClear(loop-value)
 		skillCdReset(loop-value)
@@ -914,6 +922,7 @@ function gameCleanup():
 	add 1 to {-gstartgen}
 	add 1 to {-grgen}
 	delete {-grstart}
+	delete {-gbstart}
 	gStartCamRelease()
 	gsClear()
 	bgmStopAll()
@@ -1094,6 +1103,77 @@ function gBountyKill(v: player, a: entity, kill: boolean):
 		send action bar colored "&f%name of {_a}% &7님이 &f%name of {_v}% &7님을 처치했습니다! &e+%{_stars}%★ &7(%gTeamLabel({_tk})% &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%)" to loop-player
 	if {-gscore::%{_tk}%} >= {-gtarget}:
 		gameWin({_tk})
+
+# 팀의 킬 합계(제한시간 동점 처리용)
+function gTeamKills(key: text) :: number:
+	set {_n} to 0
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if gTeamOf({_pl}) is {_key}:
+			set {_k} to {-gk::%uuid of {_pl}%}
+			if {_k} is a number:
+				add {_k} to {_n}
+	return {_n}
+
+# 바운티 남은 시간(초). 바운티가 아니거나 시작 전이면 -1
+function gBountyLeft() :: number:
+	if {-ingame} is not true:
+		return -1
+	if {-gmode} is not "bounty":
+		return -1
+	if {-gbstart} is not set:
+		return -1
+	set {_el} to difference between {-gbstart} and now
+	set {_ms} to {_el}.getMilliSeconds()
+	set {_left} to gBountyLimit() * 60 - floor({_ms} / 1000)
+	if {_left} < 0:
+		return 0
+	return {_left}
+
+# 제한시간이 지났으면 스코어 1위 팀(동점: 팀 킬 합계, 그래도 같으면 무작위)을 승자로 끝낸다
+function gBountyTimeCheck():
+	if {-ingame} is not true:
+		stop
+	if {-gover} is true:
+		stop
+	if {-gstarting} is true:
+		stop
+	if gBountyLeft() is not 0:
+		stop
+	set {_best} to -1
+	delete {_tied::*}
+	loop {-gteamlist::*}:
+		set {_sc} to {-gscore::%loop-value%}
+		if {_sc} is not a number:
+			set {_sc} to 0
+		if {_sc} > {_best}:
+			set {_best} to {_sc}
+			delete {_tied::*}
+			add loop-value to {_tied::*}
+		else if {_sc} is {_best}:
+			add loop-value to {_tied::*}
+	if size of {_tied::*} is 0:
+		stop
+	if size of {_tied::*} > 1:
+		set {_bk} to -1
+		delete {_t2::*}
+		loop {_tied::*}:
+			set {_kk} to gTeamKills(loop-value)
+			if {_kk} > {_bk}:
+				set {_bk} to {_kk}
+				delete {_t2::*}
+				add loop-value to {_t2::*}
+			else if {_kk} is {_bk}:
+				add loop-value to {_t2::*}
+		set {_win} to random element of {_t2::*}
+	else:
+		set {_win} to {_tied::1}
+	loop all players:
+		send title "&e시간 종료" with subtitle "&7제한시간 %gBountyLimit()%분" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+	gameWin({_win})
+
+every second:
+	gBountyTimeCheck()
 
 # ===== 녹아웃 =====
 # 살아 있는 팀이 1개 이하면 라운드 종료. 마지막 한 팀이 승점 1점, 전원 사망이면 무승부.

@@ -236,6 +236,15 @@ function gtFooter() :: text:
 	if {-gmode} is "bounty":
 		set {_g1} to gtT({_t}, "gray")
 		set {_g2} to gtT("★", "yellow")
+		set {_lf} to gBountyLeft()
+		if {_lf} >= 0:
+			set {_mm} to floor({_lf} / 60)
+			set {_ss} to {_lf} - {_mm} * 60
+			set {_sp} to ""
+			if {_ss} < 10:
+				set {_sp} to "0"
+			set {_g3} to gtT(" · 남은 시간 %{_mm}%:%{_sp}%%{_ss}%", "gray")
+			return "%{_g1}%,%{_g2}%,%{_g3}%"
 		return "%{_g1}%,%{_g2}%"
 	# 바운티가 아닌 모드(녹아웃)는 목표 승점을 "n선승"으로 표시한다
 	set {_t2} to "%{_mn}% · %{-gtarget}%선승"
