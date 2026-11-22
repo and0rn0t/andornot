@@ -1,4 +1,4 @@
-# [jump.sk] 점프(스페이스)를 두 번 눌러 발동하는 대시 스킬. 스태미너 25 이상에서 사용, 스태미너 소모
+# [jump.sk] 점프(스페이스)를 두 번 눌러 발동하는 대시 스킬. 스태미너 30 이상에서 사용(10틱 동안 틱당 3, 총 30 소모), 스태미너 소모
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 꿀벌 조종 중(bee.sk)에는 같은 입력이 도약 대신 꿀벌 가속(beeDash)이다.
 # 이 파일이 쓰는 변수: {-st}, {-stcap}, {-jump}(도약 실행 중), {-jumplock}(읽기 전용: 하나라도 있으면 도약 불가)
@@ -81,7 +81,7 @@ on flight toggle:
 		wait 1 tick
 		jumpFlightOn({_pl})
 		stop
-	if {-st::%player's uuid%} >= 25:
+	if {-st::%player's uuid%} >= 30:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
 			push player forwards at speed 0.8
@@ -89,7 +89,7 @@ on flight toggle:
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
 			loop 5 times:
-				remove 2.5 from {-st::%player's uuid%}
+				remove 3 from {-st::%player's uuid%}
 				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
@@ -97,7 +97,7 @@ on flight toggle:
 			# 도약이 시작된 뒤(5틱 후) 비행 허용을 다시 켜서 다음 도약 입력을 받는다
 			jumpFlightOn({_pl})
 			loop 5 times:
-				remove 2.5 from {-st::%player's uuid%}
+				remove 3 from {-st::%player's uuid%}
 				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				if {-st::%player's uuid%} <= 0:
 					set level progress of player to 0
@@ -143,7 +143,7 @@ on swap hand items:
 		wait 1 tick
 		jumpFlightOn({_pl})
 		stop
-	if {-st::%player's uuid%} >= 25:
+	if {-st::%player's uuid%} >= 30:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
 			push player forwards at speed 1.1
@@ -151,7 +151,7 @@ on swap hand items:
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
 			loop 5 times:
-				remove 2.5 from {-st::%player's uuid%}
+				remove 3 from {-st::%player's uuid%}
 				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
@@ -159,7 +159,7 @@ on swap hand items:
 			# 도약이 시작된 뒤(5틱 후) 비행 허용을 다시 켜서 다음 도약 입력을 받는다
 			jumpFlightOn({_pl})
 			loop 5 times:
-				remove 2.5 from {-st::%player's uuid%}
+				remove 3 from {-st::%player's uuid%}
 				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				if {-st::%player's uuid%} <= 0:
 					set level progress of player to 0
