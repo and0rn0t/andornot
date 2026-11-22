@@ -59,6 +59,9 @@ on flight toggle:
 	cancel event
 	set flight mode of player to false
 	set {_pl} to player
+	# 꿀벌 드론 조종 중(bee.sk)에는 도약을 쓸 수 없다
+	if {-beemode::%player's uuid%} is "drive":
+		stop
 	# 리스폰 낙하(겉날개 활강) 중에는 도약을 쓸 수 없다(game.sk 의 {-gdropon})
 	if {-gdropon::%player's uuid%} is true:
 		wait 1 tick
@@ -115,6 +118,9 @@ on swap hand items:
 		if gamemode of player is not adventure:
 			stop
 	set {_pl} to player
+	# 꿀벌 드론 조종 중(bee.sk)에는 도약을 쓸 수 없다
+	if {-beemode::%player's uuid%} is "drive":
+		stop
 	# 리스폰 낙하(겉날개 활강) 중에는 도약을 쓸 수 없다(game.sk 의 {-gdropon})
 	if {-gdropon::%player's uuid%} is true:
 		wait 1 tick
