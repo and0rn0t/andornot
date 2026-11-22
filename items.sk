@@ -163,7 +163,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "iron_axe":
 		return "체력이 80%% 이상인 적에게 1.5배의 피해를 입힙니다."
 	if {_id} is "iron_pickaxe":
-		return "타격할 때마다 '채굴' 중첩이 쌓입니다.", "'채굴' 중첩만큼의 피해를 추가로 입힙니다."
+		return "타격할 때마다 '채굴' 중첩이 쌓입니다.", "'채굴' 중첩 하나당 2의 피해를 추가로 입힙니다."
 	if {_id} is "iron_hoe":
 		return "체력이 50%% 이하인 적에게 2배의 피해를 입힙니다."
 	if {_id} is "iron_sword":
@@ -189,7 +189,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "flint_steel":
 		return "주변의 적을 불태워 5초간 받는 피해를 20%% 증가시킵니다."
 	if {_id} is "anvil":
-		return "사망 전까지 가하는 피해가 10%% 증가합니다.", "무한히 중첩 가능합니다."
+		return "게임이 끝날 때까지 가하는 피해가 10%% 증가합니다.", "무한히 중첩 가능합니다."
 	if {_id} is "potion_invis":
 		return "4초간 투명해집니다.", "피해를 입거나 입히면 해제됩니다."
 	if {_id} is "mace":
@@ -215,15 +215,15 @@ function itemDamageText(id: text) :: text:
 	if {_id} is "fishing_rod":
 		return "4"
 	if {_id} is "iron_axe":
-		return "5"
+		return "6"
 	if {_id} is "iron_pickaxe":
-		return "2"
+		return "3"
 	if {_id} is "iron_hoe":
-		return "2"
+		return "3"
 	if {_id} is "iron_spear":
-		return "4 / 5"
+		return "5 / 6"
 	if {_id} is "iron_sword":
-		return "5"
+		return "6"
 	if {_id} is "tnt":
 		return "2"
 	if {_id} is "bow":
@@ -231,13 +231,13 @@ function itemDamageText(id: text) :: text:
 	if {_id} is "blaze_rod":
 		return "5"
 	if {_id} is "mace":
-		return "2 / 4~"
+		return "3 / 5~"
 	if {_id} is "trident":
-		return "6"
+		return "7"
 	if {_id} is "bee_sting":
 		return "3"
 	if {_id} is "bee_bomb":
-		return "5"
+		return "10"
 	return ""
 
 # 1번째 줄에 시계 아이콘과 같이 보여줄 쿨타임 수치(초 단위 숫자만). 없으면 "".
@@ -255,9 +255,9 @@ function itemCooldownText(id: text) :: text:
 	if {_id} is "ominous_bottle":
 		return "30"
 	if {_id} is "potion_heal":
-		return "7"
+		return "10"
 	if {_id} is "potion_stamina":
-		return "7"
+		return "10"
 	if {_id} is "totem":
 		return "60"
 	if {_id} is "bow":
@@ -273,11 +273,11 @@ function itemCooldownText(id: text) :: text:
 	if {_id} is "potion_invis":
 		return "18"
 	if {_id} is "trident":
-		return "12"
+		return "18"
 	if {_id} is "bee":
 		return "75"
 	if {_id} is "bee_sting":
-		return "8"
+		return "4"
 	return ""
 
 # 낚싯대처럼 데미지를 설명 줄 중간(<dmg>)에 쓰는 아이템은 1번째 줄에 데미지를 따로 안 보여준다.

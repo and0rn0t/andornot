@@ -12,6 +12,7 @@ on spawn of projectile:
 	set {_e} to event-entity
 	set {_o} to location of {_e}
 	set {_w} to {_o}.getWorld()
+	set {_prev} to {_o}
 	loop 600 times:
 		wait 2 ticks
 		set {_v} to {_e}.isValid()
@@ -24,3 +25,49 @@ on spawn of projectile:
 		if distance between {_o} and {_c} > projMaxRange():
 			{_e}.remove()
 			stop
+		# 화살 적중 보정: 지난 구간(이전 위치 -> 현재 위치)을 플레이어 몸 판정을 arrowAssist() 칸 부풀려서 다시 훑어, 걸리는 적이 있으면 그 사람이 맞은 것으로 처리한다.
+		if {_e} is an arrow:
+			set {_in} to {_e}.isInBlock()
+			if {_in} is not true:
+				arrowAssistCheck({_e}, {_prev}, {_c})
+		set {_prev} to {_c}
+
+# 화살이 플레이어를 "맞춘 것으로 보는" 여유(칸). 몸 판정을 이만큼 사방으로 부풀린다(1 = 대략 1블럭 널널하게). 직접 수정용: 이 한 곳만 고치면 된다.
+function arrowAssist() :: number:
+	return 1
+
+# 구간 a -> b 에서 부풀린 판정에 걸리는 플레이어를 찾아 피해를 준다(쏜 사람/아군/관전자 제외, 블럭에 먼저 막히면 무시). 미검증: World#rayTraceEntities(Location, Vector, double, double), rayTraceBlocks.
+function arrowAssistCheck(ar: entity, a: location, b: location):
+	set {_off} to vector between {_a} and {_b}
+	set {_len} to {_off}.length()
+	if {_len} < 0.05:
+		stop
+	set {_dir} to normalized {_off}
+	set {_w} to {_a}.getWorld()
+	set {_r} to {_w}.rayTraceEntities({_a}, {_dir}, {_len}, arrowAssist())
+	if {_r} is not set:
+		stop
+	set {_t} to {_r}.getHitEntity()
+	if {_t} is not a player:
+		stop
+	if gamemode of {_t} is spectator:
+		stop
+	set {_sh} to {_ar}.getShooter()
+	if {_sh} is not set:
+		stop
+	if {_sh} is not a player:
+		stop
+	if {_t} is {_sh}:
+		stop
+	if isAlly("%uuid of {_sh}%", "%uuid of {_t}%") is true:
+		stop
+	set {_br} to {_w}.rayTraceBlocks({_a}, {_dir}, {_len})
+	if {_br} is set:
+		set {_hp} to {_br}.getHitPosition().toLocation({_w})
+		set {_ep} to {_r}.getHitPosition().toLocation({_w})
+		set {_bd} to distance between {_a} and {_hp}
+		set {_ed} to distance between {_a} and {_ep}
+		if {_bd} < {_ed}:
+			stop
+	{_t}.damage(1, {_ar})
+	{_ar}.remove()

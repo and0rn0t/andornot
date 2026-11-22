@@ -92,7 +92,7 @@ on fishing line cast:
 		set {_t} to {_h}.getHookedEntity()
 		if {_t} is not set:
 			if {_assisted} is false:
-				loop all entities in radius 2 around {_h}:
+				loop all entities in radius fishAssist() around {_h}:
 					if loop-entity is not {_p}:
 						if loop-entity is a player:
 							{_h}.setHookedEntity(loop-entity)
@@ -174,3 +174,7 @@ on fishing line cast:
 on entity hooked:
 	hookDamage(player, hooked entity)
 	set {-hookdmg::%player's uuid%} to true
+
+# 낚싯대 찌가 플레이어를 "맞춘 것으로 보는" 반경(칸). 이 한 곳만 고치면 된다(예전 2 -> 3, 직접 수정용).
+function fishAssist() :: number:
+	return 3

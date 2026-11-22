@@ -22,7 +22,7 @@
 #   꿀벌 사망(자폭 포함): 조종 중이면 끝내고 쿨타임 75초 시작(아이템 쿨타임 표시 포함). 정지(hold) 상태에서 죽어도 즉시 쿨타임이 돈다.
 #   정지(방벽): 꿀벌은 그 자리에 멈추고 플레이어는 본체로 돌아온다. 꿀벌이 살아 있는 동안 다시 사용(우클릭)하면 이어서 조종한다(60칸 안일 때, 쿨타임 없음).
 #   플레이어 사망/접속 종료/게임 상태가 바뀌면(시작/종료) 꿀벌과 더미를 치운다(쿨타임 없음).
-# 아이템(items.sk 카탈로그에 id 만 있고 무기고 목록에는 없음): bee_sting(독침, 데미지 3 쿨 8초, 맞은 대상 7초 중독), bee_bomb(자폭, 데미지 5, 반경 4), bee_stop(조종 중지).
+# 아이템(items.sk 카탈로그에 id 만 있고 무기고 목록에는 없음): bee_sting(독침, 데미지 3 쿨 4초, 맞은 대상 7초 중독), bee_bomb(자폭, 데미지 10, 반경 4), bee_stop(조종 중지).
 # 독침은 근접 공격(좌클릭)이며 피해는 직접 줘서(스킬 피해 표시) main.sk 무기 보정을 받지 않는다. 쿨타임 중에는 공격이 취소된다.
 # 미검증(전부): 발광/팀 색을 더미로 옮기기(PotionEffect 생성자, 팀 addEntry(더미 uuid)), 더미 setGlowing, Player#stopSound(String)(조종이 멈출 때 꿀벌 소리 끊기), Entity#setSilent(정지한 꿀벌 무음), 점프 입력 두 번(PlayerInputEvent, 350ms)으로 가속이 되는지, 경험치 바에 꿀벌 스태미너 표시, Player#sendEquipmentChange, 더미 머리 위 텍스트 디스플레이 높이, bee spawn egg 별칭, 이동 소리 간격, 마네킹이 갑옷 거치대에 타서 앉은 자세로 보이는지, 꿀벌에 플레이어를 태우고 조종/시선이 되는지, PlayerInputEvent(Paper) 수신, org.bukkit.event.entity.EntityDismountEvent(Paper) 취소(웅크리기로 못 내리게),
 #   Mob#setAware(false)+setVelocity 로 꿀벌이 움직이는지, 더미 피격 -> 본인 피해(Damageable#damage(double, DamageSource)), 꿀벌 사망 처리, arrow of poison 아이템, Player#setCooldown(Material, ticks).
@@ -523,7 +523,7 @@ function beeHold(p: player):
 	beeRelease({_p}, true)
 	send colored "&7꿀벌 드론이 멈췄습니다. 꿀벌 아이템을 다시 사용하면 이어서 조종합니다." to {_p}
 
-# 자폭: 반경 4칸의 적(본인/아군/마네킹/갑옷 거치대/관전 제외)에게 실 체력 5, 꿀벌은 사망
+# 자폭: 반경 4칸의 적(본인/아군/마네킹/갑옷 거치대/관전 제외)에게 실 체력 10, 꿀벌은 사망
 function beeExplode(p: player):
 	set {_k} to "%uuid of {_p}%"
 	set {_bee} to {-bee::%{_k}%}
@@ -558,7 +558,7 @@ function beeExplode(p: player):
 			if gamemode of {_e} is spectator:
 				set {_ok} to false
 		if {_ok} is true:
-			damage {_e} by hp(5) hearts using {_src}
+			damage {_e} by hp(10) hearts using {_src}
 	delete {-skilldmg::%{_k}%}
 	{_bee}.remove()
 	beeLose({_k})
@@ -826,9 +826,9 @@ on damage with priority highest:
 			if {-beestabcd::%{_ak}%} is set:
 				if {-beestabcd::%{_ak}%} > now:
 					stop
-			set {-beestabcd::%{_ak}%} to now + 8 seconds
+			set {-beestabcd::%{_ak}%} to now + 4 seconds
 			set {_ap} to attacker
-			{_ap}.setCooldown(Material.TIPPED_ARROW, 160)
+			{_ap}.setCooldown(Material.TIPPED_ARROW, 80)
 			set {_src} to a custom damage source:
 				set the damage type to player attack
 				set the causing entity to {_ap}

@@ -46,8 +46,7 @@ on place:
 function anvilNameCheck() :: text:
 	return itemName("anvil")
 
-on death of player:
-	anvilClear(victim)
+# 사망해도 중첩은 유지한다(게임이 끝나거나 시작할 때 game.sk 가 anvilClear 를 부른다).
 
 on join:
 	delete {-ancd::%player's uuid%}

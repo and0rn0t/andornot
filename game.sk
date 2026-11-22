@@ -879,6 +879,9 @@ function gStartFinish(sg: number):
 	# 녹아웃 첫 라운드 시작 시각(5분 뒤 체력 감소, gStormTick)
 	set {-grstart} to now
 	set {-grnum} to 1
+	loop {-gplist::*}:
+		anvilClear(loop-value)
+		skillCdReset(loop-value)
 	delete {-gstartprev::*}
 	gAnnounceTeams()
 	set {_sub} to "목표 %{-gtarget}%"
@@ -911,6 +914,7 @@ function gameCleanup():
 		set {_pl} to loop-value
 		if {_pl} is online:
 			kcClearState({_pl})
+			anvilClear({_pl})
 			gDropEnd({_pl})
 			set gamemode of {_pl} to adventure
 			{_pl}.setInvulnerable(false)
@@ -1156,6 +1160,9 @@ function gRoundNext():
 			gameRespawn(loop-value)
 	set {-grstart} to now
 	add 1 to {-grnum}
+	loop {-gplist::*}:
+		if loop-value is online:
+			skillCdReset(loop-value)
 	delete {-groundend}
 	loop all players:
 		send title "&f%{-grnum}%라운드" with subtitle "&7%gcModeName({-gmode})%" to loop-player for 2 seconds with fadein 0 ticks and fade out 10 ticks

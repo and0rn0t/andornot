@@ -237,17 +237,17 @@ on damage:
 					set {_mb} to damage - {_sb}
 					if {_mb} < 0:
 						set {_mb} to 0
-					set damage to {_mb} * 0.3 * dmgMul() + {_sb}
+					set damage to {_mb} * 0.3 * dmgMul() + {_sb} + hp(1)
 				else if {_w} is "spear":
 					# 바닐라 데미지에 전체 배율 적용 후, 상한은 실 체력 5(스크립트 값 2.5)
-					set damage to damage * dmgMul()
-					# 힘 효과 중에는 상한도 힘 보너스만큼 늘어난다
-					set {_cap} to hp(5) + {_sb}
+					set damage to damage * dmgMul() + hp(1)
+					# 힘 효과 중에는 상한도 힘 보너스만큼 늘어난다(밸런스: 모든 무기 +1, 상한 5 -> 6)
+					set {_cap} to hp(6) + {_sb}
 					if damage > {_cap}:
 						set damage to {_cap}
 				else if {_w} is "axe":
-					# 도끼: 기본 체력 5, 체력 80% 이상인 적에게 1.5배
-					set {_d} to hp(5)
+					# 도끼: 기본 체력 6, 체력 80% 이상인 적에게 1.5배
+					set {_d} to hp(6)
 					if healthRatio(victim) >= 0.8:
 						set {_d} to {_d} * 1.5
 						# 도끼 능력 발동: 타격 지점(피격자 위치)에 모루 소리
@@ -261,32 +261,32 @@ on damage:
 					set {_d} to {_d} + {_sb}
 					set damage to {_d} * {_cm}
 				else if {_w} is "hoe":
-					# 괭이: 기본 체력 2, 체력 50% 이하인 적에게 100% 증가(2배)
-					set {_d} to hp(2)
+					# 괭이: 기본 체력 3, 체력 50% 이하인 적에게 100% 증가(2배)
+					set {_d} to hp(3)
 					if healthRatio(victim) <= 0.5:
 						set {_d} to {_d} * 2
 					set {_d} to {_d} + {_sb}
 					set damage to {_d} * {_cm}
 				else if {_w} is "trident":
-					# 삼지창(trident.sk): 근접 기본 체력 6(고정)
-					set {_d} to hp(6) + {_sb}
+					# 삼지창(trident.sk): 근접 기본 체력 7(고정)
+					set {_d} to hp(7) + {_sb}
 					set damage to {_d} * {_cm}
 				else if {_w} is "sword":
-					# 검: 효과 없음, 기본 체력 5(고정). 휩쓸기(범위) 피해는 덮어쓰지 않고 바닐라 값에 전체 배율만 적용한다.
+					# 검: 효과 없음, 기본 체력 6(고정). 휩쓸기(범위) 피해는 덮어쓰지 않고 바닐라 값에 전체 배율만 적용한다.
 					set {_cause} to {_ev}.getCause().name()
 					if {_cause} is "ENTITY_SWEEP_ATTACK":
 						set damage to damage * dmgMul()
 					else:
-						set {_d} to hp(5) + {_sb}
+						set {_d} to hp(6) + {_sb}
 						set damage to {_d} * {_cm}
 				else if {_w} is "pickaxe":
-					# 곡괭이: 기본 체력 2 + 중첩 수. 타격마다 중첩 +1, 마지막 타격 후 3초 안에 못 때리면 전부 소멸.
+					# 곡괭이: 기본 체력 3 + 중첩 수 x 2. 타격마다 중첩 +1, 마지막 타격 후 3초 안에 못 때리면 전부 소멸.
 					# 이번 타격은 기존 중첩만 적용하고, 타격 후 중첩을 늘린다.
 					set {_stack} to 0
 					if {-pickexp::%attacker's uuid%} is set:
 						if {-pickexp::%attacker's uuid%} > now:
 							set {_stack} to {-pickstack::%attacker's uuid%}
-					set {_pd} to hp(2 + {_stack}) + {_sb}
+					set {_pd} to hp(3 + 2 * {_stack}) + {_sb}
 					set damage to {_pd} * {_cm}
 					set {-pickstack::%attacker's uuid%} to {_stack} + 1
 					set {-pickexp::%attacker's uuid%} to now + 3 seconds

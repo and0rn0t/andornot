@@ -73,26 +73,28 @@ function potionUse(p: player, kind: text):
 		stop
 	set {_id} to "%uuid of {_p}%"
 	if {_kind} is "heal":
-		set {-potcd::%{_id}%::heal} to now + 7 seconds
+		set {-potcd::%{_id}%::heal} to now + 10 seconds
 		# 체력 5 = 2.5 하트. 전투 중 회복 차단(main.sk on heal)을 통과시킨다.
 		set {-healok::%{_id}%} to true
 		heal {_p} by 2.5 hearts
 		delete {-healok::%{_id}%}
 		play sound "entity.generic.drink" with volume 1 and pitch 1 to {_p}
-		potionVisual({_p}, "heal", 7)
+		potionVisual({_p}, "heal", 10)
 	else if {_kind} is "stamina":
-		set {-potcd::%{_id}%::stamina} to now + 7 seconds
+		set {-potcd::%{_id}%::stamina} to now + 10 seconds
 		add 50 to {-st::%{_id}%}
 		if {-st::%{_id}%} > 100:
 			set {-st::%{_id}%} to 100
 		set level progress of {_p} to ({-st::%{_id}%} * 0.01 - 0.001)
 		play sound "entity.generic.drink" with volume 1 and pitch 1.3 to {_p}
-		potionVisual({_p}, "stamina", 7)
+		potionVisual({_p}, "stamina", 10)
 	else if {_kind} is "invis":
 		set {-potcd::%{_id}%::invis} to now + 18 seconds
 		set {-invis::%{_id}%} to now + 4 seconds
 		apply invisibility potion without any particles whilst hiding the potion icon to {_p} for 4 seconds replacing the existing effect
 		setStatus({_p}, "potion_invis", "투명화", 4 seconds, "good")
+		# 몸에 꽂힌 화살 제거(투명화인데 화살이 보이지 않게). Paper LivingEntity#setArrowsInBody(int, boolean)
+		{_p}.setArrowsInBody(0, false)
 		play sound "entity.generic.drink" with volume 1 and pitch 0.7 to {_p}
 		potionVisual({_p}, "invis", 18)
 

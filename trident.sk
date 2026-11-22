@@ -1,4 +1,4 @@
-# [trident.sk] 삼지창 스킬(우클릭을 길게 눌러 충전 -> 놓으면 바라보는 방향으로 순간이동, 쿨 12초): 근접 데미지 6(main.sk 의 trident 분기), 순간이동 순간이동한 지점 반경 4칸의 적에게 피해 4.
+# [trident.sk] 삼지창 스킬(우클릭을 길게 눌러 충전 -> 놓으면 바라보는 방향으로 순간이동, 쿨 18초): 근접 데미지 7(main.sk 의 trident 분기), 순간이동 순간이동한 지점 반경 4칸의 적에게 피해 4.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-tdstart::uuid}(충전 시작 시각), {-tdcd::uuid}(쿨타임 종료 시각), {-skilldmg}(피해를 주는 동안만), {-skillitems::trident}
 # 동작: 활(bow.sk)과 같은 방식. 우클릭을 취소하지 않아서 바닐라 삼지창 차징 모션이 나오고, 충전 보스바 "충전"(최대 1.5초, 가득 차면 초록 + 소리)을 매 틱 갱신한다.
@@ -176,8 +176,8 @@ on rightclick:
 		stop
 	if {_p}'s tool is not trident:
 		stop
-	set {-tdcd::%{_id}%} to now + 12 seconds
-	set item cooldown of trident for {_p} to 12 seconds
+	set {-tdcd::%{_id}%} to now + 18 seconds
+	set item cooldown of trident for {_p} to 18 seconds
 	tridentBlink({_p}, {_cf})
 
 # 바닐라 삼지창 투척은 막는다(삼지창이 던져지지 않는다). 우리 삼지창을 든 플레이어의 투척만 취소.

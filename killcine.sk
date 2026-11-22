@@ -58,8 +58,7 @@ function killScoreHook(v: player, a: entity):
 # 진짜 사망(on death)에서 지워지던 상태를 직접 정리한다. 각 파일의 on death 와 같은 내용(그 파일을 고치면 여기도 고칠 것).
 function kcClearState(v: player):
 	set {_id} to "%{_v}'s uuid%"
-	# anvil.sk
-	anvilClear({_v})
+	# anvil.sk 는 사망해도 게임이 끝날 때까지 유지하므로 여기서 지우지 않는다(game.sk 의 gameCleanup/gameStart 가 지움)
 	# flintsteel.sk
 	delete {-vuln::%{_id}%}
 	delete {-noburn::%{_id}%}
