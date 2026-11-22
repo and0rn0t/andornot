@@ -1,0 +1,187 @@
+# [trident.sk] 삼지창 스킬(우클릭을 길게 눌러 충전 -> 놓으면 바라보는 방향으로 순간이동, 쿨 12초): 근접 데미지 6(main.sk 의 trident 분기), 순간이동 경로의 적에게 피해 4.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-tdstart::uuid}(충전 시작 시각), {-tdcd::uuid}(쿨타임 종료 시각), {-skilldmg}(피해를 주는 동안만), {-skillitems::trident}
+# 동작: 활(bow.sk)과 같은 방식. 우클릭을 취소하지 않아서 바닐라 삼지창 차징 모션이 나오고, 충전 보스바 "충전"(최대 1.5초, 가득 차면 초록 + 소리)을 매 틱 갱신한다.
+#   손을 놓으면(isHandRaised 가 2틱 연속 false) 그 순간의 충전도(0~1)로 순간이동한다. 거리 = 5 + 10 x 충전도 (5~15칸).
+#   바닐라 삼지창 투척(ProjectileLaunchEvent)은 아래 on shoot 에서 취소한다(삼지창은 던져지지 않고 손에 남는다).
+# 순간이동: 바라보는 방향(시선 방향 그대로, 위아래 포함)으로 0.5칸씩 나아가며, 발/허리/머리 위치 중 하나라도 충돌 판정이 있는 블럭(Block#isPassable 이 false)이면 거기서 멈춘다.
+#   충돌 판정 없는 블럭(풀, 카펫, 물 등)은 통과. 경로에 막히면 막히기 직전 자리까지만 이동한다.
+# 피해: 경로 1칸마다 반경 1.5칸의 생명체(본인/아군/갑옷 거치대/마네킹/관전 모드 플레이어 제외)에게 한 번씩 실 체력 4. 스킬 피해라 main.sk 무기 보정에서 제외({-skilldmg}).
+# 이펙트: 경로를 따라 3칸마다 번개 이펙트(World#strikeLightningEffect, 불/피해 없음)와 전기 불꽃 파티클, 출발/도착 소리.
+# 미검증: on shoot 에서 삼지창 투척 취소 후 아이템이 손에 남고 클라이언트가 이상해지지 않는지, isHandRaised 가 삼지창 사용 중 true 인지, strikeLightningEffect, Particle.ELECTRIC_SPARK, 순간이동 후 시점 유지.
+
+using damage sources
+
+import:
+	org.bukkit.Particle
+	org.bukkit.Bukkit
+	org.bukkit.boss.BarColor
+	org.bukkit.boss.BarStyle
+
+on load:
+	set {-skillitems::trident} to trident
+
+# 충전도(0~1)에 따른 순간이동 거리
+function tridentDist(f: number) :: number:
+	return 5 + 10 * {_f}
+
+# 위치 q 에 서 있는 플레이어가 들어갈 수 있는지(발/허리/머리 높이 블럭에 충돌 판정이 없음)
+function tridentClear(q: location) :: boolean:
+	set {_a} to {_q}.getBlock().isPassable()
+	if {_a} is not true:
+		return false
+	set {_m} to {_q} ~ vector(0, 1, 0)
+	set {_b} to {_m}.getBlock().isPassable()
+	if {_b} is not true:
+		return false
+	set {_h} to {_q} ~ vector(0, 1.8, 0)
+	set {_c} to {_h}.getBlock().isPassable()
+	if {_c} is not true:
+		return false
+	return true
+
+function tridentBlink(p: player, f: number):
+	set {_w} to {_p}.getWorld()
+	set {_o} to {_p}.getLocation()
+	set {_dir} to {_o}.getDirection()
+	set {_max} to tridentDist({_f})
+	set {_t} to 0
+	set {_go} to true
+	while {_go} is true:
+		set {_n} to {_t} + 0.5
+		if {_n} > {_max}:
+			set {_go} to false
+		else:
+			set {_q} to {_o} ~ ({_dir} * {_n})
+			if tridentClear({_q}) is true:
+				set {_t} to {_n}
+			else:
+				set {_go} to false
+	set {_dest} to {_o} ~ ({_dir} * {_t})
+	# 경로의 적에게 피해(출발 자리부터 도착 자리까지 1칸마다)
+	set {_pid} to "%uuid of {_p}%"
+	set {_src} to a custom damage source:
+		set the damage type to player attack
+		set the causing entity to {_p}
+		set the direct entity to {_p}
+	delete {_done::*}
+	set {-skilldmg::%{_pid}%} to true
+	set {_d} to 0
+	while {_d} <= {_t}:
+		set {_c} to {_o} ~ ({_dir} * {_d}) ~ vector(0, 1, 0)
+		loop all living entities in radius 1.5 around {_c}:
+			set {_e} to loop-entity
+			set {_eid} to "%uuid of {_e}%"
+			if {_done::%{_eid}%} is not set:
+				set {_done::%{_eid}%} to true
+				set {_ok} to true
+				if {_eid} is {_pid}:
+					set {_ok} to false
+				if {_e} is an armor stand:
+					set {_ok} to false
+				if isAlly({_pid}, {_eid}) is true:
+					set {_ok} to false
+				if {_e}.getType().name() is "MANNEQUIN":
+					set {_ok} to false
+				if {_e} is a player:
+					if gamemode of {_e} is spectator:
+						set {_ok} to false
+				if {_ok} is true:
+					damage {_e} by hp(4) hearts using {_src}
+		add 1 to {_d}
+	delete {-skilldmg::%{_pid}%}
+	# 이펙트: 경로를 따라 전기 불꽃 + 3칸마다 번개
+	{_w}.strikeLightningEffect({_o})
+	set {_e2} to 0.5
+	while {_e2} <= {_t}:
+		set {_fx} to {_o} ~ ({_dir} * {_e2}) ~ vector(0, 1, 0)
+		{_w}.spawnParticle(Particle.ELECTRIC_SPARK, {_fx}, 6, 0.2, 0.3, 0.2, 0.05, null, true)
+		add 0.5 to {_e2}
+	set {_b2} to 3
+	while {_b2} < {_t}:
+		{_w}.strikeLightningEffect({_o} ~ ({_dir} * {_b2}))
+		add 3 to {_b2}
+	# 이동(시점 유지)
+	teleport {_p} to {_dest}
+	play sound "entity.lightning_bolt.impact" with volume 0.5 and pitch 1.6 at {_dest}
+	if {_t} > 0:
+		{_w}.strikeLightningEffect({_dest})
+
+on rightclick:
+	if skillHand(player, trident) is false:
+		stop
+	set {_id} to "%player's uuid%"
+	if {-tdcd::%{_id}%} is set:
+		if {-tdcd::%{_id}%} > now:
+			cancel event
+			stop
+	set {_p} to player
+	set {-tdstart::%{_id}%} to now
+	set {_start} to {-tdstart::%{_id}%}
+	set {_stts} to {_start}.getTimestamp()
+	set {_t} to colored "&e충전"
+	set {_b} to Bukkit.createBossBar({_t}, BarColor.YELLOW, BarStyle.SOLID)
+	{_b}.setProgress(0)
+	{_b}.addPlayer({_p})
+	set {_grace} to 0
+	set {_seen} to false
+	set {_full} to false
+	set {_cf} to 0
+	set {_fire} to false
+	loop 400 times:
+		wait 1 tick
+		if {-tdstart::%{_id}%} is not {_start}:
+			exit loop
+		if {_p} is not online:
+			exit loop
+		if {_p}.isHandRaised() is true:
+			set {_seen} to true
+			set {_grace} to 0
+			set {_nowd} to now
+			set {_ms} to {_nowd}.getTimestamp() - {_stts}
+			set {_cf} to {_ms} / 1500
+			if {_cf} > 1:
+				set {_cf} to 1
+			{_b}.setProgress({_cf})
+			if {_cf} >= 1:
+				if {_full} is false:
+					set {_full} to true
+					{_b}.setColor(BarColor.GREEN)
+					{_b}.setTitle(colored "&a충전")
+					play sound "block.note_block.pling" with volume 0.6 and pitch 2 to {_p}
+		else:
+			add 1 to {_grace}
+			if {_grace} >= 2:
+				if {_seen} is true:
+					set {_fire} to true
+				exit loop
+	{_b}.removeAll()
+	if {-tdstart::%{_id}%} is {_start}:
+		delete {-tdstart::%{_id}%}
+	else:
+		stop
+	if {_fire} is not true:
+		stop
+	if {_p} is not online:
+		stop
+	if isStunned({_p}) is true:
+		stop
+	if {_p}'s tool is not trident:
+		stop
+	set {-tdcd::%{_id}%} to now + 12 seconds
+	set item cooldown of trident for {_p} to 12 seconds
+	tridentBlink({_p}, {_cf})
+
+# 바닐라 삼지창 투척은 막는다(삼지창이 던져지지 않는다). 우리 삼지창을 든 플레이어의 투척만 취소.
+on shoot:
+	set {_sh} to shooter
+	if {_sh} is not a player:
+		stop
+	set {_pr} to projectile
+	if {_pr}.getType().name() is not "TRIDENT":
+		stop
+	cancel event
+
+on join:
+	delete {-tdcd::%player's uuid%}
+	delete {-tdstart::%player's uuid%}

@@ -244,6 +244,10 @@ on damage:
 						set {_d} to {_d} * 2
 					set {_d} to {_d} + {_sb}
 					set damage to {_d} * {_cm}
+				else if {_w} is "trident":
+					# 삼지창(trident.sk): 근접 기본 체력 6(고정)
+					set {_d} to hp(6) + {_sb}
+					set damage to {_d} * {_cm}
 				else if {_w} is "sword":
 					# 검: 효과 없음, 기본 체력 5(고정). 휩쓸기(범위) 피해는 덮어쓰지 않고 바닐라 값에 전체 배율만 적용한다.
 					set {_cause} to {_ev}.getCause().name()
