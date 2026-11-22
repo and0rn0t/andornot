@@ -525,12 +525,12 @@ function beeExplode(p: player):
 	if {_bee} is not set:
 		stop
 	set {_loc} to {_bee}.getLocation()
-	play sound "entity.generic.explode" with volume 1 and pitch 1.2 at {_loc}
+	soundAround("entity.generic.explode", {_loc}, 64, 1.5, 1.2)
 	play 1 explosion emitter at {_loc} in radius of 100
 	# 본체 더미 자리에도 같은 폭발음을 낮게 재생해 자연스럽게 들리게 한다(드론 쪽 소리와 겹치지 않게 볼륨을 줄임)
 	if {-beebody::%{_k}%} is set:
 		set {_bl} to {-beebody::%{_k}%}.getLocation()
-		play sound "entity.generic.explode" with volume 0.6 and pitch 1.2 at {_bl}
+		soundAround("entity.generic.explode", {_bl}, 64, 0.8, 1.2)
 	set {_src} to a custom damage source:
 		set the damage type to player explosion
 		set the causing entity to {_p}
@@ -702,7 +702,7 @@ function beeDrive(p: player, bee: entity, k: text):
 		if {-beesnd::%{_k}%} >= 20:
 			set {-beesnd::%{_k}%} to 0
 			set {_sl} to {_bee}.getLocation()
-			play sound "entity.bee.loop" with volume 2 and pitch 1 at {_sl}
+			soundAround("entity.bee.loop", {_sl}, 48, 2, 1)
 	else:
 		set {-beesnd::%{_k}%} to 20
 
