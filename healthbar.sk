@@ -1,4 +1,5 @@
 # 머리 위 체력바 - 테스트 버전 (플레이어 + 몬스터/동물 등 모든 생명체)
+# 팀전 게임 중 플레이어 바는 팀 색(game.sk gTeamColor), 그 외는 체력 비율 색. 검 피해 막기 준비 중이면 바 양끝에 흰색 괄호 [ ].
 # 주의: 기존 healthbar.sk 와 동시에 켜지 마세요 (기존 파일은 이름을 -healthbar.sk 로 바꿔 비활성화).
 
 options:
@@ -30,7 +31,16 @@ function hpbar_show(e: living entity):
 	set {_sw} to "n"
 	if swordReady({_e}) is true:
 		set {_sw} to "y"
-	set {_key} to "%{_hp}%/%{_max}%/%{_sw}%"
+	# 팀전 게임 중인 플레이어는 채워진 칸을 팀 색으로 칠한다(체력은 바 길이로만 보임). 개인전/몹/게임 밖은 체력 비율 색. 팀이 바뀌면 갱신되게 키에 넣는다.
+	set {_tc} to ""
+	if {_e} is a player:
+		if {-ingame} is true:
+			if {-gteams} > 0:
+				if gInGame({_e}) is true:
+					set {_ti} to gTeamIndex(gTeamOf({_e}))
+					if {_ti} < 99:
+						set {_tc} to gTeamColor({_ti})
+	set {_key} to "%{_hp}%/%{_max}%/%{_sw}%/%{_tc}%"
 	set {_id} to "%uuid of {_e}%"
 
 	# 관전 모드(킬 연출 포함)인 플레이어는 체력바를 숨긴다(관전 카메라 앞에 체력바가 보이는 문제). 모드가 돌아오면 다음 갱신에서 다시 생김.
@@ -83,8 +93,8 @@ function hpbar_show(e: living entity):
 		if {_filled} < 1:
 			set {_filled} to 1
 
-	if {_sw} is "y":
-		set {_c} to "&b"
+	if {_tc} is not "":
+		set {_c} to {_tc}
 	else if {_ratio} > 0.6:
 		set {_c} to "&a"
 	else if {_ratio} > 0.3:
@@ -100,6 +110,9 @@ function hpbar_show(e: living entity):
 			set {_bar} to "%{_bar}%&8█"
 	if "{@show-percent}" is "true":
 		set {_bar} to "%{_bar}% &f%round({_ratio} * 100)%%%"
+	# 검 피해 막기 준비 중이면 바 양끝에 흰색 괄호(테두리)
+	if {_sw} is "y":
+		set {_bar} to "&f[%{_bar}%&f]"
 
 	if {_new} is true:
 		# 청크 언로드 등으로 남아 있던 이 엔티티의 낡은 체력바 제거 (중복 방지)
