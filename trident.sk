@@ -1,4 +1,4 @@
-# [trident.sk] 삼지창 스킬(우클릭을 길게 눌러 충전 -> 놓으면 바라보는 방향으로 순간이동, 쿨 18초): 근접 데미지 7(main.sk 의 trident 분기), 순간이동 순간이동한 지점 반경 4칸의 적에게 피해 4.
+# [trident.sk] 삼지창 스킬(우클릭을 길게 눌러 충전 -> 놓으면 바라보는 방향으로 순간이동, 쿨 18초): 근접 데미지 7(main.sk 의 trident 분기), 순간이동 순간이동한 지점 반경 6칸의 적에게 피해 4.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-tdstart::uuid}(충전 시작 시각), {-tdcd::uuid}(쿨타임 종료 시각), {-skilldmg}(피해를 주는 동안만), {-skillitems::trident}
 # 동작: 활(bow.sk)과 같은 방식. 우클릭을 취소하지 않아서 바닐라 삼지창 차징 모션이 나오고, 충전 보스바 "충전"(최대 1.5초, 가득 차면 초록 + 소리)을 매 틱 갱신한다.
@@ -6,7 +6,7 @@
 #   바닐라 삼지창 투척(ProjectileLaunchEvent)은 아래 on shoot 에서 취소한다(삼지창은 던져지지 않고 손에 남는다).
 # 순간이동: 바라보는 방향(시선 방향 그대로, 위아래 포함)으로 0.5칸씩 나아가며, 발/허리/머리 위치 중 하나라도 충돌 판정이 있는 블럭(Block#isPassable 이 false)이면 같은 높이로 수평 이동만 한 번 더 시도하고, 그것도 막히면 거기서 멈춘다(바닥을 보고 쏴도 제자리에 안 서게).
 #   충돌 판정 없는 블럭(풀, 카펫, 물 등)과 충돌 높이 0.5 이하의 낮은 블럭(쌓인 눈, 반블럭)은 통과(그 위에 도착하면 윗면 높이로 올려 세움). 경로에 막히면 막히기 직전 자리까지만 이동한다.
-# 피해: 순간이동한 지점 반경 4칸의 생명체(본인/아군/갑옷 거치대/마네킹/관전 모드 플레이어 제외)에게 한 번씩 실 체력 4. 스킬 피해라 main.sk 무기 보정에서 제외({-skilldmg}).
+# 피해: 순간이동한 지점 반경 6칸의 생명체(본인/아군/갑옷 거치대/마네킹/관전 모드 플레이어 제외)에게 한 번씩 실 체력 4. 스킬 피해라 main.sk 무기 보정에서 제외({-skilldmg}).
 # 이펙트: 도착 지점에만 번개 이펙트(World#strikeLightningEffect, 불/피해 없음)와 전기 불꽃 파티클, 소리.
 # 미검증: on shoot 에서 삼지창 투척 취소 후 아이템이 손에 남고 클라이언트가 이상해지지 않는지, isHandRaised 가 삼지창 사용 중 true 인지, strikeLightningEffect, Particle.ELECTRIC_SPARK, 순간이동 후 시점 유지.
 
@@ -83,7 +83,7 @@ function tridentBlink(p: player, f: number):
 	set {_lh} to tridentLow({_dest})
 	if {_lh} > 0:
 		set y-coordinate of {_dest} to (floor(y-coordinate of {_dest})) + {_lh}
-	# 피해: 순간이동한 자리 반경 4칸의 적에게 한 번씩 실 체력 4
+	# 피해: 순간이동한 자리 반경 6칸의 적에게 한 번씩 실 체력 4
 	set {_pid} to "%uuid of {_p}%"
 	set {_src} to a custom damage source:
 		set the damage type to player attack
@@ -91,7 +91,7 @@ function tridentBlink(p: player, f: number):
 		set the direct entity to {_p}
 	set {_ctr} to {_dest} ~ vector(0, 1, 0)
 	set {-skilldmg::%{_pid}%} to true
-	loop all living entities in radius 4 around {_ctr}:
+	loop all living entities in radius 6 around {_ctr}:
 		set {_e} to loop-entity
 		set {_eid} to "%uuid of {_e}%"
 		set {_ok} to true
