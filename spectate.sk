@@ -23,7 +23,7 @@ function specName(on: boolean) :: text:
 function specItem(on: boolean) :: itemtype:
 	if {_on} is true:
 		set {_i} to gray concrete named specName(true)
-		set lore of {_i} to "&7게임에 참여하지 않습니다.", "우클릭 시 게임에 참여합니다."
+		set lore of {_i} to "&7게임에 참여하지 않습니다.", "&7우클릭 시 게임에 참여합니다."
 		return {_i}
 	set {_i} to white concrete named specName(false)
 	set lore of {_i} to "&7게임에 참여합니다.", "&7우클릭 시 관전합니다."
