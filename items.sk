@@ -205,7 +205,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "bee_stop":
 		return "꿀벌 드론을 그 자리에 멈추고 본체로 돌아옵니다."
 	if {_id} is "trident":
-		return "바라보는 방향으로 빠르게 이동합니다.", "경로에 있는 적에게 4의 피해를 입힙니다."
+		return "바라보는 방향으로 빠르게 이동합니다.", "이동한 지점 근처에 <dmg4>의 피해를 입힙니다."
 	return "설명 없음"
 
 # 1번째 줄에 붉은 칼 아이콘과 같이 보여줄 데미지 수치(무기만). 없으면 "". 수치만 적는다(범위는 3~12 처럼).
@@ -288,9 +288,13 @@ function itemDamageInline(id: text) :: boolean:
 
 # [붉은 칼 아이콘][데미지 수치] 컴포넌트 JSON 조각 둘(아이콘, 흰 숫자). 칼 아이콘은 철 칼 스프라이트에 빨간 색을 입힌 것(미검증).
 function itemDmgPiece(id: text) :: text:
+	return itemDmgPieceV(itemDamageText({_id}))
+
+# 수치를 직접 넘기는 버전(설명 줄 안에서 <dmg4> 처럼 다른 수치를 보여줄 때)
+function itemDmgPieceV(v: text) :: text:
 	set {_sw} to killIcon("iron_sword")
 	replace "}" in {_sw} with ",""color"":""red""}"
-	return "%{_sw}%,{""text"":"" %itemDamageText({_id})%"",""color"":""white""}"
+	return "%{_sw}%,{""text"":"" %{_v}%"",""color"":""white""}"
 
 # 설명 1번째 줄 컴포넌트 JSON: [붉은 칼 아이콘][데미지] [시계 아이콘][쿨타임]. 둘 다 없으면 "".
 #   시계는 item/clock_00 스프라이트(미검증). 색을 white 로 명시해서 원본 색 그대로 나오게 한다(앞의 빨간색이 번지지 않게).
@@ -330,7 +334,10 @@ function itemBuild(id: text, extra: text = "") :: itemtype:
 		{_lb}.addLine(GsonComponentSerializer.gson().deserialize({_hd}))
 	loop {_l::*}:
 		set {_ln} to loop-value
-		if {_ln} contains "<dmg>":
+		if {_ln} contains "<dmg4>":
+			set {_pp::*} to split {_ln} at "<dmg4>"
+			set {_lj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_pp::1}%"",""color"":""dark_gray""},%itemDmgPieceV("4")%,{""text"":""%{_pp::2}%"",""color"":""dark_gray""}]}"
+		else if {_ln} contains "<dmg>":
 			set {_pp::*} to split {_ln} at "<dmg>"
 			set {_lj} to "{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_pp::1}%"",""color"":""dark_gray""},%itemDmgPiece({_id})%,{""text"":""%{_pp::2}%"",""color"":""dark_gray""}]}"
 		else:

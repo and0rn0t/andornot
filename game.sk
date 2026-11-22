@@ -1245,7 +1245,16 @@ function gStormTick():
 			set {_dmg} to 1 + {_r} * gStormStep()
 			if {_dmg} > gStormMax():
 				set {_dmg} to gStormMax()
+			# 꿀벌 조종 중(bee.sk)인 플레이어는 무적이라 피해가 안 들어가므로, 이 피해를 주는 동안만 무적을 푼다
+			set {_dr} to false
+			if {-beemode::%{_id}%} is "drive":
+				set {_dr} to true
+				{_p}.setInvulnerable(false)
 			damage {_p} by hp({_dmg}) hearts
+			if {_dr} is true:
+				if {_p} is online:
+					if {-beemode::%{_id}%} is "drive":
+						{_p}.setInvulnerable(true)
 
 # 5분이 되는 순간 한 번(라운드마다): "서든 데스" 타이틀 + 채팅 안내
 function gStormAnnounce():

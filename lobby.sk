@@ -168,10 +168,17 @@ function lobbyGo(p: player):
 # NPC 클릭 처리: 훈련장/로비 NPC 이면 해당 이동을 하고 true
 function npcClick(p: player, e: entity) :: boolean:
 	set {_t} to {_e}.getScoreboardTags().contains("trainingnpc")
+	set {_l} to {_e}.getScoreboardTags().contains("lobbynpc")
+	# 꿀벌 조종 중(bee.sk)에는 NPC 와 상호작용할 수 없다(클릭은 막고 아무 일도 안 일어남)
+	if {-beemode::%{_p}'s uuid%} is "drive":
+		if {_t} is true:
+			return true
+		if {_l} is true:
+			return true
+		return false
 	if {_t} is true:
 		trainingGo({_p})
 		return true
-	set {_l} to {_e}.getScoreboardTags().contains("lobbynpc")
 	if {_l} is true:
 		lobbyGo({_p})
 		return true

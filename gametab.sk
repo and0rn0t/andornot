@@ -237,7 +237,9 @@ function gtFooter() :: text:
 		set {_g1} to gtT({_t}, "gray")
 		set {_g2} to gtT("★", "yellow")
 		return "%{_g1}%,%{_g2}%"
-	return gtT({_t}, "gray")
+	# 바운티가 아닌 모드(녹아웃)는 목표 승점을 "n선승"으로 표시한다
+	set {_t2} to "%{_mn}% · %{-gtarget}%선승"
+	return gtT({_t2}, "gray")
 
 function gtRefresh():
 	if {-ingame} is not true:
