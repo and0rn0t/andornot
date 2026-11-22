@@ -147,14 +147,7 @@ function beeMakeBody(p: player):
 	{_st}.addPassenger({_m})
 	set {-beeseat::%{_k}%} to {_st}
 	set {-beebody::%{_k}%} to {_m}
-	# 본체 체력바(머리 위 텍스트 디스플레이, healthbar.sk 와 같은 방식)
-	spawn a text display at {_l}
-	set {_d} to last spawned entity
-	add "beebar" to scoreboard tags of {_d}
-	set billboard of {_d} to center
-	set transformation translation of {_d} to vector(0, 0.6, 0)
-	add {_d} to passengers of {_m}
-	set {-beebar::%{_k}%} to {_d}
+	# 본체 머리 위 체력바는 만들지 않는다(없앰). {-beebar} 가 없으면 beeBodyBar 는 아무것도 하지 않고, 정리 코드(beeRemoveBody/on load/on unload)는 안전용으로 남겨 뒀다.
 	delete {-beebarkey::%{_k}%}
 	set {-beebodyloc::%{_k}%} to {_l}
 	set {-beeown::%uuid of {_m}%} to {_p}
