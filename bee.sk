@@ -16,7 +16,7 @@
 #     꿀벌 스태미너는 100에서 시작하고 플레이어 것과 따로 쓴다. 회복은 플레이어와 같다(틱당 +1, 가속을 시작하면 79틱 동안 회복 차단 = 소모가 끝난 뒤 39틱: 도약과 같은 규칙). 조종 중에는 경험치 바에 꿀벌 스태미너가 보인다.
 #   버프: 저항/재생/무적 같은 효과는 본체(플레이어) 체력에 그대로 적용된다. 발광(외곽선)만 꿀벌 위치를 알려 주므로 조종 중에는 본체 더미로 옮기고(팀 색 포함), 조종이 끝나면 남은 시간만큼 돌려준다.
 #   조종 중과 끝난 직후 5틱은 다른 스킬 아이템이 안 쓰인다(beeUseLocked: 복구된 인벤토리 아이템이 같은 클릭에 써지는 문제 방지).
-#   체력바: 꿀벌 체력은 꿀벌 머리 위 5칸 체력바(beeBeeBar, 항상 표시). 본체 체력바는 healthbar.sk 가 조종 중에만 플레이어 대신 본체 더미에 상시 표시(탑승한 투명 플레이어에게는 안 뜸, 피해 숫자도 더미 위).
+#   체력바: 꿀벌 체력은 꿀벌 머리 위 5칸 체력바(beeBeeBar, 항상 표시, 매 틱 꿀벌 위치로 텔레포트해서 따라감). 본체 체력바는 healthbar.sk 가 조종 중에만 플레이어 대신 본체 더미에 상시 표시(탑승한 투명 플레이어에게는 안 뜸, 피해 숫자도 더미 위).
 #   조종이 끝나면 손에 든 칸이 꿀벌 아이템을 쓰던 칸으로 돌아간다. 움직이는 동안 평소 날갯짓 소리(entity.bee.loop)를 볼륨 2.0 으로 1초마다 꿀벌 위치에서 낸다.
 #   꿀벌 체력 회복: 마지막 피격 8초 뒤부터 0.75초마다 체력 +2(main.sk 의 비전투 회복과 같은 규칙).
 #   꿀벌 사망(자폭 포함): 조종 중이면 끝내고 쿨타임 75초 시작(아이템 쿨타임 표시 포함). 정지(hold) 상태에서 죽어도 즉시 쿨타임이 돈다.
@@ -287,7 +287,7 @@ function beeItemsScrub(p: player):
 		add 1 to {_i}
 
 # ===== 꿀벌 체력바(꿀벌 머리 위 5칸) =====
-# 꿀벌 체력을 5칸으로 보여 준다(칸당 최대 체력의 20%, 올림). 조종/정지 상태 공통으로 항상 보인다. healthbar.sk 는 드론 꿀벌에 바를 달지 않는다.
+# 꿀벌 체력을 5칸으로 보여 준다(칸당 최대 체력의 20%, 올림). 텍스트 디스플레이를 매 틱 꿀벌 위치(+0.8)로 텔레포트해서 따라오게 한다. 조종/정지 상태 공통으로 항상 보인다. healthbar.sk 는 드론 꿀벌에 바를 달지 않는다.
 function beeBeeBarRemove(k: text):
 	if {-beebeebar::%{_k}%} is set:
 		delete entity within {-beebeebar::%{_k}%}
@@ -309,26 +309,26 @@ function beeBeeBar(k: text):
 	set {_filled} to ceil({_ratio} * 5)
 	if {_filled} < 0:
 		set {_filled} to 0
+	# 탑승(passenger) 방식은 꿀벌을 안 따라와서, 매 틱 꿀벌 위치로 직접 옮긴다(텔레포트 보간 1틱으로 부드럽게).
+	set {_bl} to {_bee}.getLocation()
+	set {_bp} to {_bl} ~ vector(0, 0.8, 0)
 	set {_d} to {-beebeebar::%{_k}%}
 	set {_new} to false
 	if {_d} is not set:
 		set {_new} to true
 	else if {_d} is dead:
 		set {_new} to true
-	else if vehicle of {_d} is not {_bee}:
-		delete entity within {_d}
-		set {_new} to true
-	if {_new} is false:
-		if {-beebeebarkey::%{_k}%} is "%{_filled}%":
-			stop
 	if {_new} is true:
-		spawn a text display at location of {_bee}
+		spawn a text display at {_bp}
 		set {_d} to last spawned entity
 		add "beebeebar" to scoreboard tags of {_d}
 		set billboard of {_d} to center
-		set transformation translation of {_d} to vector(0, 0.3, 0)
-		add {_d} to passengers of {_bee}
+		{_d}.setTeleportDuration(1)
 		set {-beebeebar::%{_k}%} to {_d}
+	else:
+		teleport {_d} to {_bp}
+		if {-beebeebarkey::%{_k}%} is "%{_filled}%":
+			stop
 	set {_c} to "&c"
 	if {_ratio} > 0.6:
 		set {_c} to "&a"
