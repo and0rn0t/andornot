@@ -669,15 +669,16 @@ function gfVoteClick(p: player, e: entity):
 	set {_id} to {-gdummyid::%{_e}'s uuid%}
 	if {_id} is not set:
 		stop
+	# 개인전은 투표가 없다(조용히 무시)
+	if {-gteams} is 0:
+		stop
 	if {-gvote} is not true:
 		send "&7투표가 종료되었습니다." to {_p}
 		stop
 	if {-gplist::*} does not contain {_p}:
 		send "&c이번 게임 참가자만 투표할 수 있습니다." to {_p}
 		stop
-	if "%{_id}%" is "%uuid of {_p}%":
-		send "&c본인에게는 투표할 수 없습니다." to {_p}
-		stop
+	# 본인에게도 투표할 수 있다(예전에는 막았음)
 	set {-gpotm::%uuid of {_p}%} to "%{_id}%"
 	play sound "ui.button.click" to {_p}
 	set {_tid} to "%{_id}%"
@@ -803,7 +804,9 @@ function gameFinale():
 				add "%uuid of loop-value%" to {-gfwinid::*}
 	delete {-gpotm::*}
 	delete {-gpotmres}
-	set {-gvote} to true
+	# 개인전({-gteams} 0)은 Player Of The Match 투표를 하지 않는다
+	if {-gteams} is not 0:
+		set {-gvote} to true
 	set {_disp} to gfBuildStage({_stage})
 	set {-gdisp} to {_disp}
 	set {_view} to gfStageView({_stage})
@@ -813,16 +816,18 @@ function gameFinale():
 			loop-value.setInvulnerable(true)
 			tpSafe(loop-value, {_view})
 	# 3) 투표 시작 안내
-	play sound "block.note_block.chime" with volume 0.7 to all players
-	loop {-gplist::*}:
-		if loop-value is online:
-			send "&7승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요. (본인 제외)" to loop-value
+	if {-gteams} is not 0:
+		play sound "block.note_block.chime" with volume 0.7 to all players
+		loop {-gplist::*}:
+			if loop-value is online:
+				send "&7승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요. (본인 포함)" to loop-value
 	# 4) 투표 시간(마지막 3초 전까지)
 	wait 12 seconds
 	if {-gfgen} is not {_gen}:
 		stop
 	set {-gvote} to false
-	gfPotmAnnounce()
+	if {-gteams} is not 0:
+		gfPotmAnnounce()
 	wait 3 seconds
 	if {-gfgen} is not {_gen}:
 		stop
