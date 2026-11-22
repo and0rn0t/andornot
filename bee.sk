@@ -645,8 +645,6 @@ function beeDrive(p: player, bee: entity, k: text):
 	else:
 		delete {-beedashpos1::%{_k}%}
 		delete {-beedashpos2::%{_k}%}
-	else:
-		delete {-beedashpos::%{_k}%}
 	set {_vx} to ({_dx} * {_fw} + {_rx} * {_st}) * {_sp}
 	set {_vy} to ({_dy} * {_fw}) * {_sp} + {_ud} * {_sp} * 0.75
 	set {_vz} to ({_dz} * {_fw} + {_rz} * {_st}) * {_sp}
