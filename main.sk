@@ -167,6 +167,22 @@ on quit:
 		{_b3}.removeAll()
 	delete {-sbar::%player's uuid%::*}
 
+# 아군 오사 방지: 같은 팀({-team} 이 같은 isAlly) 플레이어끼리는 모든 피해(근접/화살/스킬 직접 피해)를 취소한다. 본인 피해(낙사, 자해 등)는 아군이 아니라 그대로.
+#   스킬별 아군 제외(tnt/blazerod/flintsteel/trident/bee)는 이미 있지만, 근접/활/석궁/직접 맞는 피해는 여기서 막는다. 팀이 없으면(로비 등) isAlly 가 false 라 영향 없다.
+#   priority lowest(가장 먼저 실행): killcine.sk(highest)가 아군 치명타를 킬 연출로 가로채기 전에 취소하려는 것.
+on damage with priority lowest:
+	if victim is not a player:
+		stop
+	if attacker is not set:
+		stop
+	if attacker is not a player:
+		stop
+	if attacker is victim:
+		stop
+	if isAlly("%uuid of attacker%", "%uuid of victim%") is true:
+		cancel event
+		stop
+
 on damage:
 	# 불사의 토템(totem.sk) 무적 중에는 모든 피해를 취소한다(전투 중 카운터도 올리지 않음)
 	if victim is player:
