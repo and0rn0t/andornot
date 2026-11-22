@@ -39,6 +39,27 @@ import:
 on load:
 	set {-skillitems::bee} to bee spawn egg
 
+# 손에 꿀벌 아이템(벌 스폰 에그)이 있는지. Skript 별칭(bee spawn egg)으로 아이템을 비교하면 스폰 에그가 안 잡힐 수 있어서(미검증) 재질 이름으로 판정한다.
+#   skillHand(skill_core.sk)와 같은 사전 조건(스턴/리스폰 낙하/무기고)과 메인/오프핸드 양보 규칙을 따른다.
+function beeHand(p: player) :: boolean:
+	if isStunned({_p}) is true:
+		return false
+	if {-gdropon::%{_p}'s uuid%} is true:
+		return false
+	if armoryHeld({_p}) is true:
+		return false
+	set {_m} to {_p}.getInventory().getItemInMainHand().getType().name()
+	if {_m} is "BEE_SPAWN_EGG":
+		return true
+	set {_o} to {_p}.getInventory().getItemInOffHand().getType().name()
+	if {_o} is "BEE_SPAWN_EGG":
+		if isSkillItem({_p}'s tool) is true:
+			if {_p} has {_p}'s tool on cooldown:
+				return true
+			return false
+		return true
+	return false
+
 function beeSpeed() :: number:
 	return 0.4
 
@@ -285,7 +306,7 @@ function beeClean(p: player, restore: boolean):
 
 # ===== 사용 =====
 on rightclick:
-	if skillHand(player, bee spawn egg) is false:
+	if beeHand(player) is false:
 		stop
 	cancel event
 	set {_p} to player
