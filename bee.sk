@@ -2,7 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수(RAM, 키 = 플레이어 uuid 텍스트): {-beemode::k}("drive" 조종 중 / "hold" 꿀벌만 멈춰 있고 플레이어는 본체로 돌아옴), {-bee::k}(꿀벌 엔티티), {-beep::k}(플레이어),
 #   {-beebody::k}(본체 더미=마네킹), {-beeseat::k}(더미가 앉는 보이지 않는 갑옷 거치대), {-beebodyloc::k}(본체 자리), {-beeown::더미uuid / 꿀벌uuid}(소유 플레이어),
-#   {-beeinv::k::칸}(조종 전 인벤토리 보관), {-beein::k::f/b/l/r/j/s}(입력: 앞/뒤/왼/오/점프/웅크리기, 1 또는 0), {-beebar::k}(본체 더미 머리 위 체력바 텍스트 디스플레이), {-beebarkey::k}(체력바 마지막 값), {-beeslot::k}(사용 때 손에 든 칸 번호: 조종이 끝나면 이 칸으로 돌아감), {-beesnd::k}(이동 소리 틱 카운터), {-beeuse::k}(조종이 끝난 직후 다른 아이템 사용 금지 종료 시각), {-beeglow::k}/{-beeglowteam::k}(더미로 옮긴 발광의 끝 시각(ms)/팀 이름), {-beest::k}(꿀벌 스태미너 0~100, 플레이어와 별개), {-beelock::k}(꿀벌 스태미너 회복 차단 남은 틱), {-beedash::k}(가속 남은 틱),
+#   {-beeinv::k::칸}(조종 전 인벤토리 보관), {-beein::k::f/b/l/r/j/s}(입력: 앞/뒤/왼/오/점프/웅크리기, 1 또는 0), {-beebar::k}(본체 더미 머리 위 체력바 텍스트 디스플레이), {-beebarkey::k}(체력바 마지막 값), {-beeslot::k}(사용 때 손에 든 칸 번호: 조종이 끝나면 이 칸으로 돌아감), {-beesnd::k}(이동 소리 틱 카운터), {-beejt::k}(마지막 점프 입력 시각(ms): 더블 점프 판정), {-beeuse::k}(조종이 끝난 직후 다른 아이템 사용 금지 종료 시각), {-beeglow::k}/{-beeglowteam::k}(더미로 옮긴 발광의 끝 시각(ms)/팀 이름), {-beest::k}(꿀벌 스태미너 0~100, 플레이어와 별개), {-beelock::k}(꿀벌 스태미너 회복 차단 남은 틱), {-beedash::k}(가속 남은 틱),
 #   {-beecd::k}(쿨타임 종료 시각), {-beestabcd::k}(독침 쿨타임 종료 시각), {-beecomb::k}(꿀벌 전투 종료 시각: 마지막 피격 8초 뒤), {-beeflag::k}(내가 내리게 하는 중 표시), {-beegame::k}(시작 때의 {-ingame})
 # 흐름:
 #   사용(우클릭): 플레이어 자리에 플레이어 모습(스킨, 갑옷)의 더미(마네킹)를 앉은 자세로 세우고(보이지 않는 갑옷 거치대에 태움), 꿀벌(체력 10)을 소환해 플레이어를 꿀벌에 태운다
@@ -12,7 +12,7 @@
 #     치명타면 조종을 먼저 끝내(인벤토리 복구) 본체 자리로 돌려놓고, 꿀벌/더미를 쿨타임 없이 치운 뒤 그 자리에서 죽게 한다.
 #   체력 표시: 보스바는 없다. 조종 중 플레이어 화면 체력바(하트)에는 본체 체력이 그대로 보이고, 본체 더미 머리 위에도 체력바가 뜬다(꿀벌 체력은 healthbar.sk 의 몹 체력바).
 #   조종 중 손에 든 아이템은 다른 플레이어에게 보이지 않는다(Player#sendEquipmentChange 로 빈손을 보냄). 조종이 끝나면 원래 손에 든 아이템/체력을 다시 보낸다.
-#   가속(이동 유틸): 도약(jump.sk)과 같은 입력(더블 점프 또는 F키, 플레이어 설정). 꿀벌 스태미너 50 이상에서 발동, 2초(40틱) 동안 속도 x2.5, 그동안 스태미너 50을 천천히 소모(틱당 1.25).
+#   가속(이동 유틸): 도약(jump.sk)과 같은 입력(더블 점프 또는 F키, 플레이어 설정). 더블 점프는 탑승 중 비행 전환 이벤트가 안 와서 PlayerInputEvent 의 점프 입력을 350ms 안에 두 번 읽어 판정한다. 꿀벌 스태미너 50 이상에서 발동, 2초(40틱) 동안 속도 x2.5, 그동안 스태미너 50을 천천히 소모(틱당 1.25).
 #     꿀벌 스태미너는 100에서 시작하고 플레이어 것과 따로 쓴다. 회복은 플레이어와 같다(틱당 +1, 가속을 시작하면 79틱 동안 회복 차단 = 소모가 끝난 뒤 39틱: 도약과 같은 규칙). 조종 중에는 경험치 바에 꿀벌 스태미너가 보인다.
 #   버프: 저항/재생/무적 같은 효과는 본체(플레이어) 체력에 그대로 적용된다. 발광(외곽선)만 꿀벌 위치를 알려 주므로 조종 중에는 본체 더미로 옮기고(팀 색 포함), 조종이 끝나면 남은 시간만큼 돌려준다.
 #   조종 중과 끝난 직후 5틱은 다른 스킬 아이템이 안 쓰인다(beeUseLocked: 복구된 인벤토리 아이템이 같은 클릭에 써지는 문제 방지).
@@ -23,7 +23,7 @@
 #   플레이어 사망/접속 종료/게임 상태가 바뀌면(시작/종료) 꿀벌과 더미를 치운다(쿨타임 없음).
 # 아이템(items.sk 카탈로그에 id 만 있고 무기고 목록에는 없음): bee_sting(독침, 데미지 3 쿨 8초, 맞은 대상 7초 중독), bee_bomb(자폭, 데미지 5, 반경 4), bee_stop(조종 중지).
 # 독침은 근접 공격(좌클릭)이며 피해는 직접 줘서(스킬 피해 표시) main.sk 무기 보정을 받지 않는다. 쿨타임 중에는 공격이 취소된다.
-# 미검증(전부): 발광/팀 색을 더미로 옮기기(PotionEffect 생성자, 팀 addEntry(더미 uuid)), 더미 setGlowing, Player#stopSound(String)(조종이 멈출 때 꿀벌 소리 끊기), Entity#setSilent(정지한 꿀벌 무음), 조종 중(탑승 상태)에 더블 점프(flight toggle)가 들어오는지(안 들어오면 F키 모드로 쓴다), 경험치 바에 꿀벌 스태미너 표시, Player#sendEquipmentChange, 더미 머리 위 텍스트 디스플레이 높이, bee spawn egg 별칭, 이동 소리 간격, 마네킹이 갑옷 거치대에 타서 앉은 자세로 보이는지, 꿀벌에 플레이어를 태우고 조종/시선이 되는지, PlayerInputEvent(Paper) 수신, org.bukkit.event.entity.EntityDismountEvent(Paper) 취소(웅크리기로 못 내리게),
+# 미검증(전부): 발광/팀 색을 더미로 옮기기(PotionEffect 생성자, 팀 addEntry(더미 uuid)), 더미 setGlowing, Player#stopSound(String)(조종이 멈출 때 꿀벌 소리 끊기), Entity#setSilent(정지한 꿀벌 무음), 점프 입력 두 번(PlayerInputEvent, 350ms)으로 가속이 되는지, 경험치 바에 꿀벌 스태미너 표시, Player#sendEquipmentChange, 더미 머리 위 텍스트 디스플레이 높이, bee spawn egg 별칭, 이동 소리 간격, 마네킹이 갑옷 거치대에 타서 앉은 자세로 보이는지, 꿀벌에 플레이어를 태우고 조종/시선이 되는지, PlayerInputEvent(Paper) 수신, org.bukkit.event.entity.EntityDismountEvent(Paper) 취소(웅크리기로 못 내리게),
 #   Mob#setAware(false)+setVelocity 로 꿀벌이 움직이는지, 더미 피격 -> 본인 피해(Damageable#damage(double, DamageSource)), 꿀벌 사망 처리, arrow of poison 아이템, Player#setCooldown(Material, ticks).
 
 using damage sources
@@ -363,6 +363,7 @@ function beeRelease(p: player, restore: boolean):
 	delete {-beein::%{_k}%::*}
 	delete {-beeslot::%{_k}%}
 	delete {-beedash::%{_k}%}
+	delete {-beejt::%{_k}%}
 	set {-beeuse::%{_k}%} to now + 5 ticks
 	# 조종이 멈추면 꿀벌 소리도 멈춘다: 이미 재생 중인 소리를 끊고, 멈춘 꿀벌은 소리를 내지 않게 한다
 	if {-bee::%{_k}%} is set:
@@ -546,6 +547,7 @@ on PlayerInputEvent:
 	if {-beemode::%{_k}%} is not "drive":
 		stop
 	set {_in} to event.getInput()
+	set {_oj} to {-beein::%{_k}%::j}
 	set {-beein::%{_k}%::f} to 0
 	set {-beein::%{_k}%::b} to 0
 	set {-beein::%{_k}%::l} to 0
@@ -564,6 +566,21 @@ on PlayerInputEvent:
 		set {-beein::%{_k}%::j} to 1
 	if {_in}.isSneak() is true:
 		set {-beein::%{_k}%::s} to 1
+	# 더블 점프 가속: 탑승 중에는 비행 전환 이벤트(jump.sk)가 안 와서 점프 입력을 직접 읽는다.
+	#   점프를 누르는 순간(떼었다가 다시 눌러야 함) 350ms 안에 두 번 누르면 가속. 도약 발동 키 설정이 F키면 쓰지 않는다(F키는 jump.sk 의 손 바꾸기가 처리).
+	if {-beein::%{_k}%::j} is 1:
+		if {_oj} is not 1:
+			if jumpMode({_p}) is "double":
+				set {_jn} to now
+				set {_jt} to {_jn}.getTimestamp()
+				if {-beejt::%{_k}%} is set:
+					if {_jt} - {-beejt::%{_k}%} <= 350:
+						beeDash({_p})
+						delete {-beejt::%{_k}%}
+					else:
+						set {-beejt::%{_k}%} to {_jt}
+				else:
+					set {-beejt::%{_k}%} to {_jt}
 
 # 웅크리기로 꿀벌에서 내려오는 것을 막는다(우리가 내리게 하는 중이면 통과)
 on EntityDismountEvent:
