@@ -634,7 +634,7 @@ function armoryName() :: text:
 
 function armoryItem() :: itemtype:
 	set {_i} to chest named armoryName()
-	set lore of {_i} to "&7[우클릭] 아이템 구성을 바꿔요"
+	set lore of {_i} to "&7아이템 구성을 바꿉니다."
 	return {_i}
 
 # 게임 중이 아닐 때 9번 슬롯(인덱스 8)을 무기고로 고정하고, 다른 칸/왼손에 있는 무기고는 치운다.

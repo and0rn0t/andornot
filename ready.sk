@@ -34,10 +34,10 @@ function readyName(on: boolean) :: text:
 function readyItem(on: boolean) :: itemtype:
 	if {_on} is true:
 		set {_i} to lime concrete named readyName(true)
-		set lore of {_i} to "&7[우클릭] 준비를 해제해요", "&7모두 준비되면 5초 뒤 게임이 시작돼요"
+		set lore of {_i} to "&7준비를 해제합니다.", "&7모두 준비되면 5초 뒤 게임이 시작됩니다."
 		return {_i}
 	set {_i} to red concrete named readyName(false)
-	set lore of {_i} to "&7[우클릭] 준비해요", "&7모두 준비되면 5초 뒤 게임이 시작돼요"
+	set lore of {_i} to "&7준비합니다.", "&7모두 준비되면 5초 뒤 게임이 시작됩니다."
 	return {_i}
 
 # 8번 칸(인덱스 7)에 지금 상태에 맞는 블록을 고정하고, 왼손에 들어가 있는 준비 블록은 치운다.

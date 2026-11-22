@@ -35,7 +35,7 @@ function adminItemName() :: text:
 
 function adminItem() :: itemtype:
 	set {_i} to command block named adminItemName()
-	set lore of {_i} to "&7[우클릭] 관리자 메뉴를 열어요"
+	set lore of {_i} to "&7관리자 메뉴를 엽니다."
 	return {_i}
 
 function adminButtonIds() :: texts:

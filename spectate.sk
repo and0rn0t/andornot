@@ -23,10 +23,10 @@ function specName(on: boolean) :: text:
 function specItem(on: boolean) :: itemtype:
 	if {_on} is true:
 		set {_i} to gray concrete named specName(true)
-		set lore of {_i} to "&7[우클릭] 게임에 참여하도록 바꿔요", "&7관전 중에는 준비하지 않아도 되고", "&7게임이 시작되면 관전 상태로 구경해요"
+		set lore of {_i} to "&7게임에 참여하도록 바꿉니다.", "&7관전 중에는 준비하지 않아도 됩니다.", "&7게임이 시작되면 관전 상태로 구경합니다."
 		return {_i}
 	set {_i} to white concrete named specName(false)
-	set lore of {_i} to "&7[우클릭] 게임을 관전하도록 바꿔요", "&7관전하면 이번 게임에 참가하지 않아요"
+	set lore of {_i} to "&7게임을 관전하도록 바꿉니다.", "&7관전하면 이번 게임에 참가하지 않습니다."
 	return {_i}
 
 # 7번 칸(인덱스 6)에 지금 상태의 블록을 고정하고, 왼손에 들어간 관전 블록은 치운다
