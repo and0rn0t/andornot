@@ -4,7 +4,7 @@
 # 동작: 활(bow.sk)과 같은 방식. 우클릭을 취소하지 않아서 바닐라 삼지창 차징 모션이 나오고, 충전 보스바 "충전"(최대 1.5초, 가득 차면 초록 + 소리)을 매 틱 갱신한다.
 #   손을 놓으면(isHandRaised 가 2틱 연속 false) 그 순간의 충전도(0~1)로 순간이동한다. 거리 = 5 + 10 x 충전도 (5~15칸).
 #   바닐라 삼지창 투척(ProjectileLaunchEvent)은 아래 on shoot 에서 취소한다(삼지창은 던져지지 않고 손에 남는다).
-# 순간이동: 바라보는 방향(시선 방향 그대로, 위아래 포함)으로 0.5칸씩 나아가며, 발/허리/머리 위치 중 하나라도 충돌 판정이 있는 블럭(Block#isPassable 이 false)이면 거기서 멈춘다.
+# 순간이동: 바라보는 방향(시선 방향 그대로, 위아래 포함)으로 0.5칸씩 나아가며, 발/허리/머리 위치 중 하나라도 충돌 판정이 있는 블럭(Block#isPassable 이 false)이면 같은 높이로 수평 이동만 한 번 더 시도하고, 그것도 막히면 거기서 멈춘다(바닥을 보고 쏴도 제자리에 안 서게).
 #   충돌 판정 없는 블럭(풀, 카펫, 물 등)은 통과. 경로에 막히면 막히기 직전 자리까지만 이동한다.
 # 피해: 경로 1칸마다 반경 1.5칸의 생명체(본인/아군/갑옷 거치대/마네킹/관전 모드 플레이어 제외)에게 한 번씩 실 체력 4. 스킬 피해라 main.sk 무기 보정에서 제외({-skilldmg}).
 # 이펙트: 경로를 따라 3칸마다 번개 이펙트(World#strikeLightningEffect, 불/피해 없음)와 전기 불꽃 파티클, 출발/도착 소리.
@@ -45,20 +45,31 @@ function tridentBlink(p: player, f: number):
 	set {_o} to {_p}.getLocation()
 	set {_dir} to {_o}.getDirection()
 	set {_max} to tridentDist({_f})
-	set {_t} to 0
+	# 0.5칸씩 나아가며 지나간 자리를 {_pts::*} 에 모은다. 막히면 같은 높이로 옆으로만 한 번 더 시도한다(바닥을 보고 쏘거나 천장 아래에서 쏠 때
+	# 첫 걸음부터 바닥/천장에 걸려 제자리에서 나가던 문제 수정: 위아래 성분 때문에 막힌 경우에도 수평으로는 계속 간다).
+	set {_cur} to {_o}
+	add {_o} to {_pts::*}
+	set {_n} to 0
 	set {_go} to true
 	while {_go} is true:
-		set {_n} to {_t} + 0.5
+		set {_n} to {_n} + 0.5
 		if {_n} > {_max}:
 			set {_go} to false
 		else:
-			set {_q} to {_o} ~ ({_dir} * {_n})
+			set {_q} to {_cur} ~ ({_dir} * 0.5)
 			if tridentClear({_q}) is true:
-				set {_t} to {_n}
+				set {_cur} to {_q}
+				add {_cur} to {_pts::*}
 			else:
-				set {_go} to false
-	set {_dest} to {_o} ~ ({_dir} * {_t})
-	# 경로의 적에게 피해(출발 자리부터 도착 자리까지 1칸마다)
+				set {_q2} to {_q}
+				set y-coordinate of {_q2} to y-coordinate of {_cur}
+				if tridentClear({_q2}) is true:
+					set {_cur} to {_q2}
+					add {_cur} to {_pts::*}
+				else:
+					set {_go} to false
+	set {_dest} to {_cur}
+	# 경로의 적에게 피해(지나간 자리마다 반경 1.5칸, 한 번씩)
 	set {_pid} to "%uuid of {_p}%"
 	set {_src} to a custom damage source:
 		set the damage type to player attack
@@ -66,11 +77,10 @@ function tridentBlink(p: player, f: number):
 		set the direct entity to {_p}
 	delete {_done::*}
 	set {-skilldmg::%{_pid}%} to true
-	set {_d} to 0
-	while {_d} <= {_t}:
-		set {_c} to {_o} ~ ({_dir} * {_d}) ~ vector(0, 1, 0)
+	loop {_pts::*}:
+		set {_c} to loop-value ~ vector(0, 1, 0)
 		loop all living entities in radius 1.5 around {_c}:
-			set {_e} to loop-entity
+			set {_e} to loop-entity-2
 			set {_eid} to "%uuid of {_e}%"
 			if {_done::%{_eid}%} is not set:
 				set {_done::%{_eid}%} to true
@@ -88,24 +98,20 @@ function tridentBlink(p: player, f: number):
 						set {_ok} to false
 				if {_ok} is true:
 					damage {_e} by hp(4) hearts using {_src}
-		add 1 to {_d}
 	delete {-skilldmg::%{_pid}%}
-	# 이펙트: 경로를 따라 전기 불꽃 + 3칸마다 번개
+	# 이펙트: 경로를 따라 전기 불꽃 + 3칸(6점)마다 번개
 	{_w}.strikeLightningEffect({_o})
-	set {_e2} to 0.5
-	while {_e2} <= {_t}:
-		set {_fx} to {_o} ~ ({_dir} * {_e2}) ~ vector(0, 1, 0)
+	set {_i} to 0
+	loop {_pts::*}:
+		add 1 to {_i}
+		set {_fx} to loop-value ~ vector(0, 1, 0)
 		{_w}.spawnParticle(Particle.ELECTRIC_SPARK, {_fx}, 6, 0.2, 0.3, 0.2, 0.05, null, true)
-		add 0.5 to {_e2}
-	set {_b2} to 3
-	while {_b2} < {_t}:
-		{_w}.strikeLightningEffect({_o} ~ ({_dir} * {_b2}))
-		add 3 to {_b2}
+		if mod({_i}, 6) is 0:
+			{_w}.strikeLightningEffect(loop-value)
 	# 이동(시점 유지)
 	teleport {_p} to {_dest}
 	play sound "entity.lightning_bolt.impact" with volume 0.5 and pitch 1.6 at {_dest}
-	if {_t} > 0:
-		{_w}.strikeLightningEffect({_dest})
+	{_w}.strikeLightningEffect({_dest})
 
 on rightclick:
 	if skillHand(player, trident) is false:
