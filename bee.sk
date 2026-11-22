@@ -455,7 +455,7 @@ every second:
 		set {_k} to loop-index
 		set {_p} to {-beep::%{_k}%}
 		if {_p} is not online:
-			stop
+			continue
 		if {-beegame::%{_k}%} is set:
 			if {-beegame::%{_k}%} is not "%{-ingame}%":
 				beeClean({_p}, true)
