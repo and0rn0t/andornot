@@ -64,6 +64,8 @@ function kcClearState(v: player):
 	delete {-vuln::%{_id}%}
 	delete {-noburn::%{_id}%}
 	clearStatus({_v}, "flint")
+	# bee.sk(조종/정지 중인 꿀벌과 본체 더미를 쿨타임 없이 치운다)
+	beeClean({_v}, true)
 	# totem.sk
 	delete {-totemend::%{_id}%}
 	delete {-jumplock::%{_id}%::totem}
