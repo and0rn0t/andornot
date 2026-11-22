@@ -5,7 +5,7 @@
 #   손을 놓으면(isHandRaised 가 2틱 연속 false) 그 순간의 충전도(0~1)로 순간이동한다. 거리 = 5 + 16 x 충전도 (5~21칸).
 #   바닐라 삼지창 투척(ProjectileLaunchEvent)은 아래 on shoot 에서 취소한다(삼지창은 던져지지 않고 손에 남는다).
 # 순간이동: 바라보는 방향(시선 방향 그대로, 위아래 포함)으로 0.5칸씩 나아가며, 발/허리/머리 위치 중 하나라도 충돌 판정이 있는 블럭(Block#isPassable 이 false)이면 같은 높이로 수평 이동만 한 번 더 시도하고, 그것도 막히면 거기서 멈춘다(바닥을 보고 쏴도 제자리에 안 서게).
-#   충돌 판정 없는 블럭(풀, 카펫, 물 등)은 통과. 경로에 막히면 막히기 직전 자리까지만 이동한다.
+#   충돌 판정 없는 블럭(풀, 카펫, 물 등)과 충돌 높이 0.5 이하의 낮은 블럭(쌓인 눈, 반블럭)은 통과(그 위에 도착하면 윗면 높이로 올려 세움). 경로에 막히면 막히기 직전 자리까지만 이동한다.
 # 피해: 순간이동한 지점 반경 4칸의 생명체(본인/아군/갑옷 거치대/마네킹/관전 모드 플레이어 제외)에게 한 번씩 실 체력 4. 스킬 피해라 main.sk 무기 보정에서 제외({-skilldmg}).
 # 이펙트: 도착 지점에만 번개 이펙트(World#strikeLightningEffect, 불/피해 없음)와 전기 불꽃 파티클, 소리.
 # 미검증: on shoot 에서 삼지창 투척 취소 후 아이템이 손에 남고 클라이언트가 이상해지지 않는지, isHandRaised 가 삼지창 사용 중 true 인지, strikeLightningEffect, Particle.ELECTRIC_SPARK, 순간이동 후 시점 유지.
@@ -26,10 +26,19 @@ function tridentDist(f: number) :: number:
 	return 5 + 16 * {_f}
 
 # 위치 q 에 서 있는 플레이어가 들어갈 수 있는지(발/허리/머리 높이 블럭에 충돌 판정이 없음)
+# 발 위치 블럭의 충돌 높이(칸). 통과 가능하면 0. 쌓인 눈(1~4단)/반블럭 같은 낮은 블럭은 0.5 이하라 판정에서 제외한다.
+function tridentLow(q: location) :: number:
+	set {_bl} to {_q}.getBlock()
+	if {_bl}.isPassable() is true:
+		return 0
+	set {_h} to {_bl}.getCollisionShape().getBoundingBox().getMaxY()
+	return {_h}
+
 function tridentClear(q: location) :: boolean:
 	set {_a} to {_q}.getBlock().isPassable()
 	if {_a} is not true:
-		return false
+		if tridentLow({_q}) > 0.5:
+			return false
 	set {_m} to {_q} ~ vector(0, 1, 0)
 	set {_b} to {_m}.getBlock().isPassable()
 	if {_b} is not true:
@@ -69,6 +78,10 @@ function tridentBlink(p: player, f: number):
 				else:
 					set {_go} to false
 	set {_dest} to {_cur}
+	# 낮은 블럭(눈/반블럭) 위에 도착하면 그 윗면으로 올려서 블럭 속에 끼지 않게 한다
+	set {_lh} to tridentLow({_dest})
+	if {_lh} > 0:
+		set y-coordinate of {_dest} to (floor(y-coordinate of {_dest})) + {_lh}
 	# 피해: 순간이동한 자리 반경 4칸의 적에게 한 번씩 실 체력 4
 	set {_pid} to "%uuid of {_p}%"
 	set {_src} to a custom damage source:
