@@ -7,8 +7,9 @@
 # 화염구: 큰 화염구(fireball) 엔티티(작은 화염구보다 큼). 바닐라 폭발은 위력 0(setYield(0)) + 점화 끔(setIsIncendiary(false))이라 블럭/불 피해가 없고,
 #   바닐라 폭발은 on explosion 에서 취소하고, 맞는 순간(on projectile hit) 같은 자리에서 폭발 이펙트와 범위(brRadius) 안 모두에게 고정 피해 실 체력 5 를 우리가 직접 준다(TNT 의 tntBlast 와 같은 방식, 피해 출처는 쏜 사람).
 #   쏜 사람 본인과 아군({-team} isAlly)은 피해를 안 받고 갑옷 거치대는 제외한다. 직접 맞은 바닐라 피해는 main.sk 에서 취소한다(이중 피해 방지).
+# 화염구 속도는 brSpeed()(현재 2칸/틱). 3번째 사용은 낙하 직전마다 폭격 지점 brHomeRange()(8칸) 안 가장 가까운 적을 찾아 그 적 위치 반경 1.5칸 안으로 목표를 옮긴다(적 없으면 기존대로).
 # 3번째 사용: 바라보는 지점(블럭이면 그 블럭 윗면, 아니면 30칸 앞) 반경 3칸 안 무작위 지점이 낙하 목표. 목표 위 10칸, 플레이어 쪽으로 5칸 물러난 곳에서 사선으로 날아간다.
-# 미검증: fireball 스폰/setShooter/setDirection/setYield/setIsIncendiary, getTargetBlockExact, 파티클 FLAME, projectile hit 에서 shooter 읽기.
+# 미검증: brHome(함수 반환 location 비교 `is not`, gamemode/distance 문법), fireball 스폰/setShooter/setDirection/setYield/setIsIncendiary, getTargetBlockExact, 파티클 FLAME, projectile hit 에서 shooter 읽기.
 
 using damage sources
 
@@ -26,9 +27,33 @@ function brReset() :: number:
 function brRadius() :: number:
 	return 3
 
-# 화염구 속도(조금 느리게)
+# 화염구 속도(칸/틱). 기존 1 에서 상향
 function brSpeed() :: number:
-	return 1
+	return 2
+
+# 3번째 사용 폭격 유도 반경(칸). 폭격 지점 이 반경 안에 적이 있으면 그 적 쪽으로 목표가 옮겨진다
+function brHomeRange() :: number:
+	return 8
+
+# 폭격 지점 tp 근처(brHomeRange 안)에 적(본인/아군/관전자 제외)이 있으면 가장 가까운 적의 위치를, 없으면 tp 를 돌려준다.
+function brHome(owner: player, tp: location) :: location:
+	set {_oid} to "%uuid of {_owner}%"
+	set {_best} to brHomeRange()
+	set {_res} to {_tp}
+	loop all players:
+		set {_e} to loop-player
+		set {_vid} to "%uuid of {_e}%"
+		if {_vid} is not {_oid}:
+			if gamemode of {_e} is not spectator:
+				if health of {_e} > 0:
+					if isAlly({_oid}, {_vid}) is false:
+						set {_el} to location of {_e}
+						if world of {_el} is world of {_tp}:
+							set {_dd} to distance between {_el} and {_tp}
+							if {_dd} < {_best}:
+								set {_best} to {_dd}
+								set {_res} to {_el}
+	return {_res}
 
 # 폭발: 이펙트 + 범위 안 피해 5(쏜 사람/아군/갑옷 거치대 제외, 블럭 피해 없음)
 function brBlast(owner: player, loc: location):
@@ -175,10 +200,13 @@ on rightclick:
 		if health of {_p} <= 0:
 			stop
 		set {_ang} to random number between 0 and 360
+		set {_hm} to brHome({_p}, {_tp})
 		set {_rd} to random number between 0 and 3
+		if {_hm} is not {_tp}:
+			set {_rd} to random number between 0 and 1.5
 		set {_lx} to cos({_ang}) * {_rd}
 		set {_lz} to sin({_ang}) * {_rd}
-		set {_to} to {_tp} ~ vector({_lx}, 0, {_lz})
+		set {_to} to {_hm} ~ vector({_lx}, 0, {_lz})
 		set {_from} to {_to} ~ vector({_bx}, 10, {_bz})
 		brFire({_p}, {_from}, {_to})
 		wait 5 ticks
