@@ -8,8 +8,8 @@
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
 #   0초   게임 종료 + 승리 팀 타이틀/소리(3초)
-#   3초   승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고, 모두 그 앞(관전)으로 모은 뒤 결과를 채팅에 발표. 투표 시작
-#   15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
+#   3초   시상대 컷씬 약 10초(순위 3-2-1위 받침대/더미/폭죽, 카메라 이동, gfPodRank). 그 뒤 승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고, 모두 그 앞(관전)으로 모은 뒤 결과를 채팅에 발표. 투표 시작
+#   (무대 이후) 15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
 # 결과 표시: 팀 점수(승리 팀이 맨 위), 참가자 전원의 K/D/A·가한 피해·사용한 아이템(구성 아이콘)을 텍스트 디스플레이로 승리 팀 더미 뒤에 띄운다. 투표 수는 더미 머리 위 설명에 표시.
 # 로비/결과 무대 위치는 관리자 메뉴 버튼으로 저장한 위치({gamecfg::loc::lobby|stage::world|x|y|z|yaw|pitch}, 월드 이름 + 좌표)를 쓴다(멀티월드 가능). 결과 무대(더미 + 디스플레이)는 다음 게임 시작 전까지 남는다.
 # 미검증: 마네킹 소환/스킨(ResolvableProfile, SPIGOT-8084), 마네킹 이름표/설명, PlayerInteractEntityEvent 로 마네킹 클릭, 무적 더미 좌클릭 이벤트, TextDisplay#text/setLineWidth, 디스플레이 크기/위치.
@@ -31,6 +31,8 @@ import:
 	org.bukkit.event.player.PlayerInteractEntityEvent
 	io.papermc.paper.event.player.PrePlayerAttackEntityEvent
 	io.papermc.paper.datacomponent.item.ResolvableProfile
+	org.bukkit.Material
+	org.bukkit.FireworkEffect
 
 # ===== 맵 연결 자리(멀티월드) =====
 # 로비 위치와 결과 무대 위치는 관리자 메뉴(admin.sk)의 버튼으로 서 있는 자리에서 저장한다({gamecfg::loc::lobby}, {gamecfg::loc::stage}: 월드 이름 + 좌표. 예전 위치 변수 {gamecfg::lobby}/{gamecfg::stage} 는 대체로만 읽는다).
@@ -763,6 +765,119 @@ function gfClearDummies():
 	delete {-gdisp}
 	delete {-gdisp2::*}
 
+# ===== 시상대 컷씬(승리 직후, 약 10초) =====
+# 결과 무대 위치(gameStageLoc)에 팀 순위 1~3위 시상대를 블럭 디스플레이(엔티티, 월드 블럭은 안 바꿈, 태그 gdummy)로 세운다. 3위 -> 2위 -> 1위 순서로 50틱 간격으로 나타나고,
+# 순위마다 그 팀 최고 성적 플레이어와 똑같이 생긴 더미 + 팀 색 받침대 + 이름표 + 폭죽. 카메라는 gameFinale 이 매 틱 모두를 gfPodCam 위치로 옮긴다(관전 상태).
+# 1위(구경꾼 기준 가운데), 2위(왼쪽), 3위(오른쪽): 왼쪽/오른쪽이 거울처럼 뒤집히면 gfPodRank 의 {_off} 부호를 바꾼다(미검증). 엔티티는 {-gpod::*}, 끝나면 지운다.
+# 미검증: 블럭 디스플레이 스폰/setBlock/transformation scale, 폭죽 FireworkEffect.builder/withColor/detonate, 더미 setGravity, 카메라 setDirection.
+function gfPodColor(i: number) :: object:
+	set {_m} to mod({_i} - 1, 8) + 1
+	if {_m} is 1:
+		return Color.RED
+	if {_m} is 2:
+		return Color.BLUE
+	if {_m} is 3:
+		return Color.GREEN
+	if {_m} is 4:
+		return Color.YELLOW
+	if {_m} is 5:
+		return Color.FUCHSIA
+	if {_m} is 6:
+		return Color.AQUA
+	if {_m} is 7:
+		return Color.ORANGE
+	return Color.PURPLE
+
+# 받침대 블럭(gTeamColor 와 같은 순서의 콘크리트)
+function gfPodMat(i: number) :: text:
+	set {_n::*} to "RED_CONCRETE", "BLUE_CONCRETE", "LIME_CONCRETE", "YELLOW_CONCRETE", "PINK_CONCRETE", "LIGHT_BLUE_CONCRETE", "ORANGE_CONCRETE", "PURPLE_CONCRETE"
+	return {_n::%mod({_i} - 1, 8) + 1%}
+
+function gfPodFirework(loc: location, i: number):
+	set {_fw} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.FIREWORK_ROCKET)
+	set {_fm} to {_fw}.getFireworkMeta()
+	set {_col} to gfPodColor({_i})
+	set {_b} to FireworkEffect.builder()
+	set {_b} to {_b}.withColor({_col})
+	set {_ef} to {_b}.build()
+	{_fm}.addEffect({_ef})
+	{_fw}.setFireworkMeta({_fm})
+	{_fw}.detonate()
+
+# 카메라 위치: 구경꾼 쪽 앞에서 40도 옆에서 시작해 정면으로 천천히 돌며 다가간다. t = 0~199(틱)
+function gfPodCam(stage: location, t: number) :: location:
+	set {_sy} to {_stage}.getYaw()
+	set {_fx} to 0 - sin({_sy})
+	set {_fz} to cos({_sy})
+	set {_th} to 40 - 40 * {_t} / 200
+	set {_dx} to {_fx} * cos({_th}) - {_fz} * sin({_th})
+	set {_dz} to {_fx} * sin({_th}) + {_fz} * cos({_th})
+	set {_d} to 9 - 2 * {_t} / 200
+	set {_cam} to {_stage} ~ vector({_dx} * {_d}, 1.8 + 0.6 * {_t} / 200, {_dz} * {_d})
+	set {_tg} to {_stage} ~ vector(0, 1.6, 0)
+	set {_v} to vector from {_cam} to {_tg}
+	{_cam}.setDirection({_v})
+	return {_cam}
+
+# 순위 rank(1~3)의 시상대 하나: 받침대 + 팀 최고 성적 플레이어 더미 + 이름표 + 폭죽 + 소리 (1위는 우승 타이틀도)
+function gfPodRank(rank: number, tk: text, stage: location):
+	set {_sy} to {_stage}.getYaw()
+	set {_rx} to 0 - cos({_sy})
+	set {_rz} to 0 - sin({_sy})
+	set {_off} to 0
+	set {_h} to 1.5
+	if {_rank} is 2:
+		set {_off} to 2.2
+		set {_h} to 1
+	if {_rank} is 3:
+		set {_off} to -2.2
+		set {_h} to 0.5
+	set {_ci} to gTeamIndex({_tk})
+	set {_c} to {_stage} ~ vector({_rx} * {_off}, 0, {_rz} * {_off})
+	set {_pl} to {_c} ~ vector(-0.9, 0, -0.9)
+	spawn a block display at {_pl}:
+		set {_bd} to event-entity
+		add "gdummy" to scoreboard tags of event-entity
+	set {_mat} to Material.valueOf(gfPodMat({_ci}))
+	set {_bdata} to Bukkit.createBlockData({_mat})
+	{_bd}.setBlock({_bdata})
+	set transformation scale of {_bd} to vector(1.8, {_h}, 1.8)
+	add {_bd} to {-gpod::*}
+	set {_top} to {_c} ~ vector(0, {_h}, 0)
+	set {_ids::*} to gfSortedTeam({_tk})
+	set {_id} to {_ids::1}
+	if {_id} is set:
+		set {_pp} to gfSrcOf({_id})
+		if {_pp} is online:
+			set {_m} to gfDummyAt({_pp}, {_top}, {_sy})
+			{_m}.setGravity(false)
+			set {_nj} to gfT(gfName({_id}), gtColorJ({_ci}), true)
+			{_m}.customName(GsonComponentSerializer.gson().deserialize({_nj}))
+			{_m}.setCustomNameVisible(true)
+			add {_m} to {-gpod::*}
+	set {_sc} to {-gscore::%{_tk}%}
+	if {_sc} is not a number:
+		set {_sc} to 0
+	set {_lloc} to {_top} ~ vector(0, 2.5, 0)
+	spawn a text display at {_lloc}:
+		set {_tx} to event-entity
+		add "gdummy" to scoreboard tags of event-entity
+		set billboard of event-entity to center
+	set text of {_tx} to colored "&6&l%{_rank}%위 &r%gTeamLabel({_tk})% &7· &e%{_sc}%"
+	set transformation scale of {_tx} to vector(1.5, 1.5, 1.5)
+	add {_tx} to {-gpod::*}
+	set {_fl} to {_top} ~ vector(0, 3.5, 0)
+	gfPodFirework({_fl}, {_ci})
+	set {_pt} to 1
+	if {_rank} is 1:
+		set {_pt} to 1.4
+	if {_rank} is 3:
+		set {_pt} to 0.8
+	loop all players:
+		play sound "entity.player.levelup" with volume 0.8 and pitch {_pt} to loop-player
+		if {_rank} is 1:
+			send title "&6&l우승" with subtitle colored "%gTeamLabel({_tk})%" to loop-player for 4 seconds with fadein 3 ticks and fade out 10 ticks
+
 # ===== 종료 연출 =====
 # 승리 팀 키는 {-gwinner}. 킬 연출(killcine.sk)이 끝난 뒤, 또는 킬 연출 없는 승리에서 바로 불린다.
 function gameFinale():
@@ -790,7 +905,41 @@ function gameFinale():
 	wait 3 seconds
 	if {-gfgen} is not {_gen}:
 		stop
-	# 2) 무대: 게임이 진행된 월드의 결과 무대에, 승리 팀 플레이어(접속 중인 사람)와 똑같이 생긴 더미를 가로로 일렬로 세운다(이름표 + 득표 별). 모두 관전을 풀고 그 앞으로 모은다.
+	# 2) 시상대 컷씬(약 10초): 순위 3위 -> 2위 -> 1위가 50틱 간격으로 나타나고 카메라가 천천히 돌며 다가간다. 모두 관전 상태로 이 카메라를 본다(gfPodRank/gfPodCam).
+	set {_pgw} to "%{-gworld}%"
+	if {_pgw} is "":
+		set {_pgw} to {-gplist::1}.getWorld().getName()
+	set {_pst} to gameStageLoc({_pgw})
+	delete {-gpod::*}
+	set {_order::*} to gfTeamOrder()
+	set {_nr} to min(size of {_order::*}, 3)
+	set {_c0} to gfPodCam({_pst}, 0)
+	loop all players:
+		tpSafe(loop-player, {_c0})
+	set {_t} to 0
+	while {_t} < 200:
+		if {-gfgen} is not {_gen}:
+			stop
+		if mod({_t}, 50) is 0:
+			set {_r} to {_nr} - {_t} / 50
+			if {_r} >= 1:
+				gfPodRank({_r}, {_order::%{_r}%}, {_pst})
+		# 1위가 나온 뒤에는 12틱마다 우승 팀 색 폭죽을 무대 위로 쏜다
+		if {_t} >= ({_nr} - 1) * 50:
+			if mod({_t}, 12) is 0:
+				set {_fx} to random number between -3 and 3
+				set {_fz} to random number between -3 and 3
+				set {_fl} to {_pst} ~ vector({_fx}, 4.5, {_fz})
+				gfPodFirework({_fl}, gTeamIndex({-gwinner}))
+		set {_cam} to gfPodCam({_pst}, {_t})
+		loop all players:
+			teleport loop-player to {_cam}
+		wait 1 tick
+		add 1 to {_t}
+	loop {-gpod::*}:
+		loop-value.remove()
+	delete {-gpod::*}
+	# 3) 무대: 게임이 진행된 월드의 결과 무대에, 승리 팀 플레이어(접속 중인 사람)와 똑같이 생긴 더미를 가로로 일렬로 세운다(이름표 + 득표 별). 모두 관전을 풀고 그 앞으로 모은다.
 	set {_gw} to "%{-gworld}%"
 	if {_gw} is "":
 		set {_gw} to {-gplist::1}.getWorld().getName()
