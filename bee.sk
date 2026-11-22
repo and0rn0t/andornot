@@ -2,7 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수(RAM, 키 = 플레이어 uuid 텍스트): {-beemode::k}("drive" 조종 중 / "hold" 꿀벌만 멈춰 있고 플레이어는 본체로 돌아옴), {-bee::k}(꿀벌 엔티티), {-beep::k}(플레이어),
 #   {-beebody::k}(본체 더미=마네킹), {-beeseat::k}(더미가 앉는 보이지 않는 갑옷 거치대), {-beebodyloc::k}(본체 자리), {-beeown::더미uuid / 꿀벌uuid}(소유 플레이어),
-#   {-beeinv::k::칸}(조종 전 인벤토리 보관), {-beein::k::f/b/l/r/j/s}(입력: 앞/뒤/왼/오/점프/웅크리기, 1 또는 0), {-beebar::k}(본체 더미 머리 위 체력바 텍스트 디스플레이), {-beebarkey::k}(체력바 마지막 값), {-beeslot::k}(사용 때 손에 든 칸 번호: 조종이 끝나면 이 칸으로 돌아감), {-beesnd::k}(이동 소리 틱 카운터), {-beest::k}(꿀벌 스태미너 0~100, 플레이어와 별개), {-beelock::k}(꿀벌 스태미너 회복 차단 남은 틱), {-beedash::k}(가속 남은 틱),
+#   {-beeinv::k::칸}(조종 전 인벤토리 보관), {-beein::k::f/b/l/r/j/s}(입력: 앞/뒤/왼/오/점프/웅크리기, 1 또는 0), {-beebar::k}(본체 더미 머리 위 체력바 텍스트 디스플레이), {-beebarkey::k}(체력바 마지막 값), {-beebarhit::k}(본체 체력바를 보여 줄 종료 시각: 본체가 맞은 뒤 2초), {-beeslot::k}(사용 때 손에 든 칸 번호: 조종이 끝나면 이 칸으로 돌아감), {-beesnd::k}(이동 소리 틱 카운터), {-beest::k}(꿀벌 스태미너 0~100, 플레이어와 별개), {-beelock::k}(꿀벌 스태미너 회복 차단 남은 틱), {-beedash::k}(가속 남은 틱),
 #   {-beecd::k}(쿨타임 종료 시각), {-beestabcd::k}(독침 쿨타임 종료 시각), {-beecomb::k}(꿀벌 전투 종료 시각: 마지막 피격 8초 뒤), {-beeflag::k}(내가 내리게 하는 중 표시), {-beegame::k}(시작 때의 {-ingame})
 # 흐름:
 #   사용(우클릭): 플레이어 자리에 플레이어 모습(스킨, 갑옷)의 더미(마네킹)를 앉은 자세로 세우고(보이지 않는 갑옷 거치대에 태움), 꿀벌(체력 10)을 소환해 플레이어를 꿀벌에 태운다
@@ -10,7 +10,7 @@
 #     꿀벌은 본체에서 50칸 넘게 못 간다(바깥 방향 속도를 지움). 지속시간 제한 없음.
 #   본체 피격: 더미가 맞으면 그 피해를 취소하고, 같은 피해를 플레이어 본인에게 준다(잠깐 무적을 풀고 damage(양, 피해 출처) 로 줘서 킬 판정/킬로그가 그대로 간다). 경고음 + 액션바.
 #     치명타면 조종을 먼저 끝내(인벤토리 복구) 본체 자리로 돌려놓고, 꿀벌/더미를 쿨타임 없이 치운 뒤 그 자리에서 죽게 한다.
-#   체력 표시: 보스바는 없다. 조종 중 플레이어 화면 체력바(하트)에는 꿀벌 체력만 보이고(Player#sendHealthUpdate 로 가짜 체력을 보냄), 본체 체력은 본체 더미 머리 위 체력바로 보인다.
+#   체력 표시: 보스바는 없다. 조종 중 플레이어 화면 체력바(하트)에는 꿀벌 체력만 보이고(Player#sendHealthUpdate 로 가짜 체력을 보냄), 본체 체력은 본체가 맞았을 때만 본체 더미 머리 위 체력바(숫자 포함)로 2초 동안 보인다.
 #   조종 중 손에 든 아이템은 다른 플레이어에게 보이지 않는다(Player#sendEquipmentChange 로 빈손을 보냄). 조종이 끝나면 원래 손에 든 아이템/체력을 다시 보낸다.
 #   가속(이동 유틸): 도약(jump.sk)과 같은 입력(더블 점프 또는 F키, 플레이어 설정). 꿀벌 스태미너 25 이상에서 발동, 10틱(0.5초) 동안 속도 x2.5, 그동안 스태미너 25 소모.
 #     꿀벌 스태미너는 100에서 시작하고 플레이어 것과 따로 쓴다. 회복은 플레이어와 같다(틱당 +1, 가속을 시작하면 49틱 동안 회복 차단: 도약의 stcap 유지시간과 같음). 조종 중에는 경험치 바에 꿀벌 스태미너가 보인다.
@@ -142,6 +142,7 @@ function beeRemoveBody(k: text):
 		delete entity within {-beebar::%{_k}%}
 	delete {-beebar::%{_k}%}
 	delete {-beebarkey::%{_k}%}
+	delete {-beebarhit::%{_k}%}
 	if {-beebody::%{_k}%} is set:
 		set {_m} to {-beebody::%{_k}%}
 		delete {-beeown::%uuid of {_m}%}
@@ -167,10 +168,18 @@ function beeBodyBar(p: player, k: text):
 	if {_ch} > 0:
 		if {_filled} < 1:
 			set {_filled} to 1
-	set {_key} to "%{_filled}%"
+	# 본체가 맞으면 2초 동안만 보인다(마지막 피격 기준). 그 외에는 숨긴다.
+	set {_show} to false
+	if {-beebarhit::%{_k}%} is set:
+		if {-beebarhit::%{_k}%} > now:
+			set {_show} to true
+	set {_key} to "%{_filled}%/%floor({_ch})%/%{_show}%"
 	if {-beebarkey::%{_k}%} is {_key}:
 		stop
 	set {-beebarkey::%{_k}%} to {_key}
+	if {_show} is false:
+		set text of {_d} to ""
+		stop
 	set {_c} to "&c"
 	if {_ratio} > 0.6:
 		set {_c} to "&a"
@@ -182,6 +191,7 @@ function beeBodyBar(p: player, k: text):
 			set {_bar} to "%{_bar}%%{_c}%█"
 		else:
 			set {_bar} to "%{_bar}%&8█"
+	set {_bar} to "%{_bar}% &f%floor({_ch})%/%floor({_mh})%"
 	set text of {_d} to {_bar}
 
 # 조종 중 손에 든 아이템을 다른 플레이어에게 안 보이게(빈손을 보낸다)
@@ -649,6 +659,7 @@ on damage with priority highest:
 			play sound "block.note_block.bass" with volume 1 and pitch 0.5 to {_o}
 			play sound "block.note_block.bass" with volume 1 and pitch 0.7 to {_o}
 			send action bar colored "&c본체가 공격받고 있습니다!" to {_o}
+			set {-beebarhit::%{_ok}%} to now + 2 seconds
 			set {_hp} to {_o}.getHealth()
 			if {_amt} >= {_hp}:
 				# 치명타: 인벤토리를 되돌리며 본체 자리로 돌려놓고, 꿀벌/더미를 쿨타임 없이 치운 뒤 거기서 죽게 한다
