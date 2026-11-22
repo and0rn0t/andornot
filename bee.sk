@@ -140,6 +140,9 @@ function beeMakeBody(p: player):
 	{_meq}.setChestplate({_inv}.getChestplate())
 	{_meq}.setLeggings({_inv}.getLeggings())
 	{_meq}.setBoots({_inv}.getBoots())
+	# 본체 더미는 꿀벌 스폰알을 손에 든다(조종 중이라는 표시). 죽어도 드롭되지 않게 한다.
+	{_meq}.setItemInMainHand(new ItemStack(Material.BEE_SPAWN_EGG))
+	{_meq}.setItemInMainHandDropChance(0)
 	{_m}.addScoreboardTag("beebody")
 	{_st}.addPassenger({_m})
 	set {-beeseat::%{_k}%} to {_st}
@@ -256,6 +259,11 @@ function beeHideHand(p: player):
 		if {_v} is not {_p}:
 			{_v}.sendEquipmentChange({_p}, EquipmentSlot.HAND, {_air})
 			{_v}.sendEquipmentChange({_p}, EquipmentSlot.OFF_HAND, {_air})
+			# 자폭(스켈레톤 머리)은 머리 장비 칸에도 놓일 수 있는 아이템이라 머리/방어구 칸도 같이 비워서 보낸다
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.HEAD, {_air})
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.CHEST, {_air})
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.LEGS, {_air})
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.FEET, {_air})
 
 # 조종이 끝나면 다른 플레이어에게 진짜 손 아이템을 다시 보낸다
 function beeShowHand(p: player):
@@ -266,6 +274,10 @@ function beeShowHand(p: player):
 		if {_v} is not {_p}:
 			{_v}.sendEquipmentChange({_p}, EquipmentSlot.HAND, {_main})
 			{_v}.sendEquipmentChange({_p}, EquipmentSlot.OFF_HAND, {_off})
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.HEAD, {_p}.getInventory().getHelmet())
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.CHEST, {_p}.getInventory().getChestplate())
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.LEGS, {_p}.getInventory().getLeggings())
+			{_v}.sendEquipmentChange({_p}, EquipmentSlot.FEET, {_p}.getInventory().getBoots())
 
 # 꿀벌 조종용 아이템 3개(독침/자폭/조종 중지)를 인벤토리에서 전부 치운다(조종 도중 죽거나 서버가 꺼졌을 때 리스폰/접속 뒤에 남지 않게)
 function beeItemsScrub(p: player):
