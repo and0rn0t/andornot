@@ -1,0 +1,112 @@
+# [spectate.sk] 게임 관전 토글: 게임이 진행 중이 아닐 때 모든 플레이어의 7번 칸(핫바 7번째, 인덱스 6)에 콘크리트 블록이 고정된다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수(RAM): {-wspec::uuid}(true 면 "게임 관전" 선택, 없으면 "게임 참여" = 기본값), {-gwatch::uuid}(이번 게임을 관전하는 사람, game.sk 의 gameStart 가 채우고 gameCleanup 이 지움)
+# 동작:
+#   - 흰색 콘크리트 "게임 참여"(기본): 아무 일도 없다. 게임에 그대로 참여한다. 회색 콘크리트 "게임 관전": 우클릭하면 두 블록이 서로 바뀐다(토글, 블록은 설치되지 않는다).
+#   - 관전을 켜면 탭리스트(로비) 닉네임이 회색이 된다(items.sk 의 readyColorJ). 준비 상태와 상관없이 회색이다.
+#   - 관전자는 게임 시작 조건(모든 플레이어 준비)에 포함되지 않는다(ready.sk 가 관전자를 건너뛴다). 접속자 전원이 관전이면 시작하지 않는다.
+#   - 게임이 시작되면 참가자 목록({-gplist})에 들어가지 않고 {-gwatch} 에만 올라가 관전 모드로 게임 월드 중앙(gStormCenter)으로 옮겨진다. 이 게임에는 /참가 로 중간 참가할 수 없다(gJoinMid).
+#   - 게임이 끝나면(gameCleanup) 관전자도 어드벤처 모드로 돌아와 로비로 간다. 선택은 접속을 끊을 때까지 유지된다.
+#   - 7번 칸은 관리자 메뉴 아이템(op)이 6번 칸(인덱스 5)으로 밀려나서 비워 뒀다(items.sk). 8번 칸은 준비 블록(ready.sk), 9번 칸은 무기고.
+# 미검증: 콘크리트 블록 우클릭 설치 막기, 7번 칸 고정 복구, 탭 닉네임 회색, 게임 중 관전자 이동/종료 때 로비 복귀.
+
+function specOn(p: player) :: boolean:
+	if {-wspec::%uuid of {_p}%} is true:
+		return true
+	return false
+
+function specName(on: boolean) :: text:
+	if {_on} is true:
+		return "&7게임 관전"
+	return "&f게임 참여"
+
+function specItem(on: boolean) :: itemtype:
+	if {_on} is true:
+		set {_i} to gray concrete named specName(true)
+		set lore of {_i} to "&7[우클릭] 게임에 참여하도록 바꿔요", "&7관전 중에는 준비하지 않아도 되고", "&7게임이 시작되면 관전 상태로 구경해요"
+		return {_i}
+	set {_i} to white concrete named specName(false)
+	set lore of {_i} to "&7[우클릭] 게임을 관전하도록 바꿔요", "&7관전하면 이번 게임에 참가하지 않아요"
+	return {_i}
+
+# 7번 칸(인덱스 6)에 지금 상태의 블록을 고정하고, 왼손에 들어간 관전 블록은 치운다
+function specEnsure(p: player):
+	set {_want} to specName(specOn({_p}))
+	set {_n} to name of slot 6 of {_p}'s inventory
+	set {_ok} to false
+	if {_n} is set:
+		if {_n} is {_want}:
+			set {_ok} to true
+	if {_ok} is false:
+		set slot 6 of {_p}'s inventory to specItem(specOn({_p}))
+	set {_o} to name of slot 40 of {_p}'s inventory
+	if {_o} is set:
+		if {_o} is specName(true):
+			clear slot 40 of {_p}'s inventory
+		else if {_o} is specName(false):
+			clear slot 40 of {_p}'s inventory
+
+# 관전 블록을 치운다(게임이 시작될 때)
+function specClear(p: player):
+	loop 2 times:
+		set {_s} to 6
+		if loop-value is 2:
+			set {_s} to 40
+		set {_n} to name of slot {_s} of {_p}'s inventory
+		if {_n} is set:
+			if {_n} is specName(true):
+				clear slot {_s} of {_p}'s inventory
+			else if {_n} is specName(false):
+				clear slot {_s} of {_p}'s inventory
+
+function specSet(p: player, on: boolean):
+	if {_on} is true:
+		set {-wspec::%uuid of {_p}%} to true
+		play sound "block.note_block.bass" with volume 0.6 and pitch 1 to {_p}
+	else:
+		delete {-wspec::%uuid of {_p}%}
+		play sound "block.note_block.chime" with volume 0.6 and pitch 1.4 to {_p}
+	specEnsure({_p})
+	tabUpdate({_p})
+
+on right click:
+	if readyActive() is not true:
+		stop
+	set {_h} to event.getHand()
+	if {_h} is not set:
+		stop
+	if {_h}.name() is not "HAND":
+		stop
+	set {_tn} to name of player's tool
+	if {_tn} is not set:
+		stop
+	if {_tn} is specName(true):
+		cancel the event
+		specSet(player, false)
+		stop
+	if {_tn} is specName(false):
+		cancel the event
+		specSet(player, true)
+
+# 관전 블록은 버릴 수 없다
+on drop:
+	set {_dn} to name of event-item
+	if {_dn} is not set:
+		stop
+	if {_dn} is specName(true):
+		cancel the event
+		stop
+	if {_dn} is specName(false):
+		cancel the event
+
+on quit:
+	delete {-wspec::%uuid of player%}
+
+# 1초마다: 로비에서는 7번 칸 고정, 게임 중/연출 중에는 치운다
+every second:
+	if readyActive() is not true:
+		loop all players:
+			specClear(loop-player)
+		stop
+	loop all players:
+		specEnsure(loop-player)
