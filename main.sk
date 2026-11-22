@@ -39,15 +39,22 @@ on every 1 ticks:
 		set {_pl} to loop-player
 		set {_c} to {_pl}.getAttackCooldown()
 		set {-atkcd::%loop-player's uuid%} to {_c}
+		# 꿀벌 조종 중(bee.sk)에는 경험치 바에 꿀벌 스태미너가 보이므로 본체 스태미너는 값만 회복하고 바는 건드리지 않는다.
+		set {_dr} to false
+		if {-beemode::%loop-player's uuid%} is "drive":
+			set {_dr} to true
 		if {-stcap::%loop-player's uuid%} <= 0:
 			if {-st::%loop-player's uuid%} < 100:
 				add 1 to {-st::%loop-player's uuid%}
-				set level progress of loop-player to ({-st::%loop-player's uuid%}*0.01-0.001)
+				if {_dr} is false:
+					set level progress of loop-player to ({-st::%loop-player's uuid%}*0.01-0.001)
 			if {-st::%loop-player's uuid%} <= 0:
-				set level progress of loop-player to 0
+				if {_dr} is false:
+					set level progress of loop-player to 0
 			if {-st::%loop-player's uuid%} > 100:
 				set {-st::%loop-player's uuid%} to 100
-				set level progress of loop-player to 0.999
+				if {_dr} is false:
+					set level progress of loop-player to 0.999
 # 상태이상(이로운/해로운 모두) 보스바 표시. 상태이상은 skill_core.sk 의 setStatus/clearStatus 로 등록한다.
 # 효과 하나당 보스바 하나(여러 효과가 걸리면 보스바가 여러 개 쌓임). 같은 이름이 여러 출처에서 걸려 있으면 남은 시간이 가장 긴 것 하나만 보여준다.
 # 모든 행동을 막는 cc(기절 등, type "cc")는 보스바 대신 화면 가운데 타이틀(효과 이름) + 서브타이틀(남은 시간 막대)로 표시한다.

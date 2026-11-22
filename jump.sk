@@ -1,5 +1,6 @@
 # [jump.sk] 점프(스페이스)를 두 번 눌러 발동하는 대시 스킬. 스태미너 25 이상에서 사용, 스태미너 소모
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 꿀벌 조종 중(bee.sk)에는 같은 입력이 도약 대신 꿀벌 가속(beeDash)이다.
 # 이 파일이 쓰는 변수: {-st}, {-stcap}, {-jump}(도약 실행 중), {-jumplock}(읽기 전용: 하나라도 있으면 도약 불가)
 # 발동 방식: 서바이벌/어드벤처 플레이어에게 비행 허용(flight mode)을 켜 두면, 스페이스 두 번이 "비행 전환(flight toggle)" 이벤트로 들어온다.
 # 그 이벤트를 취소해서 실제로 날지는 못하게 하고, 그 순간에 도약을 쓴다. (지상에서 두 번 눌러도, 공중에서 두 번 눌러도 발동)
@@ -59,8 +60,9 @@ on flight toggle:
 	cancel event
 	set flight mode of player to false
 	set {_pl} to player
-	# 꿀벌 드론 조종 중(bee.sk)에는 도약을 쓸 수 없다
+	# 꿀벌 드론 조종 중(bee.sk)에는 도약 대신 꿀벌 가속(beeDash)을 쓴다
 	if {-beemode::%player's uuid%} is "drive":
+		beeDash({_pl})
 		wait 1 tick
 		jumpFlightOn({_pl})
 		stop
@@ -120,8 +122,9 @@ on swap hand items:
 		if gamemode of player is not adventure:
 			stop
 	set {_pl} to player
-	# 꿀벌 드론 조종 중(bee.sk)에는 도약을 쓸 수 없다
+	# 꿀벌 드론 조종 중(bee.sk)에는 도약 대신 꿀벌 가속(beeDash)을 쓴다
 	if {-beemode::%player's uuid%} is "drive":
+		beeDash({_pl})
 		wait 1 tick
 		jumpFlightOn({_pl})
 		stop
