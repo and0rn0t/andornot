@@ -397,10 +397,14 @@ function beeLose(k: text):
 	set {_p} to {-beep::%{_k}%}
 	if {-bee::%{_k}%} is set:
 		delete {-beeown::%uuid of {-bee::%{_k}%}%}
+	set {_was} to {-beemode::%{_k}%}
 	if {_p} is online:
 		beeRelease({_p}, true)
 		{_p}.setCooldown(Material.BEE_SPAWN_EGG, 1500)
 		send colored "&c꿀벌 드론이 파괴되었습니다." to {_p}
+		# 조종 중이 아닐 때(정지해 둔 드론이 파괴됨) 알림과 함께 꿀벌이 다치는 소리를 본인에게만 들려준다
+		if {_was} is not "drive":
+			play sound "entity.bee.hurt" with volume 1 and pitch 1 to {_p}
 	delete {-bee::%{_k}%}
 	delete {-beep::%{_k}%}
 	delete {-beemode::%{_k}%}
@@ -530,6 +534,10 @@ function beeExplode(p: player):
 	set {_loc} to {_bee}.getLocation()
 	play sound "entity.generic.explode" with volume 1 and pitch 1.2 at {_loc}
 	play 1 explosion emitter at {_loc} in radius of 100
+	# 본체 더미 자리에도 같은 폭발음을 낮게 재생해 자연스럽게 들리게 한다(드론 쪽 소리와 겹치지 않게 볼륨을 줄임)
+	if {-beebody::%{_k}%} is set:
+		set {_bl} to {-beebody::%{_k}%}.getLocation()
+		play sound "entity.generic.explode" with volume 0.6 and pitch 1.2 at {_bl}
 	set {_src} to a custom damage source:
 		set the damage type to player explosion
 		set the causing entity to {_p}
