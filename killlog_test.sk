@@ -1,7 +1,7 @@
 # [killlog_test.sk] 킬로그 테스트용: op 플레이어가 플레이어가 아닌 생명체(몬스터/동물 등)를 죽이면 killlog.sk 와 같은 형식으로 채팅에 띄운다.
 # 형식: [검] [공격자 얼굴] 공격자이름 [사망 원인 아이콘] [피격자 아이콘] 피격자종류
 #   검: 보는 사람 기준으로 공격자가 아군이면 다이아몬드 검, 적군이면 구리 검(killlog.sk 와 같은 규칙, isAlly + {-team}). 테스트 중 팀이 없으면 항상 구리 검(본인이 보면 다이아몬드 검).
-#   피격자는 몹이라 얼굴이 없어서 몹 스폰알 아이콘(item/종류_spawn_egg)으로 대신한다. 스폰알이 없는 종류는 보라/검정 체크무늬가 뜰 수 있다.
+#   피격자는 몹이라 얼굴이 없어서 몹 스폰알 아이콘(item/종류_spawn_egg)으로 대신한다. 스폰알이 없는 종류는 보라/검정 체크무늬가 뜰 수 있다. 연습 더미(마네킹)는 갑옷 거치대 아이콘(item/armor_stand)을 쓴다.
 # 플레이어가 죽는 경우는 killlog.sk 가 처리하므로 여기서는 건드리지 않는다(같이 켜도 겹치지 않음). 테스트가 끝나면 이 파일을 지우거나 이름 앞에 - 를 붙여 끈다.
 # 이 파일이 쓰는 변수: 없음(전부 지역 변수). 함수 이름은 killlog.sk 와 겹치지 않게 kt 로 시작한다.
 # 아이콘 만드는 방식과 미검증 부분은 killlog.sk 맨 위 주석 참고.
@@ -82,6 +82,9 @@ on death:
 	set {_anj} to "{""text"":""%{_an}%""}"
 	set {_ci} to ktIcon(ktCause({_v}, {_a}))
 	set {_vi} to ktIcon("%{_vt}%_spawn_egg")
+	# 연습 더미(evdummy.sk, 마네킹)는 마네킹 스폰알이 없어서 갑옷 거치대 아이콘으로 대신한다
+	if {_vt} is "mannequin":
+		set {_vi} to ktIcon("armor_stand")
 	set {_vnj} to "{""text"":""%{_vt}%""}"
 	set {_mid} to "%{_af}%,%{_gap}%,%{_anj}%,%{_gap}%,%{_ci}%,%{_gap}%,%{_vi}%,%{_gap}%,%{_vnj}%"
 	set {_swa} to ktIcon("diamond_sword")
