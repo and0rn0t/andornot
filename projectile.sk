@@ -5,6 +5,8 @@
 #   월드가 바뀌면(다른 월드에 있으면) 제거한다. 최대 사거리는 아래 projMaxRange() 하나만 고치면 된다.
 # 미검증: on spawn of projectile 이 화살/눈덩이/화염구/삼지창/TNT 외 모든 Projectile 에 걸리는지, Entity#isValid().
 
+using damage sources
+
 function projMaxRange() :: number:
 	return 150
 
@@ -36,47 +38,86 @@ on spawn of projectile:
 function arrowAssist() :: number:
 	return 1
 
-# 구간 a -> b 에서 부풀린 판정에 걸리는 플레이어를 찾아 피해를 준다(대상: 플레이어 + 철 골렘. 쏜 사람/아군/관전자 제외, 블럭에 먼저 막히면 무시). 미검증: World#rayTraceEntities(Location, Vector, double, double), rayTraceBlocks.
+# 구간 a -> b 를 지나는 화살이 부풀린 몸 판정(대상 크기 + arrowAssist() 칸)에 걸리는 대상(플레이어, 연습 더미, 철 골렘)을 찾아 피해를 준다.
+#   쏜 사람/아군/관전자는 제외, 블럭에 먼저 막히면 무시. 활/석궁 공통이다.
+#   예전에는 World#rayTraceEntities 를 썼는데, 시작점이 쏜 사람 몸 안이라 첫 구간에서 쏜 사람에게 먼저 걸려 중단됐다. 화살이 한 틱에 150칸 가는 활은 첫 구간에서 거의 끝나서
+#   활에는 보정이 사실상 안 먹었다. 지금은 대상마다 "구간과 몸 중심의 최단 거리"를 직접 계산해서 그 문제가 없다.
+#   피해는 화살 피해 처리(crossbow.sk 의 on damage)와 같은 값(기본 3 + 활 충전 추가분)을 직접 계산해서 준다(이벤트 처리가 안 먹어 1 로 들어가던 문제 방지).
+# 미검증: World#rayTraceBlocks, Entity#getWidth/getHeight, damage source 'arrow' 타입.
 function arrowAssistCheck(ar: entity, a: location, b: location):
 	set {_off} to vector between {_a} and {_b}
 	set {_len} to {_off}.length()
 	if {_len} < 0.05:
 		stop
-	set {_dir} to normalized {_off}
-	set {_w} to {_a}.getWorld()
-	set {_r} to {_w}.rayTraceEntities({_a}, {_dir}, {_len}, arrowAssist())
-	if {_r} is not set:
-		stop
-	set {_t} to {_r}.getHitEntity()
-	# 보정 대상: 플레이어와 철 골렘(몹은 철 골렘에만 적용)
-	set {_ok} to false
-	if {_t} is a player:
-		set {_ok} to true
-		if gamemode of {_t} is spectator:
-			set {_ok} to false
-	else if {_t}.getType().name() is "IRON_GOLEM":
-		set {_ok} to true
-	else if isEvDummy({_t}) is true:
-		# 연습 더미(evdummy.sk)는 플레이어와 똑같이 보정한다
-		set {_ok} to true
-	if {_ok} is not true:
-		stop
 	set {_sh} to {_ar}.getShooter()
-	if {_sh} is not set:
-		stop
 	if {_sh} is not a player:
 		stop
-	if {_t} is {_sh}:
-		stop
-	if isAlly("%uuid of {_sh}%", "%uuid of {_t}%") is true:
+	set {_dir} to normalized {_off}
+	set {_dx} to {_dir}.getX()
+	set {_dy} to {_dir}.getY()
+	set {_dz} to {_dir}.getZ()
+	set {_w} to {_a}.getWorld()
+	set {_r} to arrowAssist()
+	delete {_cand::*}
+	loop all players:
+		add loop-player to {_cand::*}
+	loop {-evd::*}:
+		add loop-value to {_cand::*}
+	loop all iron golems:
+		add loop-entity to {_cand::*}
+	set {_best} to 999999
+	delete {_hit}
+	loop {_cand::*}:
+		set {_t} to loop-value
+		if {_t} is {_sh}:
+			continue
+		set {_v} to {_t}.isValid()
+		if {_v} is not true:
+			continue
+		set {_c} to {_t}.getLocation()
+		if {_c}.getWorld() is not {_w}:
+			continue
+		if {_t} is a player:
+			if gamemode of {_t} is spectator:
+				continue
+			if isAlly("%uuid of {_sh}%", "%uuid of {_t}%") is true:
+				continue
+		set {_hw} to {_t}.getWidth() / 2
+		set {_hh} to {_t}.getHeight() / 2
+		set {_rx} to {_c}.getX() - {_a}.getX()
+		set {_ry} to {_c}.getY() + {_hh} - {_a}.getY()
+		set {_rz} to {_c}.getZ() - {_a}.getZ()
+		set {_tt} to {_rx} * {_dx} + {_ry} * {_dy} + {_rz} * {_dz}
+		if {_tt} < 0:
+			set {_tt} to 0
+		if {_tt} > {_len}:
+			set {_tt} to {_len}
+		set {_ex} to {_a}.getX() + {_dx} * {_tt} - {_c}.getX()
+		set {_ez} to {_a}.getZ() + {_dz} * {_tt} - {_c}.getZ()
+		set {_ey} to {_a}.getY() + {_dy} * {_tt} - ({_c}.getY() + {_hh})
+		set {_hd} to sqrt({_ex} * {_ex} + {_ez} * {_ez})
+		if {_hd} <= {_hw} + {_r}:
+			if abs({_ey}) <= {_hh} + {_r}:
+				if {_tt} < {_best}:
+					set {_best} to {_tt}
+					set {_hit} to {_t}
+	if {_hit} is not set:
 		stop
 	set {_br} to {_w}.rayTraceBlocks({_a}, {_dir}, {_len})
 	if {_br} is set:
-		set {_hp} to {_br}.getHitPosition().toLocation({_w})
-		set {_ep} to {_r}.getHitPosition().toLocation({_w})
-		set {_bd} to distance between {_a} and {_hp}
-		set {_ed} to distance between {_a} and {_ep}
-		if {_bd} < {_ed}:
+		set {_bp} to {_br}.getHitPosition().toLocation({_w})
+		set {_bd} to distance between {_a} and {_bp}
+		if {_bd} < {_best}:
 			stop
-	{_t}.damage(1, {_ar})
+	# 피해 = 화살 기본 3 + 활 충전 추가분(crossbow.sk 의 on damage 와 같은 식: hp(3) + 추가분은 스크립트 단위, x2 가 실 체력)
+	set {_xe} to {-bowextra::%uuid of {_ar}%}
+	set {_dm} to hp(3)
+	if {_xe} is a number:
+		set {_dm} to hp(3) + {_xe}
+	delete {-bowextra::%uuid of {_ar}%}
+	set {_src} to a custom damage source:
+		set the damage type to arrow
+		set the causing entity to {_sh}
+		set the direct entity to {_ar}
+	{_hit}.damage({_dm} * 2, {_src})
 	{_ar}.remove()
