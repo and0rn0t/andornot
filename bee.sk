@@ -140,9 +140,8 @@ function beeMakeBody(p: player):
 	{_meq}.setChestplate({_inv}.getChestplate())
 	{_meq}.setLeggings({_inv}.getLeggings())
 	{_meq}.setBoots({_inv}.getBoots())
-	# 본체 더미는 꿀벌 스폰알을 손에 든다(조종 중이라는 표시). 죽어도 드롭되지 않게 한다.
+	# 본체 더미는 꿀벌 스폰알을 손에 든다(조종 중이라는 표시). (마네킹은 Mob 이 아니라 드롭 확률 설정은 못 한다: 설정하면 IllegalArgumentException)
 	{_meq}.setItemInMainHand(new ItemStack(Material.BEE_SPAWN_EGG))
-	{_meq}.setItemInMainHandDropChance(0)
 	{_m}.addScoreboardTag("beebody")
 	{_st}.addPassenger({_m})
 	set {-beeseat::%{_k}%} to {_st}

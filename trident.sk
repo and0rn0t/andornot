@@ -31,7 +31,8 @@ function tridentLow(q: location) :: number:
 	set {_bl} to {_q}.getBlock()
 	if {_bl}.isPassable() is true:
 		return 0
-	set {_h} to {_bl}.getCollisionShape().getBoundingBox().getMaxY()
+	# VoxelShape 에는 getBoundingBox 가 없어서(getBoundingBoxes 만 있음) 블럭의 getBoundingBox 를 쓴다(월드 좌표 maxY - 블럭 y)
+	set {_h} to {_bl}.getBoundingBox().getMaxY() - {_bl}.getY()
 	return {_h}
 
 function tridentClear(q: location) :: boolean:
