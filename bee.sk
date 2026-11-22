@@ -634,10 +634,14 @@ function beeDrive(p: player, bee: entity, k: text):
 		if {-beest::%{_k}%} < 0:
 			set {-beest::%{_k}%} to 0
 		remove 1 from {-beedash::%{_k}%}
-		# 파티클은 꿀벌 몸 한가운데에(getLocation 은 발 위치라 0.3 위로 올린다)
+		# 파티클은 한 틱 늦게: 지난 틱에 저장해 둔 자리에서 재생하고, 이번 틱 자리(발 위치 +0.3)를 저장해 둔다
+		if {-beedashpos::%{_k}%} is set:
+			set {_pp} to {-beedashpos::%{_k}%}
+			play 2 spit with offset of 0.05, 0.05, 0.05 and speed 0 at {_pp} in radius of 100
 		set {_dl0} to {_bee}.getLocation()
-		set {_dl} to {_dl0} ~ vector(0, 0.3, 0)
-		play 2 spit with offset of 0.05, 0.05, 0.05 and speed 0 at {_dl} in radius of 100
+		set {-beedashpos::%{_k}%} to {_dl0} ~ vector(0, 0.3, 0)
+	else:
+		delete {-beedashpos::%{_k}%}
 	set {_vx} to ({_dx} * {_fw} + {_rx} * {_st}) * {_sp}
 	set {_vy} to ({_dy} * {_fw}) * {_sp} + {_ud} * {_sp} * 0.75
 	set {_vz} to ({_dz} * {_fw} + {_rz} * {_st}) * {_sp}
