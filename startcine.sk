@@ -5,6 +5,7 @@
 #   {-gstartretry::uuid}(시작 연출 중 카메라 재연결 쿨다운, 아래 PlayerMoveEvent 감지가 씀) {-gstartatt::uuid}(카메라 연결 단계에서 그 사람에게 관전 대상을 건 틱)
 # 강한 카메라 잠금 = 카메라 엔티티(텍스트 디스플레이)를 관전 대상으로 걸어 위치/시점을 못 바꾸게 하는 것(웅크리기 등으로 풀려도 매 틱 다시 건다). game.sk 의 PlayerMoveEvent 잠금(카메라 없이 제자리에서 못 움직이게 함)보다 강하다.
 # 흐름(gStartIntro, game.sk 의 gameStart 가 부른다; 시간 T 는 음악을 틀기 시작한 때부터, 20틱 = 1초):
+#   로딩  [추가] 연결 직후 리스폰 지점 시점으로 맵을 불러온다(gsPreload 로 시작 카메라/라인업 첫 구도/리스폰 주변 4청크 요청, 최소 40틱~최대 200틱). 액션바 "loading..."(청록). 끝나면 카메라와 모두를 시작 카메라로 옮기고 청크를 받을 때까지 기다린 뒤 액션바를 지우고 0초로 간다.
 #   연결  라인업 자리와 시작 카메라 자리를 정하고 모두 관전 상태로 그 자리로 보낸 뒤(월드가 다르면 이 때 월드 이동) 카메라 엔티티를 세운다. 각자에게 카메라 엔티티가 실제로 전송된 것(Entity#getTrackedBy)을 확인한 뒤에 관전 대상을 걸고(강한 카메라 잠금), 6/25틱 뒤에 한 번씩 더 강제로 다시 건다. 별도의 로딩 구간은 없다.
 #   0초   음악 gamestart 재생(리소스팩 mck_pack, 위치가 바뀌어도 들리게 플레이어 위치에서 재생(소리 닿는 거리를 크게 늘림)) + 맵 이름 타이틀. 시작 카메라로 맵을 보여준다.
 #   4.5초 보여주기용 더미를 세운다(팀 단위 줄. 다른 팀 더미는 각자에게 숨김).
@@ -21,6 +22,7 @@
 # [수정] 클라이언트 미연결 감지(아래 on PlayerMoveEvent): 서버의 getSpectatorTarget() 은 "서버가 건 것"일 뿐 클라이언트가 실제로 카메라에 붙었다는 뜻이 아니다. 붙은 클라이언트는 이동 패킷을 안 보내고
 #   서버가 매 틱 플레이어를 카메라 자리로 옮기므로, 관전 대상이 걸려 있는데 카메라에서 떨어진 자리로 이동 이벤트가 오면 클라이언트가 카메라를 무시한 것이다. 그때 이동을 취소하고 관전 대상을 다시 건다.
 #   (game.sk 의 이동 잠금은 관전 대상이 걸려 있으면 건너뛰므로 이 경우를 못 막았다.)
+# 미검증(로딩 구간): World#getChunkAtAsync(int,int) / isChunkLoaded(int,int) 를 Skript 숫자 계산식 인자로 부르는 것, 로딩 카메라(리스폰 지점) 시점에서 시작 카메라로 옮긴 뒤 관전 카메라가 유지되는지, 액션바 지우기(빈 문자열).
 # 미검증: Skript 기본 play sound 효과에 변수 소리 이름(다른 소리들과 같은 방식)과 팩의 attenuation_distance, Player#stopSound(String), Player#hideEntity(Plugin, Entity), 마네킹 이름표에 아이콘 컴포넌트, 텍스트 디스플레이 카메라 매 틱 teleport 의 부드러움, World#getHighestBlockYAt,
 #   [연결 단계 재작성분] Entity#getTrackedBy() 가 그 사람에게 엔티티가 전송됐다는 신호로 맞는지(다른 월드에서 시작해도 연출이 정상으로 보이는지),
 #   Location#getChunk() 와 Player#isChunkSent(Chunk)(Paper 1.20.5+) 호출, 오래 안 쓴 월드에서 청크 전송을 기다리면 카메라 잠금이 실제로 걸리는지,
@@ -299,13 +301,45 @@ function gsClear():
 	delete {-gsl::*}
 
 # ===== 시작 연출 본체 =====
+# 맵 미리 불러오기: l 주변 r 청크 반경(정사각형)을 비동기로 불러오라고 요청한다(World#getChunkAtAsync). 이미 불러와 있으면 아무 일도 안 한다.
+function gsPreload(l: location, r: number):
+	set {_w} to {_l}.getWorld()
+	set {_cx} to floor({_l}.getBlockX() / 16)
+	set {_cz} to floor({_l}.getBlockZ() / 16)
+	set {_dx} to 0 - {_r}
+	while {_dx} <= {_r}:
+		set {_dz} to 0 - {_r}
+		while {_dz} <= {_r}:
+			{_w}.getChunkAtAsync({_cx} + {_dx}, {_cz} + {_dz})
+			add 1 to {_dz}
+		add 1 to {_dx}
+
+# l 주변 r 청크 반경이 전부 불러와졌는지(World#isChunkLoaded)
+function gsPreloaded(l: location, r: number) :: boolean:
+	set {_w} to {_l}.getWorld()
+	set {_cx} to floor({_l}.getBlockX() / 16)
+	set {_cz} to floor({_l}.getBlockZ() / 16)
+	set {_dx} to 0 - {_r}
+	while {_dx} <= {_r}:
+		set {_dz} to 0 - {_r}
+		while {_dz} <= {_r}:
+			set {_ok} to {_w}.isChunkLoaded({_cx} + {_dx}, {_cz} + {_dz})
+			if {_ok} is not true:
+				return false
+			add 1 to {_dz}
+		add 1 to {_dx}
+	return true
+
 function gStartIntro(sg: number):
 	# 라인업 자리를 먼저 정한다(항상 정해짐). 시작 카메라가 없는 월드는 라인업 첫 구도 자리를 카메라로 쓴다(그래서 항상 카메라가 있다).
 	gsPrepare()
 	set {_cam} to gcLoadLoc(gcStartCamKey("%{-gworld}%"))
 	if {_cam} is not set:
 		set {_cam} to gsShotLoc(1, 0)
-	# 1) 모두 관전 상태로 시작 카메라 자리로 보낸다(게임 월드가 지금 월드와 다르면 여기서 월드 이동). 카메라 엔티티는 이동이 끝난 뒤에 세운다.
+	# 로딩 구간 카메라: 리스폰 지점(없으면 월드 스폰) 시점. 눈높이를 맞추려고 1.62칸 올린다. 로딩이 끝나면 시작 카메라로 옮긴다.
+	set {_rc} to gStormCenter()
+	set {_rc} to {_rc} ~ vector(0, 1.62, 0)
+	# 1) 모두 관전 상태로 로딩 카메라(리스폰 지점) 자리로 보낸다(게임 월드가 지금 월드와 다르면 여기서 월드 이동). 카메라 엔티티는 이동이 끝난 뒤에 세운다.
 	#    [원인 수정] 예전에는 이동과 같은 틱에 카메라를 세우고 바로 관전 대상을 걸었다. 다른 월드로 옮겨진 클라이언트는 새 월드를 불러오는 중이라 카메라 엔티티를 아직 몰라서
 	#    관전 요청을 무시하고, 서버는 걸렸다고 믿어서 다시 안 걸었다(같은 월드면 클라이언트가 이미 엔티티를 알아서 정상). 그래서 아래 2)에서 "그 사람에게 카메라 엔티티가
 	#    실제로 전송됐는지(getTrackedBy)"를 확인한 뒤에만 관전 대상을 건다. 엔티티 생성 패킷이 관전 대상 패킷보다 먼저 가므로 클라이언트가 순서대로 처리하면 반드시 붙는다.
@@ -314,9 +348,9 @@ function gStartIntro(sg: number):
 		if {_pl} is online:
 			set {-gstartprev::%uuid of {_pl}%} to {_pl}.getLocation()
 			set gamemode of {_pl} to spectator
-			tpSafe({_pl}, {_cam})
-	set {_cw} to {_cam}.getWorld()
-	set {_he} to {_cw}.spawnEntity({_cam}, EntityType.TEXT_DISPLAY)
+			tpSafe({_pl}, {_rc})
+	set {_cw} to {_rc}.getWorld()
+	set {_he} to {_cw}.spawnEntity({_rc}, EntityType.TEXT_DISPLAY)
 	{_he}.setGravity(false)
 	{_he}.setInvulnerable(true)
 	{_he}.setSilent(true)
@@ -363,6 +397,66 @@ function gStartIntro(sg: number):
 			set {_done} to true
 		else:
 			wait 1 tick
+	# 로딩 구간: 리스폰 지점 시점으로 보면서 맵(시작 카메라, 라인업 첫 구도, 리스폰 지점 주변 4청크)을 불러온다. 액션바에 loading... 을 계속 보낸다(최소 40틱, 최대 200틱).
+	gsPreload({_rc}, 4)
+	gsPreload({_cam}, 4)
+	if {-gsl::ok} is true:
+		set {_l1} to gsShotLoc(1, 0)
+		gsPreload({_l1}, 4)
+	set {_lt} to 0
+	set {_ldn} to false
+	while {_ldn} is false:
+		if gStartAbort({_sg}) is true:
+			stop
+		if mod({_lt}, 20) is 0:
+			loop {-gplist::*}:
+				if loop-value is online:
+					send action bar colored "&bloading..." to loop-value
+		gStartKeep()
+		add 1 to {_lt}
+		if {_lt} >= 40:
+			set {_ok1} to gsPreloaded({_cam}, 4)
+			if {_ok1} is true:
+				set {_ldn} to true
+		if {_lt} >= 200:
+			set {_ldn} to true
+		if {_ldn} is false:
+			wait 1 tick
+	# 로딩 끝: 카메라와 모두를 시작 카메라 자리로 옮기고, 전원이 그 자리 청크를 받을 때까지(최대 60틱) 카메라를 다시 걸며 기다린다.
+	teleport {-gstartcam} to {_cam}
+	loop {-gplist::*}:
+		if loop-value is online:
+			tpSafe(loop-value, {_cam})
+	set {_cck} to {_cam}.getChunk()
+	set {_cw2} to 0
+	set {_cd} to false
+	while {_cd} is false:
+		if gStartAbort({_sg}) is true:
+			stop
+		set {_call} to true
+		loop {-gplist::*}:
+			set {_pl} to loop-value
+			if {_pl} is online:
+				set {_snt} to {_pl}.isChunkSent({_cck})
+				if {_snt} is not true:
+					set {_call} to false
+		if mod({_cw2}, 10) is 2:
+			gStartKeepForce()
+		else:
+			gStartKeep()
+		add 1 to {_cw2}
+		if {_call} is true:
+			if {_cw2} >= 6:
+				set {_cd} to true
+		if {_cw2} >= 60:
+			set {_cd} to true
+		if {_cd} is false:
+			wait 1 tick
+	gStartKeepForce()
+	# 연출이 시작되기 직전에 loading... 문구를 지운다
+	loop {-gplist::*}:
+		if loop-value is online:
+			send action bar "" to loop-value
 	# 0초: 음악 + 맵 이름 타이틀
 	loop {-gplist::*}:
 		set {_pl} to loop-value
