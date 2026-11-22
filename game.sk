@@ -1234,10 +1234,10 @@ function gStormAnnounce():
 		set {_p} to loop-value
 		if {_p} is online:
 			send title "&c서든 데스" with subtitle "&f체력이 감소합니다" to {_p} for 4 seconds with fadein 10 ticks and fade out 20 ticks
-			send "&c리스폰에서 멀수록 받는 데미지가 강해집니다." to {_p}
+			send "&c중앙에서 멀수록 받는 데미지가 강해집니다." to {_p}
 			play sound "entity.wither.spawn" with volume 0.5 and pitch 1 to {_p}
 
-# 리스폰 지점 방향 안내(액션바): 5분이 지난 뒤 체력 감소를 받는 사람에게 화살표와 거리를 보여 준다. 화살표는 지금 보는 방향 기준(↑ 앞, → 오른쪽 ...).
+# 중앙(리스폰 지점) 방향 안내(액션바): 5분이 지난 뒤 체력 감소를 받는 사람에게 화살표와 거리를 보여 준다. 화살표는 지금 보는 방향 기준(↑ 앞, → 오른쪽 ...).
 function gStormCompass():
 	if gStormOn() is not true:
 		stop
@@ -1258,7 +1258,7 @@ function gStormCompass():
 			set {_ix} to floor(({_rel} + 22.5) / 45)
 			set {_ix} to mod({_ix}, 8) + 1
 			set {_a} to {_ar::%{_ix}%}
-			send action bar colored "&c리스폰 &f%{_a}% &7%{_dist}%m" to {_p}
+			send action bar colored "&c중앙 &f%{_a}% &7%{_dist}%m" to {_p}
 
 every 3 seconds:
 	gStormTick()
