@@ -36,6 +36,7 @@ import:
 	org.bukkit.Particle
 	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
 	org.bukkit.Particle$DustOptions
+	org.bukkit.event.player.PlayerMoveEvent
 	org.bukkit.potion.PotionEffect
 	org.bukkit.potion.PotionEffectType
 
