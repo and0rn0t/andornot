@@ -119,8 +119,8 @@ function kcCamLoc(base: location) :: location:
 	set {_dz} to cos({_yaw}) * kcCamDist()
 	set {_cl} to {_base} ~ vector({_dx}, kcCamHeight(), {_dz})
 	set {_tg} to {_base} ~ vector(0, 1, 0)
-	{_cl}.setDirection(vector from {_cl} to {_tg})
-	# pitch 고정(yaw 만 대상을 향함)
+	# 킬 연출 카메라는 안 움직이고 대상 정면을 보며, pitch 는 0 고정
+	{_cl}.setDirection(vector(0 - {_dx}, 0, 0 - {_dz}))
 	{_cl}.setPitch(0)
 	return {_cl}
 

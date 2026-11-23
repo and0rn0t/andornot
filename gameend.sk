@@ -855,8 +855,11 @@ function gfShotA(stage: location, t: number) :: location:
 	set {_d} to 1 + 0.05 * {_e}
 	set {_h} to 1.5 + 0.1 * {_e}
 	set {_cam} to {_stage} ~ vector({_fx} * {_d} + {_lx} * {_s}, {_h}, {_fz} * {_d} + {_lz} * {_s})
+	# 시선은 이 구간 시작 자리(u = 0)에서 더미를 바라보는 방향으로 고정하고, 카메라는 위치로만 움직인다
+	set {_s0} to {_side} * ({_hl} + 1.1)
+	set {_c0} to {_stage} ~ vector({_fx} + {_lx} * {_s0}, 1.5, {_fz} + {_lz} * {_s0})
 	set {_tg} to {_stage} ~ vector(0, 1.1, 0)
-	{_cam}.setDirection(vector from {_cam} to {_tg})
+	{_cam}.setDirection(vector from {_c0} to {_tg})
 	# pitch 는 구경 자리(gfStageView)와 같은 -5 로 고정: 연출 내내 위아래 끄덕임 없음
 	{_cam}.setPitch(-5)
 	return {_cam}
@@ -876,8 +879,8 @@ function gfShotB(stage: location, t: number) :: location:
 	set {_d} to 4.2 + 2.8 * {_e}
 	set {_h} to 1.45 + 0.17 * {_e}
 	set {_cam} to {_stage} ~ vector({_fx} * {_d}, {_h}, {_fz} * {_d})
-	set {_tg} to {_stage} ~ vector(0, 1.55 - 0.54 * {_e}, 0)
-	{_cam}.setDirection(vector from {_cam} to {_tg})
+	# 정면 방향(-f)으로 시선 고정, 카메라는 뒤로만 빠진다
+	{_cam}.setDirection(vector(0 - {_fx}, 0, 0 - {_fz}))
 	# pitch 는 구경 자리(gfStageView)와 같은 -5 로 고정: 연출 내내 위아래 끄덕임 없음
 	{_cam}.setPitch(-5)
 	return {_cam}

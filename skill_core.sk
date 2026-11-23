@@ -174,7 +174,7 @@
 #   - anvil.sk      : 모루 스킬
 #   - tnt.sk        : TNT 스킬(투척, 33틱 뒤 기절 폭발)
 #   - statustag.sk  : 해로운 상태이상을 체력바(healthbar.sk) 위에 <이름> 으로 표시
-#   - [연출 카메라 규칙] 시작/킬/종료 연출의 카메라는 yaw 만 대상을 향하고 pitch 는 고정(시작 0, 킬 0, 종료 -5). 화면이 끄덕이며 끊겨 보여서 setDirection 뒤에 setPitch 로 덮어쓴다.
+#   - [연출 카메라 규칙] 시작/킬/종료 연출의 카메라는 시선(yaw, pitch)을 샷 내내 고정하고 위치(앞뒤/좌우)로만 움직인다(WASD 이동처럼). 고정 pitch: 시작 0, 킬 0, 종료 -5. 시선을 대상에 맞춰 돌리면 화면이 끊겨 보여서 setDirection 에 고정 벡터를 쓴다.
 #   - healthbar.sk  : 머리 위 체력바(모든 모드 공통: 적은 빨강, 아군(isAlly)은 초록, 시청자별로 TEXT_DISPLAY 2개 {-hpbar_d}/{-hpbar_g} 를 showEntity/hideEntity 로 골라 보임) + 데미지 숫자(사용자가 직접 작성한 파일, statustag.sk 가 이 위에 상태이상을 띄움)
 #   - netherstar.sk : 네더의 별 스킬
 #   - potions.sk    : 포션 3종(체력/스태미너/투명) 스킬

@@ -232,8 +232,8 @@ function gsShotLoc(shot: number, t: number) :: location:
 	set {_base} to {-gsl::loc}
 	set {_cl} to {_base} ~ vector({-gsl::fx} * {_d} + {-gsl::ux} * {_lat}, {_h}, {-gsl::fz} * {_d} + {-gsl::uz} * {_lat})
 	set {_tg} to {_base} ~ vector({-gsl::ux} * {_tlat}, {_ty}, {-gsl::uz} * {_tlat})
-	{_cl}.setDirection(vector from {_cl} to {_tg})
-	# pitch 는 0 으로 고정(yaw 만 대상을 향함): 높이/거리가 변해도 화면이 위아래로 끄덕이지 않게
+	# 시선(yaw/pitch)은 샷 내내 고정: 무대 정면 방향(-f)만 바라보고, 카메라는 위치(앞뒤/좌우)로만 움직인다(WASD 이동처럼)
+	{_cl}.setDirection(vector(0 - {-gsl::fx}, 0, 0 - {-gsl::fz}))
 	{_cl}.setPitch(0)
 	return {_cl}
 
