@@ -288,10 +288,12 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 					# 더미(마네킹)도 적처럼 핑이 찍힌다. 단 본인/아군의 꿀벌 조종 중 본체 더미는 제외.
 					set {_ok} to true
 					loop {-beebody::*}:
-						if "%uuid of loop-value%" is {_tid}:
-							if loop-index is {_pid}:
+						set {_bb} to loop-value-2
+						set {_bo} to loop-index
+						if "%uuid of {_bb}%" is {_tid}:
+							if {_bo} is {_pid}:
 								set {_ok} to false
-							else if isAlly({_pid}, loop-index) is true:
+							else if isAlly({_pid}, {_bo}) is true:
 								set {_ok} to false
 				if {_ok} is true:
 					if world of {_t} is world of {_p}:
