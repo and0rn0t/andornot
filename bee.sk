@@ -42,9 +42,20 @@ import:
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	org.bukkit.event.player.PlayerInputEvent
 	org.bukkit.event.entity.EntityDismountEvent
+	org.bukkit.event.entity.ProjectileHitEvent
 
 on load:
 	set {-skillitems::bee} to bee spawn egg
+
+# 꿀벌을 조종 중인 플레이어(꿀벌에 탑승한 투명한 몸)는 투사체(화살 등) 판정을 없앤다: 맞아도 그냥 통과해서 아래/안쪽의 꿀벌이 맞는다.
+# (본체 더미는 그대로 맞는다.) 미검증: Paper 에서 ProjectileHitEvent(엔티티 적중) 취소 시 투사체가 통과해 계속 나아가는지.
+on ProjectileHitEvent:
+	set {_he} to event.getHitEntity()
+	if {_he} is not set:
+		stop
+	if {_he} is a player:
+		if {-beemode::%uuid of {_he}%} is "drive":
+			event.setCancelled(true)
 
 # 꿀벌 조종 중이거나 조종이 막 끝난 직후(5틱)에는 드론 아이템 말고 다른 스킬 아이템을 쓰지 못한다.
 #   조종이 끝나면 보관한 인벤토리가 같은 틱에 돌아오는데, 같은 우클릭(오프핸드 이벤트, 즉시 사용 가짜 이벤트)이 그 복구된 아이템을 써 버리는 일을 막는다.
