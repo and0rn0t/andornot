@@ -1000,8 +1000,43 @@ function gameFinale():
 		set {_pre0} to gfTitleTick()
 		delete {-gfsnd}
 	else:
+		# 킬 연출이 없는 승리(접속 종료로 끝남, /endtest): 킬 연출 대신 참가자를 제자리에 고정(위치 + 시점)한 채 end 소리와 "게임 종료" 타이틀을 틀고,
+		# 소리 앞 무음(gfTitleTick 틱) 동안 기다린 뒤 종료 연출 화면으로 넘어간다. 고정 방법은 킬 연출과 같다: 각자 눈 위치/시선 그대로의 카메라 엔티티를 관전한다.
+		loop {-gplist::*}:
+			set {_pl} to loop-value
+			if {_pl} is online:
+				set gamemode of {_pl} to spectator
+				set {_el} to {_pl}.getEyeLocation()
+				set {_hw} to {_el}.getWorld()
+				set {_hce} to {_hw}.spawnEntity({_el}, EntityType.TEXT_DISPLAY)
+				{_hce}.setGravity(false)
+				{_hce}.setInvulnerable(true)
+				{_hce}.setSilent(true)
+				{_hce}.addScoreboardTag("gdummy")
+				set {_hc::%uuid of {_pl}%} to {_hce}
+		wait 1 tick
 		loop all players:
 			bgmPlay(loop-player, "end")
+			send title "&f게임 종료" with subtitle "" to loop-player for 2 seconds with fadein 5 ticks and fade out 0 ticks
+		set {_ht0} to 0
+		while {_ht0} < gfTitleTick():
+			if {-gfgen} is not {_gen}:
+				loop {_hc::*}:
+					loop-value.remove()
+				stop
+			loop {-gplist::*}:
+				set {_pl} to loop-value
+				if {_pl} is online:
+					set {_hcam} to {_hc::%uuid of {_pl}%}
+					if {_hcam} is set:
+						set {_hcur} to {_pl}.getSpectatorTarget()
+						if {_hcur} is not {_hcam}:
+							kcSpec({_pl}, {_hcam})
+			add 1 to {_ht0}
+			wait 1 tick
+		loop {_hc::*}:
+			loop-value.remove()
+		set {_pre0} to gfTitleTick()
 	# 연출 방식은 시작 연출(startcine.sk gStartIntro)과 똑같다: (1) 시청자를 관전 상태로 첫 카메라 자리에 모으고 (2) 카메라 엔티티를 세운 뒤 1틱 기다려 (3) 엔티티가 전송된 사람부터
 	# 관전 대상을 걸고(건 뒤 6틱, 25틱에 강제로 다시) 전원이 붙을 때까지(최대 300틱) 기다리고 (4) 첫 자리 청크를 받을 때까지 기다린 다음 (5) 소리를 틀면서 연출을 시작한다.
 	# 소리 end 는 파일 기준(틱, 20틱 = 1초, 0 = 재생 시작 = 킬 연출이 끝난 직후 종료 연출이 시작되는 순간). 소리는 시작하자마자 틀고, 앞 1.4초 무음 동안 암전 상태로 준비한다(준비가 더 길면 그만큼 연출을 앞서 시작):
