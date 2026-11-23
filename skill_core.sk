@@ -63,7 +63,7 @@
 #   {-kcorig::uuid} {-groundwin}   라운드 종료 연출 중 원래 위치 / 라운드 승리 팀 키   killcine, game
 #   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
 #   {-gslot::uuid::아이템id}   게임 시작 직전 로비에서 정리해 둔 구성 아이템 칸(0~35). 게임 중 loadoutGive 가 이 칸에 먼저 넣음, gameCleanup 이 지움   game, items
-#   {-gfinale} {-gvote} {-gtest} {-gfcam}(종료 연출 카메라 엔티티) {-gfatt::uuid} {-gfv::*}(종료 연출 시청자 = 참가자+관전자) {-gfretry::uuid} {-gpotm::투표자uuid} {-gdummies::*} {-gpotmres} {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(투표, 더미, 결과 디스플레이)   gameend
+#   {-gfinale} {-gtest} {-gfcam}(종료 연출 카메라 엔티티) {-gfatt::uuid} {-gfv::*}(종료 연출 시청자 = 참가자+관전자) {-gfretry::uuid} {-gdummies::*} {-gpotmres}(POTM 이름) {-gpotmid}(POTM 참가자 id) {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(POTM 자동 선정, 더미, 결과 디스플레이)   gameend
 #   {-grand::uuid::1~5} {-grandon}   랜덤 아이템 모드로 게임 중 뽑은 구성/켜짐 표시(게임이 끝나면 지움, 저장된 구성 {loadout} 은 그대로)   items, game
 #   {gamecfg::map} 게임 맵 월드 이름, {gamecfg::maprandom} 매 게임 랜덤 모드(관리자 메뉴 맵 설정, 저장 변수)  admin, game
 #   {gamecfg::loc::lobby|stage_<월드>::world|x|y|z|yaw|pitch} 로비 위치/월드별 결과 무대 위치(저장 변수, 월드 이름+좌표라 월드가 안 올라와 있어도 안 사라짐)  gameend(gcSaveLoc/gcLoadLoc)
@@ -174,7 +174,8 @@
 #   - anvil.sk      : 모루 스킬
 #   - tnt.sk        : TNT 스킬(투척, 33틱 뒤 기절 폭발)
 #   - statustag.sk  : 해로운 상태이상을 체력바(healthbar.sk) 위에 <이름> 으로 표시
-#   - healthbar.sk  : 머리 위 체력바(팀전 게임 중 플레이어는 팀 색, 그 외 체력 비율 색) + 데미지 숫자(사용자가 직접 작성한 파일, statustag.sk 가 이 위에 상태이상을 띄움)
+#   - [연출 카메라 규칙] 시작/킬/종료 연출의 카메라는 yaw 만 대상을 향하고 pitch 는 고정(시작 0, 킬 0, 종료 -5). 화면이 끄덕이며 끊겨 보여서 setDirection 뒤에 setPitch 로 덮어쓴다.
+#   - healthbar.sk  : 머리 위 체력바(모든 모드 공통: 적은 빨강, 아군(isAlly)은 초록, 시청자별로 TEXT_DISPLAY 2개 {-hpbar_d}/{-hpbar_g} 를 showEntity/hideEntity 로 골라 보임) + 데미지 숫자(사용자가 직접 작성한 파일, statustag.sk 가 이 위에 상태이상을 띄움)
 #   - netherstar.sk : 네더의 별 스킬
 #   - potions.sk    : 포션 3종(체력/스태미너/투명) 스킬
 #   - ominousbottle.sk : 불길한 병 스킬
@@ -303,7 +304,7 @@
 # 10. 게임 모드/진행 기획 (사용자 제공, 2026-11. 맵 설정(스폰/로비)은 아직 없음)
 #   구현 상태: [완료] 게임 시작/종료, 팀 배정, 전적(K/D/A/가한 피해), 바운티, 녹아웃, 목표 스코어/승점 설정   [game.sk, gamesetup.sk, admin.sk, killcine.sk]
 #             [완료] 게임 중 탭리스트 전투 정보   [gametab.sk]
-#             [완료] 게임 종료 연출/결과 발표/Player Of The Match 투표/채팅 상단 고정/15초 뒤 로비   [gameend.sk, killcine.sk]
+#             [완료] 게임 종료 연출/결과 발표/Player Of The Match 자동 선정(승리 기여도)/채팅 상단 고정/15초 뒤 로비   [gameend.sk, killcine.sk]
 #             [완료] 녹아웃 라운드 시작 5분 뒤 서든 데스(3초마다 체력 감소, 리스폰 x,z 에서 먼 순서로 더 깎음, gStormTick, 변수 {-grstart}) + 5분이 되면 "서든 데스" 타이틀/채팅 안내(gStormAnnounce) + 액션바 리스폰 방향 화살표(gStormCompass, 미검증)   [game.sk]
 #             [완료] 로비/훈련장 월드는 맵 선택/랜덤에서 제외(mapExcluded)   [admin.sk, game.sk]
 #             [완료] 시작 연출 재작성(음악 + 팀 더미 라인업)과 녹아웃 라운드 시작 연출(음악 + 5초 카운트다운)   [startcine.sk, game.sk, resourcepack/]
@@ -316,7 +317,7 @@
 #   - 녹아웃: 모두 목숨 1개. 마지막까지 살아남은 팀이 승점 1점을 얻고 전투가 다시 시작된다(전원 사망이면 무승부 라운드). 먼저 목표 승점을 쌓으면 승리. 목표 승점은 같은 칸에서 변경(기본 3).
 #   - 개인전(팀 수 0)이면 플레이어 한 명이 한 팀이다. 팀전은 게임 시작 때 /team 으로 지정되지 않은 사람을 섞어서 인원이 가장 적은 팀에 넣는다.
 #   - 처치로 승리가 정해지면: 마지막 킬 연출을 모든 플레이어가 감상(관전 상태 유지) -> 승리 팀 알림 -> 승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고
-#     채팅으로 결과 발표(팀 스코어, 플레이어 KDA, 가한 피해, 사용한 아이템). 결과의 플레이어 닉네임 옆 화살표를 눌러 Player Of The Match 투표(본인 투표 불가).
+#     채팅으로 결과 발표(팀 스코어, 플레이어 KDA, 가한 피해, 사용한 아이템). Player Of The Match 는 투표 없이 승리 팀 중 기여도(킬 3 + 어시스트 1.5 + 피해/10 - 데스)가 가장 높은 사람을 자동 선정(개인전 없음, 타이틀 발표 없음, 결과창 맨 아래와 더미 ★ 로 표시).
 #     결과 발표는 채팅 상단에 고정되고 아래 몇 줄은 평소처럼 채팅이 올라온다. 15초 뒤 게임 완전 종료, 로비로 이동.
 #   - 게임 중 탭리스트: 상단에 팀 스코어(팀전), 그 아래 줄에 K D A DMG ITEM 열 제목. 플레이어 줄은 (스킨 아이콘)이름 킬 / 데스 / 어시스트 / 가한 피해 / 사용 중인 아이템 아이콘, 팀 순서대로 정렬.
 # ==============================================================================

@@ -120,6 +120,8 @@ function kcCamLoc(base: location) :: location:
 	set {_cl} to {_base} ~ vector({_dx}, kcCamHeight(), {_dz})
 	set {_tg} to {_base} ~ vector(0, 1, 0)
 	{_cl}.setDirection(vector from {_cl} to {_tg})
+	# pitch 고정(yaw 만 대상을 향함)
+	{_cl}.setPitch(0)
 	return {_cl}
 
 # 대상(스켈레톤/승리자 더미)이 서 있을 방향: 피격자의 시선과 상관없이 고정. 0 도(남쪽)부터 90 도씩 돌려 카메라 자리가 막히지 않은 첫 방향을 쓴다(다 막히면 0).

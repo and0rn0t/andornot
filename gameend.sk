@@ -1,18 +1,18 @@
-# [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 투표 -> 15초 뒤 정리하고 로비로.
+# [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 자동 선정 -> 15초 뒤 정리하고 로비로.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
-# 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gvote}(투표 받는 중), {-gpotm::투표자uuid}(투표한 대상 uuid), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
-#   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(투표 결과 문구), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
+# 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
+#   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(POTM 이름), {-gpotmid}(POTM 참가자 id, 승리 기여도로 자동 선정 gfPotmPick), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 # 매치 기록(결과 저장/책장 GUI/리뷰)은 matchhistory.sk. {-gmatchlbl}(이번 매치 이름, 결과 맨 윗줄)
 # 명령: /gamestop(관리자, 게임/연출 중단)
-# 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭해서 한다(좌클릭은 무반응)(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 포함, 개인전은 투표 없음). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
+# 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). Player Of The Match 는 투표 없이 승리 팀 중 기여도(gfContrib: 킬 3 + 어시스트 1.5 + 피해/10 - 데스)가 가장 높은 사람으로 자동 선정(개인전은 없음). 타이틀 발표 없음. 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
 #   [재작성] 연출 방식은 시작 연출(startcine.sk)과 같다(카메라 연결 -> 청크 대기 -> 소리 시작). 타임라인은 아래 gameFinale 주석과 gfEndLen/gfTitleTick/gfFadeTick/gfCutTick 한 곳에서 조절한다.
 #   0초   효과음 end(mck:end, 팩, 파일 16.3초, 소리는 1.46~15.1초) 재생 시작 + 관전 카메라 1구도(무대 위에서 돌며 내려옴, 더미 없음). 소리가 들리기 시작하는 1.46초(29틱)에 "게임 종료 / 승리!" 타이틀
 #   (파일 기준 8.5~11.5초) 화면이 어두워졌다가 밝아지고(블라인드니스), 한가운데인 10초에 승리 팀 플레이어와 똑같이 생긴 더미 + 결과 디스플레이를 세우고 카메라를 더미 정면 샷으로(gfShotB, 구경 자리까지 다가옴). 폭죽 파티클은 소리 시작부터(소리 없음)
-#   15.1초(302틱) 소리가 끝날 때 모두 관전을 풀고 구경 자리에 모은 뒤 투표 시작(결과 채팅 발표)
-#   투표 시작 후 15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
-# 결과 표시: 팀 점수(승리 팀이 맨 위), 참가자 전원의 K/D/A·가한 피해·사용한 아이템(구성 아이콘)을 텍스트 디스플레이로 승리 팀 더미 뒤에 띄운다. 투표 수는 더미 머리 위 설명에 표시.
+#   15.1초(302틱) 소리가 끝날 때 모두 관전을 풀고 구경 자리에 모음(결과창 표시)
+#   그 뒤 15초 게임 월드에서 대기(gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 게임 정리, 로비로 이동
+# 결과 표시: 팀 점수(승리 팀이 맨 위), 참가자 전원의 K/D/A·가한 피해·사용한 아이템(구성 아이콘)을 텍스트 디스플레이로 승리 팀 더미 뒤에 띄운다. POTM 은 결과창 맨 아래와 더미 머리 위 ★ 로 표시.
 # 로비/결과 무대 위치는 관리자 메뉴 버튼으로 저장한 위치({gamecfg::loc::lobby|stage::world|x|y|z|yaw|pitch}, 월드 이름 + 좌표)를 쓴다(멀티월드 가능). 결과 무대(더미 + 디스플레이)는 다음 게임 시작 전까지 남는다.
 # 미검증: 마네킹 소환/스킨(ResolvableProfile, SPIGOT-8084), 마네킹 이름표/설명, PlayerInteractEntityEvent 로 마네킹 클릭, 무적 더미 좌클릭 이벤트, TextDisplay#text/setLineWidth, 디스플레이 크기/위치.
 
@@ -209,12 +209,47 @@ function gfBuildStage(stage: location) :: object:
 	return {_disp}
 
 # ===== 결과 문구 만들기 =====
-function gfVotes(tid: text) :: number:
-	set {_c} to 0
-	loop {-gpotm::*}:
-		if loop-value is {_tid}:
-			add 1 to {_c}
-	return {_c}
+# Player Of The Match(자동 선정) 기여도: 승리에 얼마나 보탬이 됐는지. 킬 3점, 어시스트 1.5점, 가한 피해 10당 1점, 데스 -1점.
+function gfContrib(id: text) :: number:
+	set {_k} to {-gk::%{_id}%}
+	if {_k} is not a number:
+		set {_k} to 0
+	set {_a} to {-ga::%{_id}%}
+	if {_a} is not a number:
+		set {_a} to 0
+	set {_d} to {-gd::%{_id}%}
+	if {_d} is not a number:
+		set {_d} to 0
+	set {_dm} to {-gdmg::%{_id}%}
+	if {_dm} is not a number:
+		set {_dm} to 0
+	return {_k} * 3 + {_a} * 1.5 + {_dm} / 10 - {_d}
+
+# 승리 팀 참가자 중 기여도가 가장 높은 사람을 POTM 으로 정한다(동점이면 gfScore 높은 쪽). 개인전은 팀이 없어서 정하지 않는다. {-gpotmid} = 참가자 id, {-gpotmres} = 이름.
+function gfPotmPick():
+	delete {-gpotmid}
+	delete {-gpotmres}
+	if {-gteams} is 0:
+		stop
+	set {_bc} to -100000
+	set {_bs} to -1
+	set {_bi} to ""
+	loop gfIds():
+		if gfTeamOfId(loop-value) is {-gwinner}:
+			set {_c} to gfContrib(loop-value)
+			set {_sc} to gfScore(loop-value)
+			if {_c} > {_bc}:
+				set {_bc} to {_c}
+				set {_bs} to {_sc}
+				set {_bi} to loop-value
+			else if {_c} is {_bc}:
+				if {_sc} > {_bs}:
+					set {_bs} to {_sc}
+					set {_bi} to loop-value
+	if {_bi} is "":
+		stop
+	set {-gpotmid} to {_bi}
+	set {-gpotmres} to gfName({_bi})
 
 # 결과 표시용 참가자 id 목록(참가자 uuid 문자열)
 function gfIds() :: texts:
@@ -546,6 +581,8 @@ function gfOverlayJson() :: text:
 	set {_w1} to gfT({_wide}, "white", false)
 	set {_b} to gfT(" ", "white", false)
 	set {_ex} to "%{_w1}%,%{_nlc}%,%{_b}%"
+	if {-gteams} > 0:
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_b}%"
 	set {_mt} to ""
 	if {-gworld} is set:
 		set {_mt} to "x"
@@ -560,8 +597,6 @@ function gfOverlayJson() :: text:
 		set {_rows} to gfTeamRowsOv(loop-value, {_nlc})
 		set {_ex} to "%{_ex}%%{_rows}%"
 	if {-gpotmres} is set:
-		set {_ex} to "%{_ex}%,%{_nlc}%,%{_b}%"
-	else if {-gvote} is true:
 		set {_ex} to "%{_ex}%,%{_nlc}%,%{_b}%"
 	return "{""text"":"""",""extra"":[%{_ex}%]}"
 
@@ -590,20 +625,21 @@ function gfResultJson() :: text:
 	set {_wj} to gfLabelJ({-gwinner})
 	# 둘째 줄(모드 · 승리 팀 + 팀 점수)의 글자만 따로 모아 폭을 잰다
 	set {_pl} to "%gcModeName({-gmode})% · 승리 %gTeamName({-gwinner})%"
+	# 팀 점수는 승리 팀 줄 바로 아래 줄에 따로 둔다(줄바꿈). 이름 칸 겹침 디스플레이(gfOverlayJson)도 같은 줄 수를 맞춘다.
+	set {_ps} to ""
 	if {-gteams} > 0:
-		set {_pl} to "%{_pl}%    "
 		set {_pf} to true
 		loop gfTeamOrder():
 			set {_pk} to loop-value
 			if {_pf} is false:
-				set {_pl} to "%{_pl}%  |  "
-			set {_pl} to "%{_pl}%%gTeamName({_pk})% %{-gscore::%{_pk}%}%"
+				set {_ps} to "%{_ps}%  |  "
+			set {_ps} to "%{_ps}%%gTeamName({_pk})% %{-gscore::%{_pk}%}%"
 			set {_pf} to false
 	set {_cp1} to gfCenter({_pl}, {_tw})
 	set {_ex} to "%{_t0}%,%{_tm}%,%{_t0}%,%{_nlc}%,%{_cp1}%,%{_i1}%,%{_wj}%"
 	if {-gteams} > 0:
-		set {_sep} to gfT("    ", "white", false)
-		set {_ex} to "%{_ex}%,%{_sep}%"
+		set {_cps} to gfCenter({_ps}, {_tw})
+		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cps}%"
 		set {_first} to true
 		loop gfTeamOrder():
 			set {_lj} to gfLabelJ(loop-value)
@@ -637,14 +673,9 @@ function gfResultJson() :: text:
 		set {_pp} to "★ Player Of The Match: %{-gpotmres}%"
 		set {_cp3} to gfCenter({_pp}, {_tw})
 		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cp3}%,%{_pj}%,%{_pn2}%"
-	else if {-gvote} is true:
-		set {_hint} to gfT("승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요", "gray", false)
-		set {_hp} to "승리 팀 더미를 클릭해서 Player Of The Match 에 투표하세요"
-		set {_cp4} to gfCenter({_hp}, {_tw})
-		set {_ex} to "%{_ex}%,%{_nlc}%,%{_cp4}%,%{_hint}%"
 	return "{""text"":"""",""extra"":[%{_ex}%]}"
 
-# 결과 디스플레이를 다시 그린다(투표 마감 후 POTM 결과 반영)
+# 결과 디스플레이를 다시 그린다
 function gfDisplayRefresh():
 	if {-gdisp} is not set:
 		stop
@@ -653,18 +684,13 @@ function gfDisplayRefresh():
 	if {_o} is set:
 		{_o}.text(GsonComponentSerializer.gson().deserialize(gfOverlayJson()))
 
-# ===== 더미 클릭 투표 =====
-# 더미 머리 위 설명(투표 수를 별 ★ 개수로)을 다시 쓴다
+# ===== 더미 =====
+# 더미 머리 위 설명: POTM 으로 뽑힌 사람의 더미에만 ★ (투표는 없어졌고 자동 선정)
 function gfDummyDesc(m: entity, id: text):
-	set {_n} to gfVotes({_id})
 	set {_s} to ""
-	if {_n} > 8:
-		set {_s} to "★ x%{_n}%"
-	else:
-		set {_k} to {_n}
-		while {_k} > 0:
-			set {_s} to "%{_s}%★"
-			remove 1 from {_k}
+	if {-gpotmid} is set:
+		if "%{-gpotmid}%" is {_id}:
+			set {_s} to "★ POTM"
 	set {_dj} to gfT({_s}, "yellow", false)
 	{_m}.setDescription(GsonComponentSerializer.gson().deserialize({_dj}))
 
@@ -674,29 +700,7 @@ function gfDummyRefresh():
 		if {_did} is set:
 			gfDummyDesc(loop-value, "%{_did}%")
 
-# 플레이어 p 가 더미 e 를 눌렀다: 승리 팀 더미에게만 투표할 수 있고, 투표자는 참가자여야 한다(본인에게도 가능, 개인전은 투표 없음). 마감 전에는 바꿀 수 있다.
-function gfVoteClick(p: player, e: entity):
-	set {_id} to {-gdummyid::%{_e}'s uuid%}
-	if {_id} is not set:
-		stop
-	# 개인전은 투표가 없다(조용히 무시)
-	if {-gteams} is 0:
-		stop
-	if {-gvote} is not true:
-		send "&7투표가 종료되었습니다." to {_p}
-		stop
-	if {-gplist::*} does not contain {_p}:
-		send "&c이번 게임 참가자만 투표할 수 있습니다." to {_p}
-		stop
-	# 본인에게도 투표할 수 있다(예전에는 막았음)
-	set {-gpotm::%uuid of {_p}%} to "%{_id}%"
-	play sound "ui.button.click" to {_p}
-	set {_tid} to "%{_id}%"
-	set {_tn} to gfName({_tid})
-	send "&f%{_tn}% &7님에게 투표했습니다. (마감 전까지 변경할 수 있습니다)" to {_p}
-	gfDummyRefresh()
-
-# 우클릭(미검증: 마네킹 상호작용 이벤트). 손마다 두 번 오므로 주 손만 본다.
+# 더미를 우클릭해도 아무 일도 없다(마네킹 기본 상호작용 취소). 손마다 두 번 오므로 주 손만 본다.
 on PlayerInteractEntityEvent:
 	if event.getHand().name() is not "HAND":
 		stop
@@ -704,9 +708,8 @@ on PlayerInteractEntityEvent:
 	if {-gdummyid::%{_e}'s uuid%} is not set:
 		stop
 	event.setCancelled(true)
-	gfVoteClick(event.getPlayer(), {_e})
 
-# 좌클릭(공격)은 투표로 받지 않는다(우클릭 전용). 더미가 맞지 않게 공격만 취소한다.
+# 좌클릭(공격)은 더미가 맞지 않게 취소한다.
 on PrePlayerAttackEntityEvent:
 	set {_e} to event.getAttacked()
 	if {-gdummyid::%{_e}'s uuid%} is not set:
@@ -722,7 +725,7 @@ on damage:
 
 # ===== 더미 =====
 # 승리 팀 플레이어 한 명과 똑같이 생긴(스킨/장비) 더미를 loc 에 세운다(바라보는 방향 yaw 180 = 남쪽에서 북쪽을 봄).
-# id 는 이 더미가 뜻하는 참가자 id(uuid 또는 테스트용 가짜 id). 이름표(팀 색)와 투표 수 설명을 달고, 클릭하면 투표 대상이 된다.
+# id 는 이 더미가 뜻하는 참가자 id(uuid 또는 테스트용 가짜 id). 이름표(팀 색)와 설명(POTM 이면 ★)을 단다.
 function gfDummy(p: player, loc: location, id: text, yaw: number):
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
 	set {_pf} to {_p}.getPlayerProfile()
@@ -854,10 +857,12 @@ function gfShotA(stage: location, t: number) :: location:
 	set {_cam} to {_stage} ~ vector({_fx} * {_d} + {_lx} * {_s}, {_h}, {_fz} * {_d} + {_lz} * {_s})
 	set {_tg} to {_stage} ~ vector(0, 1.1, 0)
 	{_cam}.setDirection(vector from {_cam} to {_tg})
+	# pitch 는 구경 자리(gfStageView)와 같은 -5 로 고정: 연출 내내 위아래 끄덕임 없음
+	{_cam}.setPitch(-5)
 	return {_cam}
 
 # 카메라 3구도(파일 기준 10초 ~ 소리 끝, t = 0 부터): 승리 팀 더미 정면에서 4.2칸 -> 7칸으로 천천히 뒤로 빠진다. 끝 자리는 구경 자리(gfStageView)의 눈 위치와 같다
-# (발 위치 + 1.62, 시선 yaw + 180, pitch -5). 그래서 투표 시작 때 관전을 풀고 그 자리로 옮겨도 화면이 튀지 않는다. 길이는 gfEndLen() - gfCutTick() 틱.
+# (발 위치 + 1.62, 시선 yaw + 180, pitch -5). 그래서 카메라가 끝나고 관전을 풀고 그 자리로 옮겨도 화면이 튀지 않는다. 길이는 gfEndLen() - gfCutTick() 틱.
 function gfShotB(stage: location, t: number) :: location:
 	set {_sy} to {_stage}.getYaw()
 	set {_fx} to 0 - sin({_sy})
@@ -873,6 +878,8 @@ function gfShotB(stage: location, t: number) :: location:
 	set {_cam} to {_stage} ~ vector({_fx} * {_d}, {_h}, {_fz} * {_d})
 	set {_tg} to {_stage} ~ vector(0, 1.55 - 0.54 * {_e}, 0)
 	{_cam}.setDirection(vector from {_cam} to {_tg})
+	# pitch 는 구경 자리(gfStageView)와 같은 -5 로 고정: 연출 내내 위아래 끄덕임 없음
+	{_cam}.setPitch(-5)
 	return {_cam}
 
 # 결과창(텍스트 디스플레이 {-gdisp} + 이름 칸 겹침 디스플레이)을 보이게/안 보이게. 표시 거리(viewRange) 0 이면 클라이언트가 그리지 않는다(미검증: Display#setViewRange).
@@ -1045,7 +1052,7 @@ function gameFinale():
 	#   29~99 타이틀과 함께 카메라가 왼쪽에서 중앙으로 천천히 이동(gfShotA, 1구도). 80 암전 시작 -> 100 오른쪽 시작 자리로 컷
 	#   100~199 오른쪽에서 중앙으로(2구도). 180 암전 시작
 	#   200  (10초) 완전 암전 한가운데: 정면 샷으로 컷, 이어서 밝아지며 정면에서 뒤로 천천히 빠짐(gfShotB, 3구도)
-	#   302  (15.1초, 소리가 끝날 때) 카메라 해제 -> POTM 투표 시작(카메라 끝 자리 = 구경 자리라 튀지 않음)
+	#   302  (15.1초, 소리가 끝날 때) 카메라 해제 -> 구경 자리로(15초 대기 뒤 로비)(카메라 끝 자리 = 구경 자리라 튀지 않음)
 	# 1) 시청자 = 참가자 + 중간 관전자. 모두 관전 상태로 첫 카메라 자리로 옮긴다.
 	delete {-gfv::*}
 	loop {-gplist::*}:
@@ -1084,12 +1091,12 @@ function gameFinale():
 				if loop-value is online:
 					add loop-value to {-gfwinp::*}
 					add "%uuid of loop-value%" to {-gfwinid::*}
-	delete {-gpotm::*}
-	delete {-gpotmres}
+	# Player Of The Match 는 투표 없이 승리 기여도로 자동 선정(gfPotmPick). 더미/결과창을 만들기 전에 정해 둔다.
+	gfPotmPick()
 	# 승리 팀 더미와 결과 디스플레이는 처음부터 세워 둔다(카메라 1구도가 더미를 계속 바라본다). 10초 컷은 같은 더미를 정면에서 보여 주는 암전 전환이다.
 	set {_disp} to gfBuildStage({_stage})
 	set {-gdisp} to {_disp}
-	# 결과창(텍스트 디스플레이 2개)은 연출이 끝나고 투표가 시작될 때까지 보이지 않게 한다(표시 거리 0). 투표 시작에 gfResultShow 로 다시 보인다.
+	# 결과창(텍스트 디스플레이 2개)은 연출이 끝날 때까지 보이지 않게 한다(표시 거리 0). 카메라 종료 때 gfResultShow 로 다시 보인다.
 	gfResultHide()
 	send "[finale] 더미 생성 완료, 더미 %size of {-gfwinp::*}%명" to console
 	set {_cw} to {_c0}.getWorld()
@@ -1237,32 +1244,21 @@ function gameFinale():
 			gfKeep()
 		wait 1 tick
 		add 1 to {_t}
-	send "[finale] 카메라 구간 종료, 투표 시작" to console
+	send "[finale] 카메라 구간 종료" to console
 	# 카메라 해제(관전 대상 풀기 + 카메라 엔티티 삭제)
 	gfCamRelease()
 	gfResultShow()
-	# 2) 투표 시작(300틱 = 소리가 끝날 즈음): 관전을 풀고 구경 자리에 모은다(카메라가 이미 그 자리라 거의 안 움직임). 개인전({-gteams} 0)은 Player Of The Match 투표를 하지 않는다.
-	if {-gteams} is not 0:
-		set {-gvote} to true
+	# 2) 카메라 종료(300틱 = 소리가 끝날 즈음): 관전을 풀고 구경 자리에 모은다(카메라가 이미 그 자리라 거의 안 움직임). 투표는 없고 POTM 은 결과창과 더미 ★ 로만 보여 준다.
 	set {_view} to gfStageView({_stage})
 	loop {-gplist::*}:
 		if loop-value is online:
 			set gamemode of loop-value to adventure
 			loop-value.setInvulnerable(true)
 			tpSafe(loop-value, {_view})
-	# 3) 투표 시작 안내
-	if {-gteams} is not 0:
-		play sound "block.note_block.chime" with volume 0.7 to all players
-		loop {-gplist::*}:
-			if loop-value is online:
-				send "&7승리 팀 더미를 우클릭해서 Player Of The Match 에 투표하세요. (본인 포함)" to loop-value
-	# 4) 투표 시간(마지막 3초 전까지)
+	# 3) 로비로 가기 전 게임 월드에서 대기(예전 투표 시간 12초 + 3초)
 	wait 12 seconds
 	if {-gfgen} is not {_gen}:
 		stop
-	set {-gvote} to false
-	if {-gteams} is not 0:
-		gfPotmAnnounce()
 	wait 3 seconds
 	if {-gfgen} is not {_gen}:
 		stop
@@ -1280,8 +1276,7 @@ function gameFinale():
 					send "&b로비 월드(%{_lw}%)에 결과 무대가 저장되어 있지 않아 로비에는 더미를 놓지 못했습니다. 관리자 메뉴의 결과 무대 위치 설정을 로비에서 눌러 주세요." to loop-player
 	if {-gtest} is not true:
 		gmRecord()
-	delete {-gvote}
-	delete {-gpotm::*}
+	delete {-gpotmid}
 	delete {-gpotmres}
 	delete {-gmatchlbl}
 	set {_pl::*} to {-gplist::*}
@@ -1299,38 +1294,13 @@ function gameFinale():
 	loop all players:
 		send "&7게임이 종료되었습니다. 로비로 이동했습니다." to loop-player
 
-# 투표 마감: 표가 가장 많은 플레이어(동률이면 모두)를 발표한다. 표가 없으면 없음.
-function gfPotmAnnounce():
-	set {_best} to 0
-	loop gfIds():
-		set {_n} to gfVotes(loop-value)
-		if {_n} > {_best}:
-			set {_best} to {_n}
-	if {_best} is 0:
-		set {-gpotmres} to "투표 없음"
-	else:
-		set {_names} to ""
-		loop gfIds():
-			if gfVotes(loop-value) is {_best}:
-				if {_names} is "":
-					set {_names} to gfName(loop-value)
-				else:
-					set {_names} to "%{_names}%, %gfName(loop-value)%"
-		set {-gpotmres} to "%{_names}% (%{_best}%표)"
-	loop all players:
-		send title "&bPlayer Of The Match" with subtitle colored "&f%{-gpotmres}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
-		play sound "entity.player.levelup" with volume 0.8 to loop-player
-	gfDummyRefresh()
-	gfDisplayRefresh()
-
-# 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/투표 상태를 지운다. gameCleanup() 보다 뒤에 부를 것.
+# 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/POTM 상태를 지운다. gameCleanup() 보다 뒤에 부를 것.
 function gfAbort():
 	add 1 to {-gfgen}
 	delete {-gfsnd}
 	gfCamRelease()
 	gfClearStage()
-	delete {-gvote}
-	delete {-gpotm::*}
+	delete {-gpotmid}
 	delete {-gpotmres}
 	delete {-gfinale}
 	delete {-gwinner}
@@ -1357,7 +1327,6 @@ command /gamestop:
 
 on load:
 	delete {-gfinale}
-	delete {-gvote}
 	delete {-gpin}
 	# 결과 무대(더미/디스플레이)는 다음 게임 시작 전까지 남겨야 해서 여기서 지우지 않는다(다음 게임 시작/관리자 메뉴가 gfClearStage 로 치움).
 	delete {-gdummies::*}

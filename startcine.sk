@@ -233,6 +233,8 @@ function gsShotLoc(shot: number, t: number) :: location:
 	set {_cl} to {_base} ~ vector({-gsl::fx} * {_d} + {-gsl::ux} * {_lat}, {_h}, {-gsl::fz} * {_d} + {-gsl::uz} * {_lat})
 	set {_tg} to {_base} ~ vector({-gsl::ux} * {_tlat}, {_ty}, {-gsl::uz} * {_tlat})
 	{_cl}.setDirection(vector from {_cl} to {_tg})
+	# pitch 는 0 으로 고정(yaw 만 대상을 향함): 높이/거리가 변해도 화면이 위아래로 끄덕이지 않게
+	{_cl}.setPitch(0)
 	return {_cl}
 
 # ===== 보여주기용 더미 =====
