@@ -1341,7 +1341,7 @@ function gCrownTick():
 		if {-kc::%{_hid}%} is not set:
 			set {_tk} to gTeamOf({_h})
 			add 1 to {-gscore::%{_tk}%}
-			send action bar colored "&6♛ 크라운 스코어 &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%" to {_h}
+			send action bar colored "&6♛&f%{-gscore::%{_tk}%}%&7/%{-gtarget}%" to {_h}
 			if {-gscore::%{_tk}%} >= {-gtarget}:
 				gameWin({_tk})
 				stop
