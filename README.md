@@ -18,5 +18,6 @@ PC에는 저장소를 `git clone` 해 둔 폴더가 있고, 그 폴더 안의 `s
 - `sync_to_server.bat`은 예전 버전이라 쓰지 않아요(저장소 파일은 PC에서 수정된 상태라 그대로 둠).
 
 ## 리소스 팩 (mck_pack)
+배고픔 바 아이콘(`assets/minecraft/textures/gui/sprites/hud/food_*.png`)은 스태미너용 ⚡ 로 교체돼 있어요.
 `resourcepack/mck_pack/`가 서버 리소스 팩 원본이에요(시작/라운드 시작 음악). `python3 resourcepack/build_pack.py`로 `resourcepack/mck_pack.zip`을 만들고 SHA-1을 출력해요.
 `server.properties`에는 커밋 해시를 고정한 URL을 써요: `resource-pack=https://raw.githubusercontent.com/and0rn0t/andornot/<커밋 해시>/resourcepack/mck_pack.zip`, `resource-pack-sha1=<SHA-1>`.
