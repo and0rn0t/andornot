@@ -148,7 +148,7 @@ function hpbar_show(e: living entity):
 	set text of {-hpbar_g::%{_id}%} to {_barg}
 	set {-hpbar_key::%{_id}%} to {_key}
 
-# 시청자별 색 맞춤: 아군(자기 자신 제외)에게는 초록 바만, 그 밖에는 빨강 바만 보이게 한다. 대상이 몹/더미면 항상 빨강.
+# 시청자별 색 맞춤: 본인을 포함한 아군에게는 초록 바만, 그 밖에는 빨강 바만 보이게 한다. 대상이 몹/더미면 항상 빨강.
 function hpbar_vis():
 	set {_pg} to Bukkit.getPluginManager().getPlugin("Skript")
 	loop {-hpbar_d::*}:
@@ -161,9 +161,10 @@ function hpbar_vis():
 			set {_v} to loop-value-2
 			set {_vid} to "%uuid of {_v}%"
 			set {_ally} to false
-			if {_vid} is not {_id}:
-				if isAlly({_vid}, {_id}) is true:
-					set {_ally} to true
+			if {_vid} is {_id}:
+				set {_ally} to true
+			else if isAlly({_vid}, {_id}) is true:
+				set {_ally} to true
 			if {_ally} is true:
 				{_v}.hideEntity({_pg}, {_r})
 				{_v}.showEntity({_pg}, {_g})

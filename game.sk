@@ -344,11 +344,13 @@ function gAnnounceTeams():
 			send colored "%gTeamLabel({_k})% &7: &f%{_line}%" to loop-player
 
 # 게임이 자연스럽게 끝났을 때 내부 승점을 갱신한다. 순위는 팀 점수({-gscore}, 승리 팀이 1위가 되게 소폭 가산).
-# 변동 = 5 x (중간순위 - 내 순위) / ((팀수-1)/2). 2팀이면 승 +5/패 -5, 3팀이면 +5/0/-5. 동점은 순위를 평균. 첫 10경기는 2배.
+# 변동 = 5 x (중간순위 - 내 순위) / ((팀수-1)/2). 2팀이면 승 +5/패 -5, 3팀이면 +5/0/-5. 동점은 순위를 평균. 첫 10경기는 2배. POTM 은 얻는 승점 2배.
 function ratingApply():
 	set {_n} to size of {-gteamlist::*}
 	if {_n} < 2:
 		stop
+	# Player Of The Match(승리 팀 기여도 1위)를 먼저 정해 둔다(gameend.sk gfPotmPick, 알림 없이 승점에만 반영)
+	gfPotmPick()
 	set {_i} to 0
 	while {_i} < {_n}:
 		add 1 to {_i}
@@ -381,6 +383,11 @@ function ratingApply():
 			set {_g} to {rating::games::%{_id}%}
 		if {_g} < 10:
 			set {_delta} to {_delta} * 2
+		# POTM 은 얻는 승점이 2배(잃는 경우는 그대로, 알림 없음)
+		if {-gpotmid} is set:
+			if {_id} is "%{-gpotmid}%":
+				if {_delta} > 0:
+					set {_delta} to {_delta} * 2
 		set {_old} to ratingOf({_id})
 		set {_new} to round(({_old} + {_delta}) * 100) / 100
 		# 승점은 0 아래로 내려가지 않는다
@@ -911,6 +918,7 @@ function gStartFinish(sg: number):
 	delete {-gbstart}
 	if {-gmode} is "bounty":
 		set {-gbstart} to now
+	delete {-gcprog}
 	# 크라운: 시작 gCrownWaitSec() 초 뒤 첫 소지자(gCrownTick)
 	delete {-gcrown}
 	delete {-gcwait}
@@ -1198,10 +1206,10 @@ every second:
 	gBountyTimeCheck()
 
 # ===== 크라운 =====
-# 게임이 시작되고 gCrownWaitSec() 초 뒤 무작위 참가자 1명에게 크라운이 씌워진다({-gcrown} = 소지자 uuid). 소지자는 발광 효과(벽 너머로도 보임)와 머리 위 ♛ 표시로 모두에게 위치가 드러난다.
-# 소지자가 살아서 움직이는 동안 1초마다 소지자 팀(개인전은 본인)의 스코어가 1점 오르고, 목표 스코어({-gtarget}, 기본 100)를 먼저 채우면 승리한다.
+# 게임이 시작되고 gCrownWaitSec() 초 뒤 무작위 참가자 1명에게 크라운이 씌워진다({-gcrown} = 소지자 uuid). 소지자는 주황색 발광 효과(벽 너머로도 보임, 스코어보드 팀 gcrown = GOLD)와 머리 위 ♛ 표시로 모두에게 위치가 드러난다.
+# 소지자가 살아서 움직이는 동안 1.5초마다 소지자 팀(개인전은 본인)의 스코어가 1점 오르고, 목표 스코어({-gtarget}, 기본 100)를 먼저 채우면 승리한다.
 # 소지자를 처치하면(적 킬) 처치한 사람이 크라운을 빼앗는다. 킬로 인정되지 않는 죽음(자살/환경/아군)이면 소지자를 뺀 무작위 참가자에게 간다. 소지자가 나가면 무작위 참가자에게 간다.
-# 변수(RAM): {-gcrown}(소지자 uuid), {-gcwait}(첫 지급까지 남은 초), {-gcrown_d::uuid}(머리 위 표시), {-gcglow::uuid}(크라운 때문에 발광을 켠 사람)
+# 변수(RAM): {-gcrown}(소지자 uuid), {-gcwait}(첫 지급까지 남은 초), {-gcrown_d::uuid}(머리 위 표시), {-gcglow::uuid}(크라운 때문에 발광을 켠 사람), {-gcteam::uuid}/{-gcoldteam::uuid}(주황 팀에 넣은 표시/원래 팀 이름), {-gcprog}(스코어 진행도 0~2)
 function gCrownWaitSec() :: number:
 	return 10
 
@@ -1234,6 +1242,17 @@ function gCrownRemove(p: player):
 	if {_d} is set:
 		delete entity within {_d}
 	delete {-gcrown_d::%{_id}%}
+	if {-gcteam::%{_id}%} is set:
+		set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+		set {_ct} to {_sb}.getTeam("gcrown")
+		if {_ct} is set:
+			scRemove({_ct}, {_p})
+		if {-gcoldteam::%{_id}%} is set:
+			set {_ot} to {_sb}.getTeam({-gcoldteam::%{_id}%})
+			if {_ot} is set:
+				scAdd({_ot}, {_p})
+		delete {-gcteam::%{_id}%}
+		delete {-gcoldteam::%{_id}%}
 	if {-gcglow::%{_id}%} is set:
 		delete {-gcglow::%{_id}%}
 		if {_p} is online:
@@ -1255,6 +1274,18 @@ function gCrownSync(p: player):
 		stop
 	{_p}.setGlowing(true)
 	set {-gcglow::%{_id}%} to true
+	# 발광 색은 소속 스코어보드 팀 색으로 정해지므로 크라운 소지자를 주황(GOLD) 팀에 넣는다(원래 팀은 {-gcoldteam} 에 기억해 두었다가 돌려준다)
+	if {-gcteam::%{_id}%} is not set:
+		set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+		set {_ct} to {_sb}.getTeam("gcrown")
+		if {_ct} is not set:
+			set {_ct} to {_sb}.registerNewTeam("gcrown")
+		{_ct}.setColor(ChatColor.GOLD)
+		set {_old} to {_sb}.getEntryTeam({_p}.getName())
+		if {_old} is set:
+			set {-gcoldteam::%{_id}%} to {_old}.getName()
+		scAdd({_ct}, {_p})
+		set {-gcteam::%{_id}%} to true
 	set {_d} to {-gcrown_d::%{_id}%}
 	set {_new} to false
 	if {_d} is not set:
@@ -1339,12 +1370,16 @@ function gCrownTick():
 	set {_hid} to "%uuid of {_h}%"
 	if gamemode of {_h} is not spectator:
 		if {-kc::%{_hid}%} is not set:
-			set {_tk} to gTeamOf({_h})
-			add 1 to {-gscore::%{_tk}%}
-			send action bar colored "&6♛&f%{-gscore::%{_tk}%}%&7/%{-gtarget}%" to {_h}
-			if {-gscore::%{_tk}%} >= {-gtarget}:
-				gameWin({_tk})
-				stop
+			# 1.5초당 1점: 1초마다 2/3점씩 모아서(진행도 2씩, 3이 되면 1점) 점수로 바꾼다
+			add 2 to {-gcprog}
+			if {-gcprog} >= 3:
+				subtract 3 from {-gcprog}
+				set {_tk} to gTeamOf({_h})
+				add 1 to {-gscore::%{_tk}%}
+				send action bar colored "&6♛&f%{-gscore::%{_tk}%}%&7/%{-gtarget}%" to {_h}
+				if {-gscore::%{_tk}%} >= {-gtarget}:
+					gameWin({_tk})
+					stop
 	gCrownSyncAll()
 
 every second:
@@ -1714,8 +1749,13 @@ on load:
 			loop-player.setGlowing(false)
 	delete {-gcrown_d::*}
 	delete {-gcglow::*}
+	delete {-gcprog}
 	delete {-gcrown}
 	delete {-gcwait}
+	# 스크립트를 다시 불러오면 변수({-gcoldteam})가 사라지므로 남은 주황 발광 팀은 통째로 지운다
+	set {_ct} to Bukkit.getScoreboardManager().getMainScoreboard().getTeam("gcrown")
+	if {_ct} is set:
+		{_ct}.unregister()
 
 # 나간 사람의 팀 지정 정리(예전 team.sk 에 있던 것). 결과창은 시작 때 기록한 {-gpteam} 을 쓴다.
 on quit:

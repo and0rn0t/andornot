@@ -19,6 +19,7 @@ import:
 	org.bukkit.event.player.PlayerInteractEntityEvent
 	io.papermc.paper.event.player.PrePlayerAttackEntityEvent
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	io.papermc.paper.datacomponent.item.ResolvableProfile
 
 # 투표 시간(초)과 로드아웃 변경 시간(초)
 function voteSec() :: number:
@@ -43,11 +44,19 @@ function voteLive(g: number) :: boolean:
 function voteBase() :: location:
 	set {_sv} to gcLoadLoc("votedummy")
 	if {_sv} is set:
+		# 저장한 자리가 로비 소환 자리(같은 월드, 4칸 안)와 겹치면 저장 방향 쪽으로 7칸 밀어서 가려지지 않게 한다
+		set {_ll} to gameLobbyLoc()
+		if {_sv}.getWorld() is {_ll}.getWorld():
+			if distance between {_sv} and {_ll} < 4:
+				set {_sy} to {_sv}.getYaw() + 180
+				set {_sv} to {_ll} ~ vector(0 - sin({_sy}) * 7, 0, cos({_sy}) * 7)
+				{_sv}.setYaw({_sy} + 180)
 		return {_sv}
+	# 로비로 소환된 사람이 서는 자리와 겹치지 않게, 로비 위치에서 소환된 사람이 바라보는 방향으로 7칸 앞에 세우고 소환 자리를 보게 한다.
 	set {_l} to gameLobbyLoc()
-	set {_c} to {_l}.clone()
-	set {_y} to {_l}.getYaw() + 180
-	{_c}.setYaw({_y})
+	set {_ly} to {_l}.getYaw()
+	set {_c} to {_l} ~ vector(0 - sin({_ly}) * 7, 0, cos({_ly}) * 7)
+	{_c}.setYaw({_ly} + 180)
 	return {_c}
 
 function voteDummyLoc(i: number) :: location:
@@ -129,9 +138,10 @@ function voteChoose():
 				set {-gv::mode::%{_got}%} to {_pd::%{_i}%}
 	set {-gv::n} to {_got}
 
-# 더미 한 마리(마네킹, 기본 스킨). 움직이지 않고 무적이며 태그 votedummy.
+# 더미 한 마리(마네킹, 스킨은 계정 geia). 움직이지 않고 무적이며 태그 votedummy.
 function voteDummySpawn(loc: location, yaw: number) :: object:
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
+	{_m}.setProfile(ResolvableProfile.resolvableProfile().name("geia").build())
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)
 	{_m}.setSilent(true)
