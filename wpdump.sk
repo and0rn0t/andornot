@@ -15,9 +15,12 @@ command /wpdump [<text>]:
 			send "&6== %{_n}%" to console
 			set {_c} to Class.forName({_n})
 			send "&6== %{_n}% (생성자/메서드/필드 목록은 콘솔 확인)" to sender
-			loop {_c}.getDeclaredConstructors():
+			set {_C::*} to {_c}.getDeclaredConstructors()
+			loop {_C::*}:
 				send "&eC: %loop-value-2%" to console
-			loop {_c}.getDeclaredMethods():
+			set {_M::*} to {_c}.getDeclaredMethods()
+			loop {_M::*}:
 				send "&eM: %loop-value-2%" to console
-			loop {_c}.getDeclaredFields():
+			set {_F::*} to {_c}.getDeclaredFields()
+			loop {_F::*}:
 				send "&eF: %loop-value-2%" to console
