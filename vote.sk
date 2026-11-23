@@ -306,7 +306,6 @@ function voteStart(by: text):
 	set {_lab} to voteLabel({_win})
 	loop all players:
 		send title "&a%{_lab}%" with subtitle "&7선정! (%{_wvotes}%표)" to loop-player for 3 seconds with fadein 0 ticks and fade out 10 ticks
-		send "&6[투표] &f%{_lab}% &7선정! (%{_wvotes}%표)" to loop-player
 		play sound "entity.player.levelup" with volume 0.8 and pitch 1 to loop-player
 	wait 3 seconds
 	if voteLive({_g}) is not true:
@@ -319,7 +318,7 @@ function voteStart(by: text):
 		if voteLive({_g}) is not true:
 			stop
 		loop all players:
-			send action bar colored "&e로드아웃 변경 가능 &8| &f남은 시간 &e%{_left}%초 &8| &7무기고(9번 칸)에서 바꿔요" to loop-player
+			send action bar colored "&e로드아웃 변경 가능 &8| &f남은 시간 &e%{_left}%초" to loop-player
 		if {_left} <= 3:
 			loop all players:
 				play sound "block.comparator.click" with volume 1 and pitch 1.5 to loop-player
@@ -353,7 +352,6 @@ function voteCast(p: player, e: entity):
 		stop
 	set {-gvote::%uuid of {_p}%} to {_pick}
 	set {_lab} to voteLabel({_pick})
-	send "&6[투표] &f%{_lab}% &7에 투표했어요." to {_p}
 	play sound "block.note_block.chime" with volume 0.7 and pitch 1.4 to {_p}
 	voteDummiesUpdate()
 
