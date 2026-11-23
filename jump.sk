@@ -7,17 +7,15 @@
 # 비행 허용은 접속/리스폰/게임모드 변경 때 다시 켠다. 크리에이티브/관전자는 건드리지 않는다.
 # 발동 키는 플레이어별 설정 {leapmode::uuid}(저장 변수): 미설정 = 더블 점프(기본), "f" = F키(손 바꾸기). 무기고 메인 화면(items.sk)에서 토글한다.
 #   - 더블 점프 모드: 위 설명대로 비행 허용을 켜 두고 flight toggle 로 발동. F키는 취소만 한다.
-#   - F키 모드: 비행 허용을 끈다(jumpFlightOn 이 모드를 보고 처리). 손 바꾸기 이벤트에서 발동. 스페이스 두 번은 아무 일도 안 한다.
+#   - F키 모드: 손 바꾸기 이벤트에서 발동. 스페이스 두 번은 아무 일도 안 한다(비행 허용은 달리기 때문에 두 모드 모두 켬, 토글은 취소하고 비행 상태만 되돌림).
 #   - 두 이벤트의 도약 본문은 같다(Skript 함수는 wait 를 못 써서 복사해 둠). 고칠 때 둘 다 고칠 것.
 
 function jumpFlightOn(p: player):
 	if gamemode of {_p} is not survival:
 		if gamemode of {_p} is not adventure:
 			stop
-	if jumpMode({_p}) is "double":
-		set flight mode of {_p} to true
-	else:
-		set flight mode of {_p} to false
+	# 비행 허용은 두 모드 모두 항상 켠다: 배고픔 바가 스태미너라(main.sk stFoodSync) 음식 수치 6 이하에서도 달릴 수 있으려면 필요하다(클라이언트는 비행 허용이면 배고픔과 상관없이 달리기를 허용)
+	set flight mode of {_p} to true
 
 # 도약 발동 키: "double"(더블 점프, 기본) / "f"(F키)
 function jumpMode(p: player) :: text:
@@ -54,7 +52,12 @@ on flight toggle:
 		if gamemode of player is not adventure:
 			stop
 	if jumpMode(player) is "f":
+		# F키 모드: 스페이스 두 번은 아무 일도 안 한다. 비행 허용은 켜 둬야 해서 클라이언트의 비행 상태만 되돌린다.
 		cancel event
+		set flight mode of player to false
+		set {_pf} to player
+		wait 1 tick
+		jumpFlightOn({_pf})
 		stop
 	# 실제 비행은 막는다. 클라이언트의 비행 상태를 되돌리기 위해 한 틱 꺼 뒀다가 다시 켠다.
 	cancel event
