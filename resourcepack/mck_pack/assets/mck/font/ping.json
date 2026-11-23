@@ -1,0 +1,6 @@
+{
+ "providers": [
+  {"type": "bitmap", "file": "mck:font/ping_blue.png", "ascent": 14, "height": 16, "chars": ["\ue010"]},
+  {"type": "bitmap", "file": "mck:font/ping_red.png", "ascent": 14, "height": 16, "chars": ["\ue011"]}
+ ]
+}

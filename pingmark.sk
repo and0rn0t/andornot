@@ -1,0 +1,143 @@
+# [pingmark.sk] 핑 가시화: 핑(waypoint.sk)이 찍히면 그 자리 살짝 위에 핑 표식(파란/빨간 마름모, 리소스팩 글꼴 mck:ping)을 월드에 띄운다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# waypoint.sk 와 완전히 따로 돈다: 2틱마다 waypoint.sk 의 핑 변수({-wping_c/x/y/z/until::찍은 사람 uuid})를 읽어서 표식을 만들고/옮기고/지운다(핑이 사라지면 표식도 지움).
+#   파란 핑 = 조준한 자리 위 wpMarkUp 칸, 빨간 핑 = 대상(적/더미) 머리 위. 핑을 볼 수 있는 사람(찍은 사람 + 같은 팀)에게만 보인다.
+# 표식 = 텍스트 디스플레이(빌보드, 벽 너머로도 보임, 배경 투명, 최대 밝기) + 글꼴 글자. 파란 U+E010, 빨간 U+E011(resourcepack/mck_pack/assets/mck/font/ping.json, textures/font/ping_blue|red.png 32x32).
+# 크기: 거리에 비례해서 멀어도 비슷한 크기로 보이게 한다(찍은 사람과의 거리 기준). pmScale 의 숫자로 조절(미검증: 실제 크기는 확인 후 조정).
+# 변수(RAM): {-wpm_e::pid}(표식 엔티티) {-wpm_v::pid}(만든 핑 버전) {-wpm_pos::pid}(마지막 위치) {-wpm_sc::pid}(마지막 크기)
+# 미검증: 글꼴 글자/바이탈 텍스트 디스플레이 text(Component), setSeeThrough/setBackgroundColor(투명)/setBrightness, setVisibleByDefault(false)+showEntity, 크기 변환 문법(set transformation scale of ...), 크기 보정값.
+
+import:
+	org.bukkit.Bukkit
+	org.bukkit.Color
+	org.bukkit.Location
+	org.bukkit.entity.EntityType
+	org.bukkit.entity.Display$Brightness as PmBright
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+# 파란 핑 표식이 조준한 자리 위로 뜨는 높이(칸), 빨간 핑은 대상 발 기준 높이
+function pmUpBlue() :: number:
+	return 1
+function pmUpRed() :: number:
+	return 2.7
+
+# 표식 크기(변환 배율): 거리 d 칸에서 d x 0.125, 최소 1.25, 최대 25
+function pmScale(d: number) :: number:
+	set {_s} to {_d} * 0.125
+	if {_s} < 1.25:
+		set {_s} to 1.25
+	if {_s} > 25:
+		set {_s} to 25
+	return {_s}
+
+function pmGlyph(kind: text) :: text:
+	if {_kind} is "red":
+		return ""
+	return ""
+
+function pmPlayer(pid: text) :: player:
+	loop all players:
+		if "%uuid of loop-player%" is {_pid}:
+			return loop-player
+	return {_none}
+
+function pmClear(pid: text):
+	set {_e} to {-wpm_e::%{_pid}%}
+	if {_e} is set:
+		{_e}.remove()
+	delete {-wpm_e::%{_pid}%}
+	delete {-wpm_v::%{_pid}%}
+	delete {-wpm_pos::%{_pid}%}
+	delete {-wpm_sc::%{_pid}%}
+
+# v(보는 사람)가 pid 의 핑을 볼 수 있는지: 찍은 사람 본인, 또는 같은 팀이고 게임 중 활성 참가자
+function pmViewer(v: player, pid: text) :: boolean:
+	set {_vid} to "%uuid of {_v}%"
+	if {_vid} is {_pid}:
+		return true
+	if wpActive({_v}) is true:
+		if isAlly({_pid}, {_vid}) is true:
+			return true
+	return false
+
+function pmUpdate(pid: text, kind: text):
+	set {_pl} to pmPlayer({_pid})
+	if {_pl} is not set:
+		pmClear({_pid})
+		stop
+	set {_ver} to "%{-wping_until::%{_pid}%}%%{_kind}%"
+	set {_e} to {-wpm_e::%{_pid}%}
+	if {_e} is set:
+		set {_ok} to {_e}.isValid()
+		if {_ok} is not true:
+			pmClear({_pid})
+			delete {_e}
+		else if {-wpm_v::%{_pid}%} is not {_ver}:
+			pmClear({_pid})
+			delete {_e}
+	set {_up} to pmUpBlue()
+	if {_kind} is "red":
+		set {_up} to pmUpRed()
+	set {_w} to {_pl}.getWorld()
+	set {_x} to {-wping_x::%{_pid}%}
+	set {_y} to {-wping_y::%{_pid}%} + {_up}
+	set {_z} to {-wping_z::%{_pid}%}
+	set {_loc} to new Location({_w}, {_x}, {_y}, {_z})
+	set {_pp} to {_pl}.getLocation()
+	set {_d} to distance between {_pp} and {_loc}
+	set {_sc} to pmScale({_d})
+	set {_pos} to "%round({_x} * 4)%,%round({_y} * 4)%,%round({_z} * 4)%"
+	if {_e} is not set:
+		set {_e} to {_w}.spawnEntity({_loc}, EntityType.TEXT_DISPLAY)
+		{_e}.setVisibleByDefault(false)
+		{_e}.addScoreboardTag("wpmark")
+		{_e}.setGravity(false)
+		{_e}.setInvulnerable(true)
+		{_e}.setSeeThrough(true)
+		{_e}.setShadowed(false)
+		{_e}.setBackgroundColor(Color.fromARGB(0, 0, 0, 0))
+		{_e}.setBrightness(new PmBright(15, 15))
+		{_e}.setViewRange(4)
+		set billboard of {_e} to center
+		set {_g} to pmGlyph({_kind})
+		set {_j} to "{""text"":""%{_g}%"",""font"":""mck:ping""}"
+		{_e}.text(GsonComponentSerializer.gson().deserialize({_j}))
+		set transformation scale of {_e} to vector({_sc}, {_sc}, {_sc})
+		set {-wpm_e::%{_pid}%} to {_e}
+		set {-wpm_v::%{_pid}%} to {_ver}
+		set {-wpm_pos::%{_pid}%} to {_pos}
+		set {-wpm_sc::%{_pid}%} to {_sc}
+		set {_pg} to Bukkit.getPluginManager().getPlugin("Skript")
+		loop all players:
+			if pmViewer(loop-player, {_pid}) is true:
+				loop-player.showEntity({_pg}, {_e})
+		stop
+	if {-wpm_pos::%{_pid}%} is not {_pos}:
+		{_e}.teleport({_loc})
+		set {-wpm_pos::%{_pid}%} to {_pos}
+	set {_diff} to abs({_sc} - {-wpm_sc::%{_pid}%})
+	if {_diff} > 0.3:
+		set transformation scale of {_e} to vector({_sc}, {_sc}, {_sc})
+		set {-wpm_sc::%{_pid}%} to {_sc}
+
+function pmSync():
+	loop {-wpm_e::*}:
+		if {-wping_c::%loop-index%} is not set:
+			pmClear(loop-index)
+	loop {-wping_c::*}:
+		pmUpdate(loop-index, loop-value)
+
+every 2 ticks:
+	pmSync()
+
+# 스크립트를 다시 불러오면 남은 표식을 지운다
+on load:
+	loop all entities:
+		set {_e} to loop-entity
+		set {_has} to {_e}.getScoreboardTags().contains("wpmark")
+		if {_has} is true:
+			{_e}.remove()
+	delete {-wpm_e::*}
+	delete {-wpm_v::*}
+	delete {-wpm_pos::*}
+	delete {-wpm_sc::*}
