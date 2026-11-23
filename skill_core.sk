@@ -174,6 +174,7 @@
 #       3) 핑 시스템: Q키(손 버리기 이벤트 취소로 받을 수 있음) -> 바라보는 위치에 파란 핑, 근처(감지 범위/정확도는 만들 때 사용자와 정함)에 적이 있으면 빨간 핑 + 그 적에게 팀원만 보는 빨간 발광(스코어보드 팀 색 방식은 game.sk gDropGlowOn 참고, 시청자별은 packet 이 필요해 불가능할 수 있음 -> 확인 필요).
 #       4) locate bar 팀원(초록)/오브젝트(크라운 주황, 나머지는 만들 때 사용자에게 제안): 마인크래프트 locate bar 는 transmit_range(보이는 쪽) / receive_range(보는 쪽) 속성과 /waypoint modify <대상> color|style 명령으로만 조절된다. 팀 단위 가시성은 바닐라에 없어서(전송 범위는 모든 수신자에게 똑같이 적용) 방법을 먼저 조사할 것(예: 패킷 직접 전송, 팀원끼리만 같은 월드/범위를 쓰는 우회 등). 웅크리기/머리 장착/투명 포션 플레이어는 바에서 자동으로 숨겨진다.
 #       5) 네더의 별/불길한 병/불사의 토템 오브젝트 발광(충돌 안 나게, 적은 표시 안 함): 크라운 발광은 스코어보드 팀 gcrown(GOLD) 이므로 같은 방식은 팀 충돌이 난다 -> 발광 색 우선순위 정할 것.
+#       핑 효과음(리소스팩에 추가됨): 파란 핑 mck:pingblue, 빨간 핑 mck:pingred (소리 크기는 둘 다 약 -24 LUFS 로 맞춤). 재생: play sound "mck:pingblue" to 플레이어 (Skript 의 play sound 는 리소스팩 사운드 이름도 받음, 미검증).
 #       리소스팩: 서버 적용은 server.properties 의 resource-pack URL(커밋 해시 고정) + sha1. 팩이 바뀐 마지막 커밋: `git log -1 --format=%H -- resourcepack/mck_pack.zip`, sha1: `sha1sum resourcepack/mck_pack.zip`.
 #   - [최근 변경] 체력바는 본인 포함 아군 초록/적 빨강(hpbar_vis). 크라운: 소지자 발광 주황(스코어보드 팀 gcrown=GOLD), 점수 1.5초당 1점({-gcprog} 진행도). 투표 더미: 스킨 계정 geia, 로비 소환 자리에서 7칸 앞(저장 위치가 4칸 안이면 밀어냄). POTM 은 ratingApply 에서 얻는 승점 2배(알림 없음).
 #   - [연출 카메라 규칙] 시작/킬/종료 연출의 카메라는 시선(yaw, pitch)을 샷 내내 고정하고 위치(앞뒤/좌우)로만 움직인다(WASD 이동처럼). 고정 pitch: 시작 0, 킬 0, 종료 -5. 시선을 대상에 맞춰 돌리면 화면이 끊겨 보여서 setDirection 에 고정 벡터를 쓴다.

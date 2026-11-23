@@ -30,5 +30,19 @@
         "attenuation_distance": 2000
       }
     ]
+  },
+  "pingblue": {
+    "sounds": [
+      {
+        "name": "mck:pingblue"
+      }
+    ]
+  },
+  "pingred": {
+    "sounds": [
+      {
+        "name": "mck:pingred"
+      }
+    ]
   }
 }
