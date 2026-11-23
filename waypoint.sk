@@ -3,6 +3,8 @@
 # 패킷: ClientboundTrackedWaypointPacket.addWaypointPosition(uuid, icon, Vec3i) / removeWaypoint(uuid). 색은 Icon.color(Optional<Integer> RGB).
 # 서버로 보내기: ((CraftPlayer)p).getHandle().connection.send(packet).
 import:
+	org.bukkit.Bukkit
+	org.bukkit.ChatColor
 	net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket
 	net.minecraft.network.syncher.SynchedEntityData$DataValue as WpData
 	net.minecraft.network.syncher.EntityDataSerializers
@@ -226,7 +228,7 @@ function wpPingClear(pid: text):
 # 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운) {-wping_test::pid}(시험 핑: 게임 밖에서도 본인에게만)
 # 시간 단위 {-wptick} = wpTeamSync 실행 횟수(0.1초). 숫자는 아래 함수에서 바꾼다.
 function wpPingSec() :: number:
-	return 8
+	return 5
 
 function wpPingCoolSec() :: number:
 	return 1
@@ -381,7 +383,8 @@ function wpPingUpdate():
 					set {_keep} to false
 		if {_keep} is true:
 			if {-wping_c::%{_pid}%} is "red":
-				if {-wptick} mod 5 is 0:
+				set {_m5} to {-wptick} - floor({-wptick} / 5) * 5
+				if {_m5} is 0:
 					set {_t} to wpFind({-wping_e::%{_pid}%})
 					if {_t} is set:
 						wpGlowTeam({_t}, true)
