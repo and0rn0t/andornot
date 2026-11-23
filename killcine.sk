@@ -441,7 +441,6 @@ on damage with priority highest:
 	set {_mh} to {_v}'s max health
 	set {_v}'s health to {_mh}
 	set {-st::%{_vid}%} to 100
-	set level progress of {_v} to 0.999
 	{_v}.clearTitle()
 	delete {-kc::%{_vid}%}
 

@@ -88,7 +88,6 @@ function potionUse(p: player, kind: text):
 		add 50 to {-st::%{_id}%}
 		if {-st::%{_id}%} > 100:
 			set {-st::%{_id}%} to 100
-		set level progress of {_p} to ({-st::%{_id}%} * 0.01 - 0.001)
 		play sound "entity.generic.drink" with volume 1 and pitch 1.3 to {_p}
 		potionVisual({_p}, "stamina", 10)
 	else if {_kind} is "invis":

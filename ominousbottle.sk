@@ -58,7 +58,7 @@ on rightclick:
 on every 1 ticks:
 	loop all players:
 		set {_id} to "%loop-player's uuid%"
-		# 꿀벌 조종 중(bee.sk)에는 경험치 바에 꿀벌 스태미너가 보이므로 본체 스태미너 값만 바꾸고 바는 건드리지 않는다.
+		# 꿀벌 조종 중(bee.sk)에는 배고픔 바에 꿀벌 스태미너가 보이므로 본체 스태미너 값만 바꾸고 바는 건드리지 않는다.
 		set {_dr} to false
 		if {-beemode::%{_id}%} is "drive":
 			set {_dr} to true
@@ -68,13 +68,9 @@ on every 1 ticks:
 					add 1 to {-st::%{_id}%}
 					if {-st::%{_id}%} > 100:
 						set {-st::%{_id}%} to 100
-					if {_dr} is false:
-						set level progress of loop-player to ({-st::%{_id}%} * 0.01 - 0.001)
 			else:
 				delete {-bottle::%{_id}%}
 				set {-st::%{_id}%} to 0
-				if {_dr} is false:
-					set level progress of loop-player to 0
 				play sound "entity.player.breath" with volume 1 and pitch 0.8 to loop-player
 				# 탈진: 5초 동안 스태미너 회복 차단(stcap +1) + 보스바에 "탈진"(해로운 효과)
 				add 1 to {-stcap::%{_id}%}

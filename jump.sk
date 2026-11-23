@@ -93,7 +93,6 @@ on flight toggle:
 			set {-jump::%player's uuid%} to true
 			loop 5 times:
 				remove 3 from {-st::%player's uuid%}
-				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			delete {-jump::%player's uuid%}
@@ -101,9 +100,6 @@ on flight toggle:
 			jumpFlightOn({_pl})
 			loop 5 times:
 				remove 3 from {-st::%player's uuid%}
-				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
-				if {-st::%player's uuid%} <= 0:
-					set level progress of player to 0
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			wait 39 ticks
@@ -155,7 +151,6 @@ on swap hand items:
 			set {-jump::%player's uuid%} to true
 			loop 5 times:
 				remove 3 from {-st::%player's uuid%}
-				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			delete {-jump::%player's uuid%}
@@ -163,9 +158,6 @@ on swap hand items:
 			jumpFlightOn({_pl})
 			loop 5 times:
 				remove 3 from {-st::%player's uuid%}
-				set level progress of player to ({-st::%player's uuid%}*0.01-0.001)
-				if {-st::%player's uuid%} <= 0:
-					set level progress of player to 0
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			wait 39 ticks

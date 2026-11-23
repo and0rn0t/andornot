@@ -377,11 +377,7 @@ function beeRelease(p: player, restore: boolean):
 		set {_sv} to loop-player
 		{_sv}.stopSound("entity.bee.loop_aggressive")
 		{_sv}.stopSound("entity.bee.loop")
-	# 경험치 바를 본체 스태미너로 되돌린다
-	set {_lp} to {-st::%{_k}%} * 0.01 - 0.001
-	if {_lp} < 0:
-		set {_lp} to 0
-	set level progress of {_p} to {_lp}
+	# (배고픔 바는 stFoodSync 가 조종이 끝나면 본체 스태미너로 되돌린다)
 	set {-beemode::%{_k}%} to "hold"
 	beeShowHand({_p})
 
@@ -694,11 +690,7 @@ function beeDrive(p: player, bee: entity, k: text):
 		set {_gn} to now
 		if {_gn}.getTimestamp() >= {-beeglow::%{_k}%}:
 			beeGlowEnd({_p}, {_k}, false)
-	# 경험치 바에는 꿀벌 스태미너를 보인다(main.sk 는 조종 중 본체 스태미너를 바에 쓰지 않는다)
-	set {_lp} to {-beest::%{_k}%} * 0.01 - 0.001
-	if {_lp} < 0:
-		set {_lp} to 0
-	set level progress of {_p} to {_lp}
+	# 배고픔 바에는 꿀벌 스태미너가 보인다(main.sk stFoodSync 가 조종 중 {-beest} 를 쓴다)
 	beeHideHand({_p})
 	# 움직이는 동안 꿀벌의 평소 날갯짓 소리(entity.bee.loop)를 볼륨 2.0 으로 덧붙여 크게 한다(1초마다).
 	#   위치는 변수에 먼저 담아서 쓴다({_x}.getLocation() 를 play sound 에 바로 쓰면 콘솔에 오류가 났다).

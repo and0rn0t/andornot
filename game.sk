@@ -697,7 +697,6 @@ function gameRespawn(p: player):
 	set {_mh} to {_p}'s max health
 	set {_p}'s health to {_mh}
 	set {-st::%{_id}%} to 100
-	set level progress of {_p} to 0.999
 	{_p}.clearTitle()
 	delete {-gdead::%{_id}%}
 	loadoutGive({_p})

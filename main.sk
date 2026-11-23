@@ -1,4 +1,4 @@
-# [main.sk] 스태미너 회복/표시(경험치 바 + 배고픔 바 ⚡), 상태이상 보스바 표시, 전투 중 처리, 경험치 차단
+# [main.sk] 스태미너 회복/표시(배고픔 바 ⚡, 경험치 바 자리는 locate bar), 상태이상 보스바 표시, 전투 중 처리, 경험치 차단
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 전체 데미지 배율은 skill_core.sk 의 dmgMul() 한 곳에서 조절(현재 0.8).
 # 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지). 철퇴로 준 근접 데미지에만 적용(스킬/투사체 데미지는 제외).
@@ -12,9 +12,22 @@ import:
 	org.bukkit.boss.BarColor
 	org.bukkit.boss.BarStyle
 
+# 경험치 바 자리는 locate bar(위치 표시 바) 가 쓴다(클라이언트가 다른 플레이어가 있으면 경험치를 얻을 때만 경험치 바를 보이고 평소엔 locate bar 를 보임). 그래서 스태미너는 경험치 바에 쓰지 않고(배고픔 바 ⚡, stFoodSync) 경험치 바는 항상 0 으로 둔다.
+# 적이 바에 보이지 않게(추가 기획 4단계에서 팀원만 보이게 한다) 모든 플레이어의 위치 전송 범위(waypoint_transmit_range)를 0 으로 둔다. 바닐라 기본값은 6천만이라 모든 플레이어가 서로 보인다.
+function locatorHide(p: player):
+	execute console command "attribute %{_p}'s name% minecraft:waypoint_transmit_range base set 0"
+
 on join:
 	set {-st::%player's uuid%} to 100
-	set level progress of player to 0.999
+	set level progress of player to 0
+	locatorHide(player)
+
+on respawn:
+	locatorHide(player)
+
+on load:
+	loop all players:
+		locatorHide(loop-player)
 	set {-oc::%player's uuid%} to 0
 	set {-stcap::%player's uuid%} to 0
 	delete {-jump::%player's uuid%}
@@ -60,22 +73,15 @@ on every 1 ticks:
 		set {_pl} to loop-player
 		set {_c} to {_pl}.getAttackCooldown()
 		set {-atkcd::%loop-player's uuid%} to {_c}
-		# 꿀벌 조종 중(bee.sk)에는 경험치 바에 꿀벌 스태미너가 보이므로 본체 스태미너는 값만 회복하고 바는 건드리지 않는다.
+		# 꿀벌 조종 중(bee.sk)에는 배고픔 바에 꿀벌 스태미너가 보이므로(stFoodSync) 본체 스태미너는 값만 회복한다.
 		set {_dr} to false
 		if {-beemode::%loop-player's uuid%} is "drive":
 			set {_dr} to true
 		if {-stcap::%loop-player's uuid%} <= 0:
 			if {-st::%loop-player's uuid%} < 100:
 				add 1 to {-st::%loop-player's uuid%}
-				if {_dr} is false:
-					set level progress of loop-player to ({-st::%loop-player's uuid%}*0.01-0.001)
-			if {-st::%loop-player's uuid%} <= 0:
-				if {_dr} is false:
-					set level progress of loop-player to 0
 			if {-st::%loop-player's uuid%} > 100:
 				set {-st::%loop-player's uuid%} to 100
-				if {_dr} is false:
-					set level progress of loop-player to 0.999
 # 상태이상(이로운/해로운 모두) 보스바 표시. 상태이상은 skill_core.sk 의 setStatus/clearStatus 로 등록한다.
 # 효과 하나당 보스바 하나(여러 효과가 걸리면 보스바가 여러 개 쌓임). 같은 이름이 여러 출처에서 걸려 있으면 남은 시간이 가장 긴 것 하나만 보여준다.
 # 모든 행동을 막는 cc(기절 등, type "cc")는 보스바 대신 화면 가운데 타이틀(효과 이름) + 서브타이틀(남은 시간 막대)로 표시한다.
