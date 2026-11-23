@@ -1,4 +1,4 @@
-# [waypoint.sk] locate bar 에 서버가 직접 웨이포인트(점)를 보낸다. 추가 기획 3~5단계의 바탕. 미검증(서버 내부 클래스 이름은 /wpdump 로 확인).
+# [waypoint.sk] locate bar 에 서버가 직접 웨이포인트(점)를 보낸다. 추가 기획 3~5단계의 바탕. 서버에서 /wptest 로 동작 확인됨(파란 점이 locate bar 에 뜸).
 # 바닐라 플레이어 점은 main.sk locatorHide 로 전원 위치 전송 범위 0 이라 안 보인다. 여기서 보내는 점만 보인다(시청자별로 따로 보낼 수 있음).
 # 패킷: ClientboundTrackedWaypointPacket.addWaypointPosition(uuid, icon, Vec3i) / removeWaypoint(uuid). 색은 Icon.color(Optional<Integer> RGB).
 # 서버로 보내기: ((CraftPlayer)p).getHandle().connection.send(packet).
@@ -12,8 +12,6 @@ import:
 
 # 점 하나를 시청자에게 보낸다(처음엔 추가, 이미 있으면 위치 갱신). color 는 0xRRGGBB 를 10진수로(파랑 3447003 등).
 function wpSend(v: player, id: text, x: number, y: number, z: number, color: number):
-	# 진단(원인 확인 뒤 삭제): 함수로 넘어온 값을 콘솔에 찍는다
-	send "[wpSend] x=%{_x}% y=%{_y}% z=%{_z}% color=%{_color}% id=%{_id}%" to console
 	set {_u} to UUID.fromString({_id})
 	set {_ic} to new WpIcon()
 	# 숫자 -> int: Skript 숫자에 intValue() 를 부르면 null 이 나와서(Vec3i 가 null 로 만들어지고 패킷 인코딩이 실패해 접속이 끊김) Math.round 와 Math.toIntExact 로 바꾼다.
@@ -52,7 +50,6 @@ command /wptest:
 		set {_px} to x-coordinate of {_l}
 		set {_py} to y-coordinate of {_l}
 		set {_pz} to z-coordinate of {_l}
-		send "&7[wptest] 좌표 %{_px}% %{_py}% %{_pz}%" to player
 		wpSend(player, {_id}, {_px}, {_py}, {_pz}, 3447003)
 		send "&a[wptest] 파란 점을 보냈습니다. 10초 뒤 지웁니다." to player
 		wait 10 seconds
