@@ -980,11 +980,18 @@ function gameFinale():
 		if {-gwatch::%uuid of loop-player%} is set:
 			if {-gfv::*} does not contain loop-player:
 				add loop-player to {-gfv::*}
-	set {_gw} to "%{-gworld}%"
-	if {_gw} is "":
+	# [원인 수정] 값이 없는 변수를 "%{-gworld}%" 로 글자로 만들면 빈 글자가 아니라 "<none>" 이 되어 아래 검사가 통하지 않았다(그래서 /endtest 에서 월드 "<none>" 을 만들려다 실패하고 무대가 없어 카메라가 연결되지 않았다).
+	# 게임 월드({-gworld})가 있으면 그것, 없으면(테스트 연출) 첫 참가자가 있는 월드를 쓴다.
+	if {-gworld} is set:
+		set {_gw} to "%{-gworld}%"
+	else:
 		set {_gw} to {-gplist::1}.getWorld().getName()
 	set {_stage} to gameStageLoc({_gw})
 	send "[finale] 시작: 무대 %{_stage}%" to console
+	if {_stage} is not set:
+		send "[finale] 무대 위치를 구하지 못해 연출을 중단합니다(월드 %{_gw}%)" to console
+		gfAbort()
+		stop
 	set {_c0} to gfShotA({_stage}, 0)
 	loop {-gfv::*}:
 		set {_pl} to loop-value
