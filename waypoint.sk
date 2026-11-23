@@ -12,6 +12,8 @@ import:
 
 # 점 하나를 시청자에게 보낸다(처음엔 추가, 이미 있으면 위치 갱신). color 는 0xRRGGBB 를 10진수로(파랑 3447003 등).
 function wpSend(v: player, id: text, x: number, y: number, z: number, color: number):
+	# 진단(원인 확인 뒤 삭제): 함수로 넘어온 값을 콘솔에 찍는다
+	send "[wpSend] x=%{_x}% y=%{_y}% z=%{_z}% color=%{_color}% id=%{_id}%" to console
 	set {_u} to UUID.fromString({_id})
 	set {_ic} to new WpIcon()
 	# 숫자 -> int: Skript 숫자에 intValue() 를 부르면 null 이 나와서(Vec3i 가 null 로 만들어지고 패킷 인코딩이 실패해 접속이 끊김) Math.round 와 Math.toIntExact 로 바꾼다.
