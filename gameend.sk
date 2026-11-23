@@ -1069,9 +1069,7 @@ function gameFinale():
 	else:
 		set {_gw} to {-gplist::1}.getWorld().getName()
 	set {_stage} to gameStageLoc({_gw})
-	send "[finale] 시작: 무대 %{_stage}%" to console
 	if {_stage} is not set:
-		send "[finale] 무대 위치를 구하지 못해 연출을 중단합니다(월드 %{_gw}%)" to console
 		gfAbort()
 		stop
 	set {_c0} to gfShotA({_stage}, 0)
@@ -1097,7 +1095,6 @@ function gameFinale():
 	set {-gdisp} to {_disp}
 	# 결과창(텍스트 디스플레이 2개)은 연출이 끝날 때까지 보이지 않게 한다(표시 거리 0). 카메라 종료 때 gfResultShow 로 다시 보인다.
 	gfResultHide()
-	send "[finale] 더미 생성 완료, 더미 %size of {-gfwinp::*}%명" to console
 	set {_cw} to {_c0}.getWorld()
 	set {_ce} to {_cw}.spawnEntity({_c0}, EntityType.TEXT_DISPLAY)
 	{_ce}.setGravity(false)
@@ -1106,7 +1103,6 @@ function gameFinale():
 	{_ce}.addScoreboardTag("gdummy")
 	set {-gfcam} to {_ce}
 	delete {-gfatt::*}
-	send "[finale] 카메라 엔티티 생성 완료" to console
 	wait 1 tick
 	# 2) 카메라 엔티티가 전송된 사람부터 관전 대상을 건다(건 뒤 6틱, 25틱에 강제로 다시). 전원이 건 지 12틱 지나면 끝(최대 300틱).
 	set {_ht} to 0
@@ -1148,7 +1144,6 @@ function gameFinale():
 			set {_done} to true
 		else:
 			wait 1 tick
-	send "[finale] 카메라 연결 완료(%{_ht}%틱)" to console
 	# 3) 첫 자리 청크를 모두 받을 때까지(최대 60틱) 카메라를 다시 걸며 기다린다.
 	set {_cck} to {_c0}.getChunk()
 	set {_cw2} to 0
@@ -1179,7 +1174,6 @@ function gameFinale():
 	# 4) 소리 시작 + 연출 본체. 소리는 모든 접속자에게(관전하지 않는 사람도 들린다).
 	# 소리는 이미 시작했다(위 또는 킬 연출). 소리가 시작된 뒤 지난 틱 수({_pre0} + 준비에 걸린 틱)만큼 연출 시간을 앞서서 시작한다(소리와 어긋나지 않게). 준비가 소리 시작 틱(gfTitleTick)보다 오래 걸렸으면 타이틀은 바로 뜬다.
 	set {_pre} to {_pre0} + 1 + {_ht} + {_cw2}
-	send "[finale] 연출 진행(소리 시작 뒤 %{_pre}%틱)" to console
 	set {_cut} to gfCutTick()
 	set {_cut2} to {_cut} + 2
 	set {_cut3} to {_cut} + 30
@@ -1243,7 +1237,6 @@ function gameFinale():
 			gfKeep()
 		wait 1 tick
 		add 1 to {_t}
-	send "[finale] 카메라 구간 종료" to console
 	# 카메라 해제(관전 대상 풀기 + 카메라 엔티티 삭제)
 	gfCamRelease()
 	gfResultShow()
