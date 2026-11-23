@@ -5,7 +5,7 @@
 # 진입점은 gameBegin(by)다. ready.sk(전원 준비 카운트다운)와 관리자 메뉴 "게임 시작"이 gameStart 대신 이걸 부른다. 투표가 꺼져 있거나 맵 후보가 없으면 바로 gameStart.
 # 흐름(모두 이 파일의 voteStart 한 함수가 wait 로 진행):
 #   1) 투표(voteSec() 초, 전원이 투표하면 바로 마감): 참가자(게임 관전 선택자 제외)가 더미를 우클릭하면 투표, 다시 우클릭하면 바꿈. 더미 이름 아래에 득표수.
-#      다른 월드에 있는 참가자는 더미 앞으로 데려온다.
+#      시작할 때 참가자(게임 관전 선택자 제외)를 전부 로비 위치(gameLobbyLoc)로 소환한다.
 #   2) 룰렛: 득표에 비례한 확률로 하나를 먼저 정하고(표가 하나도 없으면 셋 모두 같은 확률), 더미를 차례로 빛나게(점점 느리게) 돌리다가 그 더미에서 멈춘다.
 #   3) 로드아웃 변경(voteLoadoutSec() 초): 액션바로 남은 시간 표시. 이 동안은 게임 중이 아니라서 무기고(9번 칸)로 구성을 바꿀 수 있다.
 #   4) {-gvmap}/{-gvmode}(결과)를 두고 gameStart 호출. gameStart 가 읽고 바로 지운다. 이후 팀 매칭 + 시작 연출은 기존 그대로다.
@@ -91,12 +91,17 @@ function voteChoose():
 	set {_maps::*} to mapCandidates()
 	set {_modes::*} to gcModeIds()
 	set {_cnt} to 0
-	loop {_maps::*}:
-		set {_mp} to loop-value
-		loop {_modes::*}:
+	set {_nm} to size of {_maps::*}
+	set {_nd} to size of {_modes::*}
+	set {_a} to 1
+	while {_a} <= {_nm}:
+		set {_b} to 1
+		while {_b} <= {_nd}:
 			add 1 to {_cnt}
-			set {_pm::%{_cnt}%} to {_mp}
-			set {_pd::%{_cnt}%} to loop-value
+			set {_pm::%{_cnt}%} to "%{_maps::%{_a}%}%"
+			set {_pd::%{_cnt}%} to "%{_modes::%{_b}%}%"
+			add 1 to {_b}
+		add 1 to {_a}
 	if {_cnt} < 1:
 		stop
 	set {_idx::*} to integers from 1 to {_cnt}
@@ -209,20 +214,17 @@ function voteStart(by: text):
 	voteClearDummies()
 	set {_b} to voteBase()
 	set {_y} to {_b}.getYaw()
-	set {_bw} to {_b}.getWorld()
-	set {_front} to {_b} ~ vector(0 - sin({_y}) * 4, 0, cos({_y}) * 4)
 	loop integers from 1 to {-gv::n}:
 		set {_i} to loop-value
 		set {_dl} to voteDummyLoc({_i})
 		set {-gvd::%{_i}%} to voteDummySpawn({_dl}, {_y})
 	voteDummiesUpdate()
-	# 다른 월드에 있는 참가자는 더미 앞으로 데려온다
+	# 게임에 참가하는 사람(관전 선택자 제외)은 전원 로비로 소환한다
+	set {_lobby} to gameLobbyLoc()
 	loop all players:
 		set {_pl} to loop-player
 		if specOn({_pl}) is not true:
-			set {_pw} to {_pl}.getWorld()
-			if {_pw} is not {_bw}:
-				tpSafe({_pl}, {_front})
+			tpSafe({_pl}, {_lobby})
 	loop all players:
 		send title "&e맵 · 모드 투표" with subtitle "&7더미를 우클릭해서 투표하세요" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "block.note_block.pling" with volume 0.7 and pitch 1.5 to loop-player
