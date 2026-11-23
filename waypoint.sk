@@ -78,6 +78,8 @@ function wpEffPos(v: player, tx: number, ty: number, tz: number) :: text:
 	while {_rel} < -180:
 		add 360 to {_rel}
 	set {_lim} to wpEdgeLimit()
+	if {-wpdbg} is true:
+		set {-wpdbg_last} to "보는 yaw %round({_vy})% / 대상 방향 yaw %round({_rel} + {_vy})% / 상대각 %round({_rel})% (바 끝 한계 ±%{_lim}%)"
 	if {_rel} <= {_lim}:
 		if {_rel} >= 0 - {_lim}:
 			return "%round({_tx})%,%round({_ty})%,%round({_tz})%"
@@ -289,6 +291,17 @@ command /pingtest [<text>]:
 	permission: op
 	trigger:
 		set {_pid} to "%uuid of player%"
+		if arg-1 is "debug":
+			if {-wpdbg} is true:
+				delete {-wpdbg}
+				send "&a[pingtest] 디버그를 껐습니다." to player
+			else:
+				set {-wpdbg} to true
+				send "&a[pingtest] 디버그를 켰습니다. 핑을 찍은 뒤 /pingtest info 로 각도를 봅니다." to player
+			stop
+		if arg-1 is "info":
+			send "&e%{-wpdbg_last}%" to player
+			stop
 		if arg-1 is "clear":
 			delete {-wping_c::%{_pid}%}
 			send "&a[pingtest] 핑을 지웠습니다." to player
