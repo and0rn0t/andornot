@@ -63,7 +63,7 @@
 #   {-kcorig::uuid} {-groundwin}   라운드 종료 연출 중 원래 위치 / 라운드 승리 팀 키   killcine, game
 #   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
 #   {-gslot::uuid::아이템id}   게임 시작 직전 로비에서 정리해 둔 구성 아이템 칸(0~35). 게임 중 loadoutGive 가 이 칸에 먼저 넣음, gameCleanup 이 지움   game, items
-#   {-gfinale} {-gvote} {-gpotm::투표자uuid} {-gdummies::*} {-gpotmres} {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(투표, 더미, 결과 디스플레이)   gameend
+#   {-gfinale} {-gvote} {-gtest} {-gpotm::투표자uuid} {-gdummies::*} {-gpotmres} {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(투표, 더미, 결과 디스플레이)   gameend
 #   {-grand::uuid::1~5} {-grandon}   랜덤 아이템 모드로 게임 중 뽑은 구성/켜짐 표시(게임이 끝나면 지움, 저장된 구성 {loadout} 은 그대로)   items, game
 #   {gamecfg::map} 게임 맵 월드 이름, {gamecfg::maprandom} 매 게임 랜덤 모드(관리자 메뉴 맵 설정, 저장 변수)  admin, game
 #   {gamecfg::loc::lobby|stage_<월드>::world|x|y|z|yaw|pitch} 로비 위치/월드별 결과 무대 위치(저장 변수, 월드 이름+좌표라 월드가 안 올라와 있어도 안 사라짐)  gameend(gcSaveLoc/gcLoadLoc)
@@ -153,6 +153,7 @@
 #   - bow.sk        : 활 스킬(충전 데미지, 소닉붐)
 #   - blazerod.sk   : 블레이즈 막대기 스킬(화염구, 3번째 사용 5연발)
 #   - bee.sk        : 꿀벌 스킬(쿨 75초, 분류 2): 꿀벌 드론을 탑승 조종(본체 더미는 앉아 있고 피격 피해는 본인에게 전달), 독침/자폭/조종 중지 3아이템, 가속(도약과 같은 입력, 꿀벌 스태미너 50 소모 x2.5 2초, 변수 {-beest}/{-beelock}/{-beedash})(조종 중지만 즉시 사용 가능(자폭 제외)), 본체 50칸 제한, 아이템은 벌 스폰 에그, 조종 중 화면 체력=꿀벌 체력/본체 체력은 더미 머리 위(변수 {-beebar}, {-beeslot}, {-beesnd}). 자세한 건 bee.sk 맨 위.
+#   - endtest.sk    : op 전용 /endtest. 게임 없이 종료 연출(gameend.sk)을 바로 본다(승리자 = 실행한 관리자 + 더미2 + 더미3, 점수/티어 기록 안 함, 변수 {-gtest} {-gtestids} {-gtestteam})
 #   - evdummy.sk    : op 전용 회피형 연습 더미 /dummy (플레이어를 피해 걷고 스태미너 25 찰 때마다 도약, TTK 측정, 미검증)
 #   - soundfx.sk    : 거리 조절 사운드 함수 soundAround(소리, 위치, 볼륨, 피치) (최대 청음 60칸, 40칸까지 최대 볼륨, 40~60칸 감쇠. 월드 위치 효과음은 전부 이 함수를 쓴다, 미검증)
 #   - trident.sk    : 삼지창 스킬(우클릭 충전 1.5초 -> 시선 방향 순간이동 5~21칸, 도착 지점 반경 6칸의 적에게 피해 4, 쿨 18초, 근접 7). 분류는 1(금속 무기류)로 정함(확인 필요)
