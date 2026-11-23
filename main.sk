@@ -49,6 +49,10 @@ function stFoodSync(p: player):
 		set {_f} to 20
 	if {_p}.getFoodLevel() is not {_f}:
 		{_p}.setFoodLevel({_f})
+	# 스태미너가 30 이하(음식 수치 6 이하)면 달리기 불가: 바닐라는 음식 수치 6 이하에서 달리기를 못 하게 하지만, 더블 점프 모드(비행 허용 상태)는 클라이언트가 이 제한을 무시하므로 서버에서도 달리기를 풀어 준다.
+	if {_f} <= 6:
+		if {_p}.isSprinting() is true:
+			{_p}.setSprinting(false)
 	# 포화도는 항상 0(포화도 때문에 배고픔 바가 안 줄거나 회복이 빨라지는 것을 막는다)
 	if {_p}.getSaturation() > 0:
 		{_p}.setSaturation(0)
