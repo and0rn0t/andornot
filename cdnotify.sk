@@ -69,7 +69,9 @@ function cdPotion(p: player, kind: text, label: text):
 function cdScan(p: player):
 	cdItem({_p}, anvil, "모루")
 	cdItem({_p}, fishing rod, "낚싯대")
-	cdItem({_p}, flint and steel, "부싯돌과 부시")
+	# 'flint and steel' 은 함수 인자에 쓰면 and 로 갈려서 '둘'로 읽힌다(flintsteel.sk 주석) -> 변수로 넘긴다
+	set {_fs} to flint and steel
+	cdItem({_p}, {_fs}, "부싯돌과 부시")
 	cdItem({_p}, nether star, "네더의 별")
 	cdItem({_p}, ominous bottle, "불길한 병")
 	cdItem({_p}, netherite sword, "검")
