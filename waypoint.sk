@@ -249,20 +249,23 @@ function wpPingRay() :: number:
 function wpPingNear() :: number:
 	return 4.5
 
-# 조준한 자리(블록이 없으면 100칸 앞)
+# 조준한 자리(블록이 120칸 안에 없으면 허공이라 값 없음)
 function wpAimLoc(p: player) :: location:
 	set {_b} to {_p}.getTargetBlockExact(120)
 	if {_b} is set:
 		return {_b}.getLocation().add(0.5, 0.5, 0.5)
-	set {_e} to eye location of {_p}
-	return {_e}.clone().add({_e}.getDirection().clone().multiply(100))
+	return {_none}
 
 # kind: "auto" = 조준/주변에 적이 있으면 빨강 아니면 파랑, "blue" = 무조건 파랑(시험), "red" = 가장 가까운 다른 플레이어를 대상으로 빨강(시험)
 function wpPingCreate(p: player, test: boolean, kind: text):
 	set {_pid} to "%uuid of {_p}%"
-	wpPingClear({_pid})
 	set {_hit} to wpAimLoc({_p})
 	set {_eye} to eye location of {_p}
+	set {_air} to false
+	if {_hit} is not set:
+		# 허공(블록이 없음): 조준선 위에 적이 있을 때만 빨간 핑이 되고, 아니면 핑을 찍지 않는다(기존 핑은 그대로)
+		set {_air} to true
+		set {_hit} to {_eye}.clone().add({_eye}.getDirection().clone().multiply(100))
 	set {_dir} to {_eye}.getDirection()
 	set {_hd} to distance between {_eye} and {_hit}
 	set {_best} to -1
@@ -317,6 +320,10 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 								set {_bestd} to {_sc}
 								set {_best} to {_tid}
 								set {_bestp} to {_t}
+	if {_air} is true:
+		if {_best} is -1:
+			stop
+	wpPingClear({_pid})
 	delete {-wping_e::%{_pid}%}
 	set {-wping_c::%{_pid}%} to "blue"
 	set {_l} to {_hit}
@@ -386,6 +393,9 @@ command /pingtest [<text>]:
 			wpPingCreate(player, true, "red")
 		else:
 			wpPingCreate(player, true, "blue")
+		if {-wping_c::%{_pid}%} is not set:
+			send "&c[pingtest] 허공이라 핑이 찍히지 않았습니다." to player
+			stop
 		set {_k} to {-wping_c::%{_pid}%}
 		set {_sx} to round({-wping_x::%{_pid}%})
 		set {_sy} to round({-wping_y::%{_pid}%})
