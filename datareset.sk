@@ -1,0 +1,57 @@
+# [datareset.sk] 관리자 데이터 초기화: 지난 매치 기록과 레이팅(내부 승점)을 지운다. 되돌릴 수 없어서 확인 단어(confirm)를 한 번 더 입력해야 실행된다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 명령(op/콘솔): /resetdata <match|rating|all> confirm
+#   match  = 지난 매치 기록: {matchcount}, {matchlog::*}(결과 JSON, 목록 설명, 한 줄 리뷰 포함). 등록된 독서대({matchshelf})는 남긴다.
+#   rating = 레이팅: {rating::*}(승점과 경기 수 {rating::games::*}), {ratingsince::*}(승점 도달 시각). 티어는 승점으로 계산하므로 같이 초기화된다(전원 승점 기본 100, game.sk ratingOf).
+#   all    = 둘 다.
+# 게임/투표/종료 연출 중에는 거부한다(종료 연출이 매치 기록을 쓰기 때문). 실행 뒤 접속자 탭리스트를 갱신해 티어 아이콘을 다시 그린다.
+# 미검증: 명령 인자 파싱, 저장 변수 list 통째 삭제.
+
+command /resetdata [<text>] [<text>]:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
+	description: 매치 기록/레이팅 초기화 (관리자 전용)
+	trigger:
+		if sender is a player:
+			if player is not op:
+				send "&c관리자만 사용할 수 있습니다."
+				stop
+		if arg-1 is not "match":
+			if arg-1 is not "rating":
+				if arg-1 is not "all":
+					send "&e사용법: /resetdata <match|rating|all> confirm &7(match = 지난 매치 기록, rating = 레이팅, all = 둘 다)"
+					stop
+		if arg-2 is not "confirm":
+			set {_mc} to mhCount()
+			set {_rc} to size of {ratingsince::*}
+			send "&c[주의] 되돌릴 수 없어요. 지금 매치 기록 %{_mc}%개, 레이팅 기록이 있는 사람 %{_rc}%명이에요."
+			send "&e정말 지우려면: /resetdata %arg-1% confirm"
+			stop
+		if {-ingame} is true:
+			send "&c게임 중에는 초기화할 수 없습니다."
+			stop
+		if {-gfinale} is true:
+			send "&c종료 연출 중에는 초기화할 수 없습니다."
+			stop
+		if {-gstarting} is true:
+			send "&c게임 시작 중에는 초기화할 수 없습니다."
+			stop
+		if {-gvoting} is true:
+			send "&c투표 중에는 초기화할 수 없습니다."
+			stop
+		if arg-1 is "match":
+			delete {matchlog::*}
+			delete {matchcount}
+			send "&a지난 매치 기록을 모두 지웠습니다."
+		else if arg-1 is "rating":
+			delete {rating::*}
+			delete {ratingsince::*}
+			send "&a레이팅을 모두 초기화했습니다."
+		else:
+			delete {matchlog::*}
+			delete {matchcount}
+			delete {rating::*}
+			delete {ratingsince::*}
+			send "&a지난 매치 기록과 레이팅을 모두 초기화했습니다."
+		loop all players:
+			tabUpdate(loop-player)
