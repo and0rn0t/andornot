@@ -3,6 +3,11 @@
 # 패킷: ClientboundTrackedWaypointPacket.addWaypointPosition(uuid, icon, Vec3i) / removeWaypoint(uuid). 색은 Icon.color(Optional<Integer> RGB).
 # 서버로 보내기: ((CraftPlayer)p).getHandle().connection.send(packet).
 import:
+	net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket
+	net.minecraft.network.syncher.SynchedEntityData$DataValue as WpData
+	net.minecraft.network.syncher.EntityDataSerializers
+	java.util.Collections
+	java.lang.Byte
 	net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket
 	net.minecraft.world.waypoints.Waypoint$Icon as WpIcon
 	net.minecraft.core.Vec3i
@@ -59,50 +64,9 @@ command /wptest:
 # 게임 중 살아 있는 참가자에게만 보인다. 같은 팀 동료(본인 제외)는 초록 점, 크라운 소지자는(본인이 아니면) 주황 점(크라운 소지자는 팀과 상관없이 모두에게 주황으로 보이고 초록 점은 대신 빠진다).
 # 점 id: 동료 = 그 사람의 uuid, 크라운 = 고정 uuid. {-wpset::보는사람uuid::id} = 마지막으로 보낸 좌표 문자열(바뀔 때만 다시 보낸다).
 # 적은 표시하지 않는다(전원 위치 전송 범위 0 이라 바닐라 점도 없음). 색: 초록 0x55FF55, 주황 0xFF8C1A.
-# 시야 밖(옆/뒤)에 있는 점은 locate bar 에서 안 보이므로, 보는 사람 기준 바 가장자리 각도(±wpEdgeLimit)쪽 wpEdgeDist 칸 앞에 가짜 위치로 보내서 바 맨 끝에 붙인다.
-# 바 끝이 정확히 몇 도인지는 미검증이라 wpEdgeLimit 을 직접 보면서 맞춘다(너무 크면 끝 점이 사라지고, 너무 작으면 앞쪽 점도 끝에 붙는다).
-function wpEdgeLimit() :: number:
-	return 55
-
-function wpEdgeDist() :: number:
-	return 40
-
-# 보는 사람 v 에게 (tx, ty, tz) 의 점을 어디에 찍어야 하는지 "x,y,z" 문자열로 돌려준다(시야 안이면 실제 위치, 밖이면 바 끝 쪽 가짜 위치).
+# 보는 사람 v 에게 (tx, ty, tz) 의 점을 어디에 찍어야 하는지 "x,y,z" 문자열로 돌려준다. 좌우 끝 붙이기(시야 밖 점을 바 끝에 붙이는 기능)는 삭제했다: 항상 실제 위치.
 function wpEffPos(v: player, tx: number, ty: number, tz: number) :: text:
-	# 각도는 Skript 삼각함수(단위/yaw 기준이 헷갈림) 대신 자바 Math(라디안 확실)와 시선 벡터로 계산한다.
-	set {_dx} to {_tx} - x-coordinate of {_v}
-	set {_dz} to {_tz} - z-coordinate of {_v}
-	set {_vd} to {_v}.getLocation().getDirection()
-	set {_vx} to {_vd}.getX()
-	set {_vz} to {_vd}.getZ()
-	set {_hl} to Math.sqrt({_vx} * {_vx} + {_vz} * {_vz})
-	set {_real} to "%round({_tx})%,%round({_ty})%,%round({_tz})%"
-	if {_hl} < 0.01:
-		return {_real}
-	set {_vx} to {_vx} / {_hl}
-	set {_vz} to {_vz} / {_hl}
-	# 상대각(도): 양수 = 오른쪽, 음수 = 왼쪽, 절댓값 180 = 정반대(뒤)
-	set {_dot} to {_vx} * {_dx} + {_vz} * {_dz}
-	set {_crs} to {_vx} * {_dz} - {_vz} * {_dx}
-	set {_rel} to Math.toDegrees(Math.atan2({_crs}, {_dot}))
-	set {_lim} to wpEdgeLimit()
-	if {-wpdbg} is true:
-		set {-wpdbg_last} to "상대각 %round({_rel})% (바 끝 한계 ±%{_lim}%) 시선 (%round({_vx} * 100) / 100%, %round({_vz} * 100) / 100%)"
-	if {_rel} <= {_lim}:
-		if {_rel} >= 0 - {_lim}:
-			return {_real}
-	set {_a} to {_lim}
-	if {_rel} < 0:
-		set {_a} to 0 - {_lim}
-	set {_ar} to Math.toRadians({_a})
-	set {_c} to Math.cos({_ar})
-	set {_sn} to Math.sin({_ar})
-	set {_ex} to {_vx} * {_c} - {_vz} * {_sn}
-	set {_ez} to {_vz} * {_c} + {_vx} * {_sn}
-	set {_d} to wpEdgeDist()
-	set {_px} to x-coordinate of {_v} + {_ex} * {_d}
-	set {_pz} to z-coordinate of {_v} + {_ez} * {_d}
-	return "%round({_px})%,%round(y-coordinate of {_v})%,%round({_pz})%"
+	return "%round({_tx})%,%round({_ty})%,%round({_tz})%"
 
 function wpActive(p: player) :: boolean:
 	if {_p} is not online:
@@ -188,9 +152,77 @@ function wpTeamSync():
 				wpRemove({_v}, {_k})
 				delete {-wpset::%{_vid}%::%{_k}%}
 
+# ===== 빨간 핑 대상의 팀 전용 붉은 발광 =====
+# 시청자별로 "발광" 플래그만 켠 엔티티 데이터 패킷을 보내서 핑을 찍은 팀에게만 발광이 보이게 한다(다른 사람에겐 패킷을 안 보냄). 발광 색은 스코어보드 팀 색이라 핑 중에는 대상을 RED 팀 gpingred 에 넣는다(크라운 소지자는 그 팀을 쓰므로 그대로 둠).
+# 서버가 다른 이유로 엔티티 데이터를 다시 보내면 발광이 풀리므로 0.5초마다 다시 보낸다. 플래그: 웅크림 2, 달리기 8, 투명 32, 발광 64(기본 플래그만 다시 구성, 불/겉날개는 생략).
+function wpGlowSend(v: player, t: player, on: boolean):
+	set {_f} to 0
+	if {_t}.isSneaking() is true:
+		add 2 to {_f}
+	if {_t}.isSprinting() is true:
+		add 8 to {_f}
+	if {_t}.isInvisible() is true:
+		add 32 to {_f}
+	if {_on} is true:
+		add 64 to {_f}
+	set {_bv} to Byte.parseByte("%{_f}%")
+	set {_dv} to new WpData(0, EntityDataSerializers.BYTE, {_bv})
+	set {_pk} to new ClientboundSetEntityDataPacket({_t}.getEntityId(), Collections.singletonList({_dv}))
+	{_v}.getHandle().connection.send({_pk})
+
+function wpGlowTeam(t: player, on: boolean):
+	set {_tid} to "%uuid of {_t}%"
+	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+	if {_on} is true:
+		if {-wpglow_t::%{_tid}%} is set:
+			stop
+		set {_ct} to {_sb}.getTeam("gpingred")
+		if {_ct} is not set:
+			set {_ct} to {_sb}.registerNewTeam("gpingred")
+		{_ct}.setColor(ChatColor.RED)
+		set {_old} to {_sb}.getEntryTeam({_t}.getName())
+		if {_old} is set:
+			set {_on2} to {_old}.getName()
+			if {_on2} is "gcrown":
+				stop
+			set {-wpglow_old::%{_tid}%} to {_on2}
+		scAdd({_ct}, {_t})
+		set {-wpglow_t::%{_tid}%} to true
+	else:
+		if {-wpglow_t::%{_tid}%} is not set:
+			stop
+		set {_ct} to {_sb}.getTeam("gpingred")
+		if {_ct} is set:
+			scRemove({_ct}, {_t})
+		if {-wpglow_old::%{_tid}%} is set:
+			set {_ot} to {_sb}.getTeam({-wpglow_old::%{_tid}%})
+			if {_ot} is set:
+				scAdd({_ot}, {_t})
+		delete {-wpglow_t::%{_tid}%}
+		delete {-wpglow_old::%{_tid}%}
+
+function wpFind(id: text) :: player:
+	loop all players:
+		if "%uuid of loop-player%" is {_id}:
+			return loop-player
+	return {_none}
+
+# 핑 하나를 완전히 지운다(빨간 핑이면 발광도 끈다)
+function wpPingClear(pid: text):
+	if {-wping_c::%{_pid}%} is "red":
+		set {_t} to wpFind({-wping_e::%{_pid}%})
+		if {_t} is set:
+			loop {-wping_gv::%{_pid}%::*}:
+				set {_vv} to wpFind(loop-index)
+				if {_vv} is set:
+					wpGlowSend({_vv}, {_t}, false)
+			wpGlowTeam({_t}, false)
+	delete {-wping_gv::%{_pid}%::*}
+	delete {-wping_c::%{_pid}%}
+
 # ===== 핑 시스템(Q 키) =====
 # Q(아이템 버리기)를 누르면 바라보는 자리에 파란 핑, 그 근처(또는 조준선 위)에 적이 있으면 대신 그 적에게 빨간 핑(적이 움직이면 따라감)이 찍힌다.
-# 핑은 찍은 사람과 같은 팀(개인전은 본인)에게만 locate bar 로 보이고 소리(mck:pingblue / mck:pingred)가 난다. 한 사람당 핑은 하나(새로 찍으면 교체). 시야 밖이면 바 끝에 붙는다(wpEffPos).
+# 핑은 찍은 사람과 같은 팀(개인전은 본인)에게만 locate bar 로 보이고 소리(mck:pingblue / mck:pingred)가 난다. 한 사람당 핑은 하나(새로 찍으면 교체). 
 # 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운) {-wping_test::pid}(시험 핑: 게임 밖에서도 본인에게만)
 # 시간 단위 {-wptick} = wpTeamSync 실행 횟수(0.1초). 숫자는 아래 함수에서 바꾼다.
 function wpPingSec() :: number:
@@ -217,6 +249,7 @@ function wpAimLoc(p: player) :: location:
 # kind: "auto" = 조준/주변에 적이 있으면 빨강 아니면 파랑, "blue" = 무조건 파랑(시험), "red" = 가장 가까운 다른 플레이어를 대상으로 빨강(시험)
 function wpPingCreate(p: player, test: boolean, kind: text):
 	set {_pid} to "%uuid of {_p}%"
+	wpPingClear({_pid})
 	set {_hit} to wpAimLoc({_p})
 	set {_eye} to eye location of {_p}
 	set {_dir} to {_eye}.getDirection()
@@ -263,6 +296,7 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 		set {-wping_c::%{_pid}%} to "red"
 		set {-wping_e::%{_pid}%} to {_best}
 		set {_l} to {_bestp}'s location
+		wpGlowTeam({_bestp}, true)
 	set {-wping_x::%{_pid}%} to x-coordinate of {_l}
 	set {-wping_y::%{_pid}%} to y-coordinate of {_l}
 	set {-wping_z::%{_pid}%} to z-coordinate of {_l}
@@ -304,19 +338,8 @@ command /pingtest [<text>]:
 	permission: op
 	trigger:
 		set {_pid} to "%uuid of player%"
-		if arg-1 is "debug":
-			if {-wpdbg} is true:
-				delete {-wpdbg}
-				send "&a[pingtest] 디버그를 껐습니다." to player
-			else:
-				set {-wpdbg} to true
-				send "&a[pingtest] 디버그를 켰습니다. 핑을 찍은 뒤 /pingtest info 로 각도를 봅니다." to player
-			stop
-		if arg-1 is "info":
-			send "&e%{-wpdbg_last}%" to player
-			stop
 		if arg-1 is "clear":
-			delete {-wping_c::%{_pid}%}
+			wpPingClear({_pid})
 			send "&a[pingtest] 핑을 지웠습니다." to player
 			stop
 		if arg-1 is "red":
@@ -356,10 +379,29 @@ function wpPingUpdate():
 							set {-wping_z::%{_pid}%} to z-coordinate of loop-player
 				if {_found} is false:
 					set {_keep} to false
+		if {_keep} is true:
+			if {-wping_c::%{_pid}%} is "red":
+				if {-wptick} mod 5 is 0:
+					set {_t} to wpFind({-wping_e::%{_pid}%})
+					if {_t} is set:
+						wpGlowTeam({_t}, true)
+						loop all players:
+							set {_vv} to loop-player
+							set {_vvid} to "%uuid of {_vv}%"
+							set {_gs} to false
+							if {_vvid} is {_pid}:
+								set {_gs} to true
+							else if {-wping_test::%{_pid}%} is not set:
+								if wpActive({_vv}) is true:
+									if isAlly({_pid}, {_vvid}) is true:
+										set {_gs} to true
+							if {_gs} is true:
+								wpGlowSend({_vv}, {_t}, true)
+								set {-wping_gv::%{_pid}%::%{_vvid}%} to true
 		if {_keep} is false:
-			delete {-wping_c::%{_pid}%}
+			wpPingClear({_pid})
 
-# 시야 밖 점이 시청자 회전을 따라가야 해서 2틱마다 갱신(바뀐 점만 전송)
+# 2틱마다 갱신(바뀐 점만 전송)
 every 2 ticks:
 	wpTeamSync()
 
