@@ -278,6 +278,8 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 				set {_tk} to "player"
 			else if {_t}.getType().name() is "MANNEQUIN":
 				set {_tk} to "dummy"
+			else if {_t}.getType().name() is "BEE":
+				set {_tk} to "bee"
 			if {_t} is not {_p}:
 				set {_tid} to "%uuid of {_t}%"
 				set {_ok} to false
@@ -287,6 +289,18 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 					else if wpActive({_t}) is true:
 						if isAlly({_pid}, {_tid}) is false:
 							set {_ok} to true
+					# 꿀벌에 탑승 중인(조종 중) 적 몸은 핑 대상이 아니다(대신 적 꿀벌이 대상, 아래)
+					if {-beemode::%{_tid}%} is "drive":
+						set {_ok} to false
+				else if {_tk} is "bee":
+					# 적 꿀벌 드론(bee.sk 의 {-bee::주인uuid}): 본인/아군 꿀벌은 제외
+					loop {-bee::*}:
+						set {_bz} to loop-value-2
+						set {_bo2} to loop-index
+						if "%uuid of {_bz}%" is {_tid}:
+							if {_bo2} is not {_pid}:
+								if isAlly({_pid}, {_bo2}) is false:
+									set {_ok} to true
 				else if {_tk} is "dummy":
 					# 더미(마네킹)도 적처럼 핑이 찍힌다. 단 본인/아군의 꿀벌 조종 중 본체 더미는 제외.
 					set {_ok} to true
