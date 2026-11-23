@@ -1,0 +1,35 @@
+# [waypoint.sk] locate bar 에 서버가 직접 웨이포인트(점)를 보낸다. 추가 기획 3~5단계의 바탕. 미검증(서버 내부 클래스 이름은 /wpdump 로 확인).
+# 바닐라 플레이어 점은 main.sk locatorHide 로 전원 위치 전송 범위 0 이라 안 보인다. 여기서 보내는 점만 보인다(시청자별로 따로 보낼 수 있음).
+# 패킷: ClientboundTrackedWaypointPacket.addWaypointPosition(uuid, icon, Vec3i) / removeWaypoint(uuid). 색은 Icon.color(Optional<Integer> RGB).
+# 서버로 보내기: ((CraftPlayer)p).getHandle().connection.send(packet).
+import:
+	net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket
+	net.minecraft.world.waypoints.Waypoint$Icon as WpIcon
+	net.minecraft.core.Vec3i
+	java.util.UUID
+	java.util.Optional
+
+# 점 하나를 시청자에게 보낸다(처음엔 추가, 이미 있으면 위치 갱신). color 는 0xRRGGBB 를 10진수로(파랑 3447003 등).
+function wpSend(v: player, id: text, x: number, y: number, z: number, color: number):
+	set {_u} to UUID.fromString({_id})
+	set {_ic} to new WpIcon()
+	set {_ic}.color to Optional.of({_color}.intValue())
+	set {_pos} to new Vec3i({_x}.intValue(), {_y}.intValue(), {_z}.intValue())
+	set {_pk} to ClientboundTrackedWaypointPacket.addWaypointPosition({_u}, {_ic}, {_pos})
+	{_v}.getHandle().connection.send({_pk})
+
+function wpRemove(v: player, id: text):
+	set {_u} to UUID.fromString({_id})
+	set {_pk} to ClientboundTrackedWaypointPacket.removeWaypoint({_u})
+	{_v}.getHandle().connection.send({_pk})
+
+# 시험: 바라보는 쪽 20칸 앞에 파란 점을 10초 동안 locate bar 에 띄운다.
+command /wptest:
+	permission: op
+	trigger:
+		set {_l} to location 20 meters in front of player
+		set {_id} to "00000000-0000-4000-8000-000000000001"
+		wpSend(player, {_id}, x of {_l}, y of {_l}, z of {_l}, 3447003)
+		send "&a[wptest] 파란 점을 보냈습니다. 10초 뒤 지웁니다." to player
+		wait 10 seconds
+		wpRemove(player, {_id})

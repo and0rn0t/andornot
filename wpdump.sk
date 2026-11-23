@@ -1,0 +1,23 @@
+# [wpdump.sk] 개발용 진단: locate bar 웨이포인트 패킷에 쓰는 서버 내부 클래스의 생성자/메서드/필드 목록을 출력한다(/wpdump).
+# 서버 내부 이름은 버전마다 달라서 waypoint.sk 를 만들기 전에 실제 서버에서 확인하려고 만든 파일. 확인이 끝나면 지운다.
+# 출력은 콘솔 + 명령 실행자 채팅. 이 파일은 import 를 쓰지 않아 클래스 이름이 틀려도 로드는 된다.
+import:
+	java.lang.Class
+
+command /wpdump [<text>]:
+	permission: op
+	trigger:
+		set {_names::*} to "net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket", "net.minecraft.world.waypoints.Waypoint$Icon", "net.minecraft.world.waypoints.TrackedWaypoint", "net.minecraft.core.Vec3i"
+		if arg-1 is set:
+			set {_names::*} to arg-1
+		loop {_names::*}:
+			set {_n} to loop-value
+			send "&6== %{_n}%" to console
+			set {_c} to Class.forName({_n})
+			send "&6== %{_n}% (생성자/메서드/필드 목록은 콘솔 확인)" to sender
+			loop {_c}.getDeclaredConstructors():
+				send "&eC: %loop-value-2%" to console
+			loop {_c}.getDeclaredMethods():
+				send "&eM: %loop-value-2%" to console
+			loop {_c}.getDeclaredFields():
+				send "&eF: %loop-value-2%" to console
