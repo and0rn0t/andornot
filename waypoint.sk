@@ -132,7 +132,8 @@ function wpTeamSync():
 							set {_want::00000000-0000-4000-8000-0000000000c0} to "%wpEffPos({_v}, x-coordinate of {_h}, y-coordinate of {_h}, z-coordinate of {_h})%,16747546"
 		# 핑: 찍은 사람과 같은 팀(시험 핑은 본인)에게만 보인다. 파랑 0x3498DB, 빨강 0xFF3333
 		loop {-wping_c::*}:
-			set {_pp} to loop-index-2
+			set {_pp} to loop-index
+			set {_pt} to loop-value
 			set {_show} to false
 			if {-wping_test::%{_pp}%} is set:
 				if {_pp} is {_vid}:
@@ -144,7 +145,7 @@ function wpTeamSync():
 					set {_show} to true
 			if {_show} is true:
 				set {_pcol} to 3447003
-				if loop-value-2 is "red":
+				if {_pt} is "red":
 					set {_pcol} to 16724787
 				set {_wid} to {-wping_id::%{_pp}%}
 				set {_gx} to {-wping_x::%{_pp}%}
@@ -155,7 +156,13 @@ function wpTeamSync():
 		# 새로 생기거나 좌표가 바뀐 점만 보낸다
 		loop {_want::*}:
 			set {_k} to loop-index
-			if {_force} is true or {-wpset::%{_vid}%::%{_k}%} is not loop-value-2:
+			set {_nv} to loop-value-2
+			set {_send} to false
+			if {_force} is true:
+				set {_send} to true
+			else if {-wpset::%{_vid}%::%{_k}%} is not {_nv}:
+				set {_send} to true
+			if {_send} is true:
 				set {_parts::*} to split loop-value-2 at ","
 				wpSend({_v}, {_k}, {_parts::1} parsed as number, {_parts::2} parsed as number, {_parts::3} parsed as number, {_parts::4} parsed as number)
 				set {-wpset::%{_vid}%::%{_k}%} to loop-value-2
@@ -217,7 +224,8 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 						set {_ec} to ({_t}'s location) ~ vector(0, 1, 0)
 						set {_rel} to vector from {_eye} to {_ec}
 						set {_tt} to {_dir} dot {_rel}
-						set {_perp} to length of ({_rel} - ({_dir} * {_tt}))
+						set {_pv} to {_rel} - ({_dir} * {_tt})
+						set {_perp} to vector length of {_pv}
 						set {_cand} to false
 						if {_tt} > 0:
 							if {_tt} <= {_hd} + 4:
@@ -310,7 +318,12 @@ function wpPingUpdate():
 				set {_found} to false
 				loop all players:
 					if "%uuid of loop-player%" is {-wping_e::%{_pid}%}:
-						if {-wping_test::%{_pid}%} is set or wpActive(loop-player) is true:
+						set {_okp} to false
+						if {-wping_test::%{_pid}%} is set:
+							set {_okp} to true
+						else if wpActive(loop-player) is true:
+							set {_okp} to true
+						if {_okp} is true:
 							set {_found} to true
 							set {-wping_x::%{_pid}%} to x-coordinate of loop-player
 							set {-wping_y::%{_pid}%} to y-coordinate of loop-player

@@ -1314,7 +1314,7 @@ command /gamestop:
 				gfClearStage()
 				send "&7진행 중인 게임이 없어서 남아 있는 결과 무대를 치웠습니다."
 				stop
-		gameForceStop("%name of sender%")
+		gameForceStop(name of sender)
 
 on load:
 	delete {-gfinale}
