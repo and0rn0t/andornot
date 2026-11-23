@@ -553,8 +553,7 @@ function beeExplode(p: player):
 		if isAlly({_k}, "%uuid of {_e}%") is true:
 			set {_ok} to false
 		if {_e}.getType().name() is "MANNEQUIN":
-			if isEvDummy({_e}) is not true:
-				set {_ok} to false
+			set {_ok} to false
 		if {_e} is a player:
 			if gamemode of {_e} is spectator:
 				set {_ok} to false
@@ -821,8 +820,7 @@ on damage with priority highest:
 			if {-beeown::%uuid of {_v}%} is set:
 				stop
 			if {_v}.getType().name() is "MANNEQUIN":
-				if isEvDummy({_v}) is not true:
-					stop
+				stop
 			if isAlly({_ak}, "%uuid of {_v}%") is true:
 				stop
 			if {-beestabcd::%{_ak}%} is set:

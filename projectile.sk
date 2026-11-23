@@ -48,7 +48,7 @@ on spawn of projectile:
 function arrowAssist() :: number:
 	return 0.5
 
-# 구간 a -> b 를 지나는 화살이 부풀린 몸 판정(대상 크기 + arrowAssist() 칸)에 걸리는 대상(플레이어, 연습 더미, 철 골렘)을 찾아 피해를 준다.
+# 구간 a -> b 를 지나는 화살이 부풀린 몸 판정(대상 크기 + arrowAssist() 칸)에 걸리는 대상(플레이어)을 찾아 피해를 준다.
 #   쏜 사람/아군/관전자는 제외, 블럭에 먼저 막히면 무시. 활/석궁 공통이다.
 #   예전에는 World#rayTraceEntities 를 썼는데, 시작점이 쏜 사람 몸 안이라 첫 구간에서 쏜 사람에게 먼저 걸려 중단됐다. 화살이 한 틱에 150칸 가는 활은 첫 구간에서 거의 끝나서
 #   활에는 보정이 사실상 안 먹었다. 지금은 대상마다 "구간과 몸 중심의 최단 거리"를 직접 계산해서 그 문제가 없다.
@@ -71,10 +71,6 @@ function arrowAssistCheck(ar: entity, a: location, b: location):
 	delete {_cand::*}
 	loop all players:
 		add loop-player to {_cand::*}
-	loop {-evd::*}:
-		add loop-value to {_cand::*}
-	loop all iron golems:
-		add loop-entity to {_cand::*}
 	set {_best} to 999999
 	delete {_hit}
 	loop {_cand::*}:
