@@ -236,7 +236,7 @@ function voteStart(by: text):
 		if specOn({_pl}) is not true:
 			tpSafe({_pl}, {_lobby})
 	loop all players:
-		send title "&e맵 · 모드 투표" with subtitle "&7더미를 우클릭해서 투표하세요" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+		send title "&e맵 · 모드 투표" with subtitle "&7더미를 우클릭해서 투표" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 		play sound "block.note_block.pling" with volume 0.7 and pitch 1.5 to loop-player
 	# 1) 투표
 	set {_left} to voteSec()
@@ -278,7 +278,7 @@ function voteStart(by: text):
 	set {_wvotes} to {_w::%{_win}%}
 	loop all players:
 		send action bar "" to loop-player
-		send title "&6룰렛!" with subtitle "&7득표에 비례해서 뽑아요" to loop-player for 2 seconds with fadein 0 ticks and fade out 5 ticks
+		send title "&6룰렛!" to loop-player for 2 seconds with fadein 0 ticks and fade out 5 ticks
 	wait 1 second
 	set {_start} to random integer between 1 and {_n}
 	set {_t} to 16
