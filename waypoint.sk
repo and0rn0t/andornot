@@ -69,27 +69,40 @@ function wpEdgeDist() :: number:
 
 # 보는 사람 v 에게 (tx, ty, tz) 의 점을 어디에 찍어야 하는지 "x,y,z" 문자열로 돌려준다(시야 안이면 실제 위치, 밖이면 바 끝 쪽 가짜 위치).
 function wpEffPos(v: player, tx: number, ty: number, tz: number) :: text:
+	# 각도는 Skript 삼각함수(단위/yaw 기준이 헷갈림) 대신 자바 Math(라디안 확실)와 시선 벡터로 계산한다.
 	set {_dx} to {_tx} - x-coordinate of {_v}
 	set {_dz} to {_tz} - z-coordinate of {_v}
-	set {_vy} to yaw of {_v}
-	set {_rel} to atan2(0 - {_dx}, {_dz}) - {_vy}
-	while {_rel} > 180:
-		subtract 360 from {_rel}
-	while {_rel} < -180:
-		add 360 to {_rel}
+	set {_vd} to {_v}.getLocation().getDirection()
+	set {_vx} to {_vd}.getX()
+	set {_vz} to {_vd}.getZ()
+	set {_hl} to Math.sqrt({_vx} * {_vx} + {_vz} * {_vz})
+	set {_real} to "%round({_tx})%,%round({_ty})%,%round({_tz})%"
+	if {_hl} < 0.01:
+		return {_real}
+	set {_vx} to {_vx} / {_hl}
+	set {_vz} to {_vz} / {_hl}
+	# 상대각(도): 양수 = 오른쪽, 음수 = 왼쪽, 절댓값 180 = 정반대(뒤)
+	set {_dot} to {_vx} * {_dx} + {_vz} * {_dz}
+	set {_crs} to {_vx} * {_dz} - {_vz} * {_dx}
+	set {_rel} to Math.toDegrees(Math.atan2({_crs}, {_dot}))
 	set {_lim} to wpEdgeLimit()
 	if {-wpdbg} is true:
-		set {-wpdbg_last} to "보는 yaw %round({_vy})% / 대상 방향 yaw %round({_rel} + {_vy})% / 상대각 %round({_rel})% (바 끝 한계 ±%{_lim}%)"
+		set {-wpdbg_last} to "상대각 %round({_rel})% (바 끝 한계 ±%{_lim}%) 시선 (%round({_vx} * 100) / 100%, %round({_vz} * 100) / 100%)"
 	if {_rel} <= {_lim}:
 		if {_rel} >= 0 - {_lim}:
-			return "%round({_tx})%,%round({_ty})%,%round({_tz})%"
-	set {_ang} to {_vy} + {_lim}
+			return {_real}
+	set {_a} to {_lim}
 	if {_rel} < 0:
-		set {_ang} to {_vy} - {_lim}
+		set {_a} to 0 - {_lim}
+	set {_ar} to Math.toRadians({_a})
+	set {_c} to Math.cos({_ar})
+	set {_sn} to Math.sin({_ar})
+	set {_ex} to {_vx} * {_c} - {_vz} * {_sn}
+	set {_ez} to {_vz} * {_c} + {_vx} * {_sn}
 	set {_d} to wpEdgeDist()
-	set {_ex} to x-coordinate of {_v} - sin({_ang}) * {_d}
-	set {_ez} to z-coordinate of {_v} + cos({_ang}) * {_d}
-	return "%round({_ex})%,%round(y-coordinate of {_v})%,%round({_ez})%"
+	set {_px} to x-coordinate of {_v} + {_ex} * {_d}
+	set {_pz} to z-coordinate of {_v} + {_ez} * {_d}
+	return "%round({_px})%,%round(y-coordinate of {_v})%,%round({_pz})%"
 
 function wpActive(p: player) :: boolean:
 	if {_p} is not online:
