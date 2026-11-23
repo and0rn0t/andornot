@@ -133,7 +133,7 @@ function wpTeamSync():
 		# 핑: 찍은 사람과 같은 팀(시험 핑은 본인)에게만 보인다. 파랑 0x3498DB, 빨강 0xFF3333
 		loop {-wping_c::*}:
 			set {_pp} to loop-index
-			set {_pt} to loop-value
+			set {_pt} to loop-value-2
 			set {_show} to false
 			if {-wping_test::%{_pp}%} is set:
 				if {_pp} is {_vid}:
