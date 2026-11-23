@@ -281,10 +281,6 @@ on quit:
 	delete {-mhmap::%player's uuid%::*}
 	delete {-mhpage::%player's uuid%}
 
-# 예전 테스트 기록(0번)이 남아 있으면 지운다
-on load:
-	delete {matchlog::0::*}
-
 # 리뷰 입력 대기 중인 사람의 다음 채팅 한 줄을 리뷰로 받는다(채팅으로는 한글이 들어간다).
 on chat:
 	set {_uid} to "%player's uuid%"

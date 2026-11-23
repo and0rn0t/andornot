@@ -265,7 +265,7 @@ function gfName(id: text) :: text:
 			return loop-value.getName()
 	return "?"
 
-# 참가자(id)의 팀 키. 시작 때 기록한 {-gpteam} 을 우선 쓴다(나가면 team.sk 가 {-team} 을 지우기 때문).
+# 참가자(id)의 팀 키. 시작 때 기록한 {-gpteam} 을 우선 쓴다(나가면 game.sk 가 {-team} 을 지우기 때문).
 function gfTeamOfId(id: text) :: text:
 	if {-gpteam::%{_id}%} is set:
 		return "%{-gpteam::%{_id}%}%"
@@ -429,7 +429,7 @@ function gfCol(s: text, w: number, hi: boolean) :: text:
 
 # 참가자 한 명의 결과 줄(JSON): 이름(팀 색) / K / D / A / 피해 / 사용한 아이템 아이콘. 칸 너비를 맞춰서 세로로 줄이 선다.
 # 숫자는 회색, 각 항목의 전체 최고값({-gfmaxk} {-gfmaxdt} {-gfmaxa} {-gfmaxd}, gfPrep 가 계산)만 노란색(굵게는 하지 않음, 글자 폭이 달라져 열이 밀림).
-# id 는 전적 변수 키(uuid 또는 가짜 id), ci 는 팀 번호, src 는 아이템 구성을 읽어 올 플레이어(가짜 참가자는 테스트 실행자의 구성을 빌린다).
+# id 는 전적 변수 키(uuid), ci 는 팀 번호, src 는 아이템 구성을 읽어 올 플레이어.
 function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_k} to {-gk::%{_id}%}
 	if {_k} is not a number:
@@ -723,7 +723,7 @@ on damage:
 
 # ===== 더미 =====
 # 승리 팀 플레이어 한 명과 똑같이 생긴(스킨/장비) 더미를 loc 에 세운다(바라보는 방향 yaw 180 = 남쪽에서 북쪽을 봄).
-# id 는 이 더미가 뜻하는 참가자 id(uuid 또는 테스트용 가짜 id). 이름표(팀 색)와 설명(POTM 이면 ★)을 단다.
+# id 는 이 더미가 뜻하는 참가자 id(uuid). 이름표(팀 색)와 설명(POTM 이면 ★)을 단다.
 function gfDummy(p: player, loc: location, id: text, yaw: number):
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
 	set {_pf} to {_p}.getPlayerProfile()
@@ -1062,8 +1062,8 @@ function gameFinale():
 		if {-gwatch::%uuid of loop-player%} is set:
 			if {-gfv::*} does not contain loop-player:
 				add loop-player to {-gfv::*}
-	# [원인 수정] 값이 없는 변수를 "%{-gworld}%" 로 글자로 만들면 빈 글자가 아니라 "<none>" 이 되어 아래 검사가 통하지 않았다(그래서 /endtest 에서 월드 "<none>" 을 만들려다 실패하고 무대가 없어 카메라가 연결되지 않았다).
-	# 게임 월드({-gworld})가 있으면 그것, 없으면(테스트 연출) 첫 참가자가 있는 월드를 쓴다.
+	# [원인 수정] 값이 없는 변수를 "%{-gworld}%" 로 글자로 만들면 빈 글자가 아니라 "<none>" 이 되어 아래 검사가 통하지 않았다(그래서 월드 "<none>" 을 만들려다 실패하고 무대가 없어 카메라가 연결되지 않았다).
+	# 게임 월드({-gworld})가 있으면 그것, 없으면 첫 참가자가 있는 월드를 쓴다.
 	if {-gworld} is set:
 		set {_gw} to "%{-gworld}%"
 	else:
@@ -1302,7 +1302,7 @@ function gfAbort():
 	delete {-gwinner}
 	delete {-gfnw}
 
-# 관리자 전용 게임 중단(진행 중인 게임, 종료 연출, 테스트 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
+# 관리자 전용 게임 중단(진행 중인 게임, 종료 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
 command /gamestop:
 	permission: minecraft.command.op
 	permission message: &c권한이 없습니다.
