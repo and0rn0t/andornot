@@ -349,6 +349,10 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 
 on drop:
 	if {-ingame} is not true:
+		# 게임 밖 시험: /pingtest on 을 켠 op 는 Q 로 본인에게만 보이는 시험 핑을 찍는다
+		if {-wping_qtest::%uuid of player%} is true:
+			cancel event
+			wpPingCreate(player, true, "auto")
 		stop
 	if wpActive(player) is not true:
 		stop
@@ -360,6 +364,33 @@ on drop:
 		stop
 	set {-wping_cd::%{_pid}%} to {-wptick} + wpPingCoolSec() * 10
 	wpPingCreate(player, false, "auto")
+
+# 시험(op): /pingtest blue = 바라보는 자리에 파란 핑, /pingtest red = 가장 가까운 다른 플레이어에게 빨간 핑(혼자면 파란 핑), /pingtest clear = 지우기. 게임 밖에서도 되고 본인에게만 보인다.
+command /pingtest [<text>]:
+	permission: op
+	trigger:
+		set {_pid} to "%uuid of player%"
+		if arg-1 is "on":
+			set {-wping_qtest::%{_pid}%} to true
+			send "&a[pingtest] 게임 밖에서도 Q 로 시험 핑을 찍습니다(본인에게만 보임, 더미/플레이어에게 빨간 핑)." to player
+			stop
+		if arg-1 is "off":
+			delete {-wping_qtest::%{_pid}%}
+			send "&a[pingtest] Q 시험 핑을 껐습니다." to player
+			stop
+		if arg-1 is "clear":
+			wpPingClear({_pid})
+			send "&a[pingtest] 핑을 지웠습니다." to player
+			stop
+		if arg-1 is "red":
+			wpPingCreate(player, true, "red")
+		else:
+			wpPingCreate(player, true, "blue")
+		set {_k} to {-wping_c::%{_pid}%}
+		set {_sx} to round({-wping_x::%{_pid}%})
+		set {_sy} to round({-wping_y::%{_pid}%})
+		set {_sz} to round({-wping_z::%{_pid}%})
+		send "&a[pingtest] %{_k}% 핑을 찍었습니다(좌표 %{_sx}% %{_sy}% %{_sz}%)." to player
 
 # 핑 상태 갱신: 만료/무효 핑 삭제, 빨간 핑은 대상 위치를 따라간다
 function wpPingUpdate():
