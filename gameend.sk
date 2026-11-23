@@ -994,9 +994,14 @@ function gameFinale():
 	add 1 to {-gfgen}
 	set {_gen} to {-gfgen}
 	set {_wl} to gTeamLabel({-gwinner})
-	# end 소리는 종료 연출이 시작되는 이 순간(킬 연출 직후) 바로 튼다. 파일 앞 1.4초가 무음이라 그동안 아래 준비(암전 이동, 카메라 연결, 청크 대기)를 하고, 소리가 실제로 들리는 때(gfTitleTick)에 타이틀 + 암전 해제.
-	loop all players:
-		bgmPlay(loop-player, "end")
+	# end 소리: 킬 연출(killcine.sk)이 끝날 때 이미 틀었고 앞 1.4초 무음을 킬 장면에서 기다린 뒤 여기로 왔다({-gfsnd}). 그 경우 소리는 이미 gfTitleTick 틱 흘렀다. 다른 경로(킬 연출 없는 승리, /endtest)는 여기서 튼다.
+	set {_pre0} to 0
+	if {-gfsnd} is true:
+		set {_pre0} to gfTitleTick()
+		delete {-gfsnd}
+	else:
+		loop all players:
+			bgmPlay(loop-player, "end")
 	# 연출 방식은 시작 연출(startcine.sk gStartIntro)과 똑같다: (1) 시청자를 관전 상태로 첫 카메라 자리에 모으고 (2) 카메라 엔티티를 세운 뒤 1틱 기다려 (3) 엔티티가 전송된 사람부터
 	# 관전 대상을 걸고(건 뒤 6틱, 25틱에 강제로 다시) 전원이 붙을 때까지(최대 300틱) 기다리고 (4) 첫 자리 청크를 받을 때까지 기다린 다음 (5) 소리를 틀면서 연출을 시작한다.
 	# 소리 end 는 파일 기준(틱, 20틱 = 1초, 0 = 재생 시작 = 킬 연출이 끝난 직후 종료 연출이 시작되는 순간). 소리는 시작하자마자 틀고, 앞 1.4초 무음 동안 암전 상태로 준비한다(준비가 더 길면 그만큼 연출을 앞서 시작):
@@ -1131,8 +1136,8 @@ function gameFinale():
 			wait 1 tick
 	gfKeepForce()
 	# 4) 소리 시작 + 연출 본체. 소리는 모든 접속자에게(관전하지 않는 사람도 들린다).
-	# 소리는 이미 시작했다(위). 준비에 걸린 틱 수만큼 연출 시간을 앞서서 시작한다(소리와 어긋나지 않게). 준비가 소리 시작 틱(gfTitleTick)보다 오래 걸렸으면 타이틀은 바로 뜬다.
-	set {_pre} to 1 + {_ht} + {_cw2}
+	# 소리는 이미 시작했다(위 또는 킬 연출). 소리가 시작된 뒤 지난 틱 수({_pre0} + 준비에 걸린 틱)만큼 연출 시간을 앞서서 시작한다(소리와 어긋나지 않게). 준비가 소리 시작 틱(gfTitleTick)보다 오래 걸렸으면 타이틀은 바로 뜬다.
+	set {_pre} to {_pre0} + 1 + {_ht} + {_cw2}
 	send "[finale] 연출 진행(소리 시작 뒤 %{_pre}%틱)" to console
 	set {_cut} to gfCutTick()
 	set {_cut2} to {_cut} + 2
@@ -1282,6 +1287,7 @@ function gfPotmAnnounce():
 # 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/투표 상태를 지운다. gameCleanup() 보다 뒤에 부를 것.
 function gfAbort():
 	add 1 to {-gfgen}
+	delete {-gfsnd}
 	gfCamRelease()
 	gfClearStage()
 	delete {-gvote}
