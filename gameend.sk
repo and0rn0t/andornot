@@ -811,7 +811,7 @@ function gfPodCam(stage: location, t: number) :: location:
 	set {_cam} to {_stage} ~ vector({_dx} * {_d}, {_fy}, {_dz} * {_d})
 	set {_eye} to {_cam} ~ vector(0, 1.62, 0)
 	set {_tg} to {_stage} ~ vector(0, 1.6, 0)
-	set {_v} to vector from {_eye} to {_tg}
+	set {_v} to vector(x of {_tg} - x of {_eye}, y of {_tg} - y of {_eye}, z of {_tg} - z of {_eye})
 	{_cam}.setDirection({_v})
 	return {_cam}
 
@@ -833,7 +833,7 @@ function gfEndCam2(stage: location, t2: number) :: location:
 	set {_cam} to {_stage} ~ vector({_fx} * {_d} + {_rx} * {_l}, {_fy}, {_fz} * {_d} + {_rz} * {_l})
 	set {_eye} to {_cam} ~ vector(0, 1.62, 0)
 	set {_tg} to {_stage} ~ vector({_rx} * {_l} * 0.3, 1.6 - 0.4 * {_e}, {_rz} * {_l} * 0.3)
-	set {_v} to vector from {_eye} to {_tg}
+	set {_v} to vector(x of {_tg} - x of {_eye}, y of {_tg} - y of {_eye}, z of {_tg} - z of {_eye})
 	{_cam}.setDirection({_v})
 	set {_pp} to {_cam}.getPitch()
 	{_cam}.setPitch({_pp} * (1 - {_e}) - 5 * {_e})
@@ -857,7 +857,7 @@ on PlayerStopSpectatingEntityEvent:
 		stop
 	if {-gfcam} is not set:
 		stop
-	cancel event
+	event.setCancelled(true)
 
 # ===== 종료 연출 =====
 # 승리 팀 키는 {-gwinner}. 킬 연출(killcine.sk)이 끝난 뒤, 또는 킬 연출 없는 승리에서 바로 불린다.
@@ -895,7 +895,9 @@ function gameFinale():
 	set {_stage} to gameStageLoc({_gw})
 	# 카메라: 시작 연출(startcine.sk)과 같은 방식. 글자 디스플레이 엔티티 카메라를 매 틱 옮기고, 관전 중인 모두가 그 카메라를 관전 대상(setSpectatorTarget)으로 본다.
 	# (플레이어를 매 틱 teleport 하면 game.sk 의 관전 이동 잠금/클라이언트 위치 보정과 부딪쳐 카메라가 제대로 안 움직인다.)
+	send "[finale] 시작: 무대 %{_stage}%" to console
 	set {_c0} to gfPodCam({_stage}, 0)
+	send "[finale] 카메라 위치 계산 완료" to console
 	loop all players:
 		if gamemode of loop-player is spectator:
 			tpSafe(loop-player, {_c0})
@@ -907,6 +909,7 @@ function gameFinale():
 	{_ce}.addScoreboardTag("gdummy")
 	set {-gfcam} to {_ce}
 	delete {-gfatt::*}
+	send "[finale] 카메라 엔티티 생성 완료" to console
 	# 승리 팀 더미는 처음(0틱)부터 세운다. 테스트 연출(endtest.sk, {-gtest})는 승리자 목록을 미리 채워 두므로 그대로 쓴다.
 	if {-gtest} is not true:
 		delete {-gfwinp::*}
@@ -920,6 +923,7 @@ function gameFinale():
 	delete {-gpotmres}
 	set {_disp} to gfBuildStage({_stage})
 	set {-gdisp} to {_disp}
+	send "[finale] 무대(더미) 생성 완료, 더미 %size of {-gfwinp::*}%명" to console
 	set {_t} to 0
 	while {_t} < 300:
 		if {-gfgen} is not {_gen}:
@@ -964,6 +968,7 @@ function gameFinale():
 								{_pl}.setSpectatorTarget({-gfcam})
 		wait 1 tick
 		add 1 to {_t}
+	send "[finale] 카메라 구간 종료, 투표 시작" to console
 	# 카메라 해제(관전 대상 풀기 + 카메라 엔티티 삭제)
 	gfCamRelease()
 	# 2) 투표 시작(300틱 = 소리가 끝날 즈음): 관전을 풀고 구경 자리에 모은다(카메라가 이미 그 자리라 거의 안 움직임). 개인전({-gteams} 0)은 Player Of The Match 투표를 하지 않는다.
