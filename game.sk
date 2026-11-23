@@ -4,7 +4,7 @@
 # 이 파일이 쓰는 변수(RAM 전용):
 #   {-ingame}          게임 진행 중(true). items.sk 가 읽어서 무기고를 치운다.
 #   {-gover}           승패가 난 뒤(종연출 중)면 true. 새 킬/점수를 더 받지 않는다.
-#   {-gmode}           이번 게임모드 id(bounty/annihilation, 시작 때 gcMode() 를 복사)
+#   {-gmode}           이번 게임모드 id(bounty/annihilation/crown, 시작 때 gcMode() 를 복사. 맵/모드 투표(vote.sk)가 뽑은 {-gvmode} 가 있으면 그걸 쓴다)
 #   {-gtarget}         이번 게임의 목표 스코어(바운티)/목표 승점(녹아웃, 시작 때 복사)
 #   {-gteams}          이번 게임의 팀 수(0 = 개인전)
 #   {-gplist::*}       이번 게임 참가자(시작 때 접속해 있던 플레이어, 순서 유지)
@@ -14,6 +14,7 @@
 #   {-gscore::팀키}     팀 스코어(바운티)/승점(녹아웃)
 #   {-gk::uuid} {-gd::uuid} {-ga::uuid} {-gdmg::uuid}   킬/데스/어시스트/가한 피해(실 체력, 적에게 준 것만)
 #   {-gbstart}         바운티 시작 시각(제한시간 gBountyLimit() 기준, gStartFinish 가 켜고 gameCleanup 이 지움)
+#   {-gcrown} {-gcwait} {-gcrown_d::uuid} {-gcglow::uuid}   크라운 모드: 소지자 uuid / 첫 지급까지 남은 초 / 머리 위 ♛ 표시 / 발광을 켠 사람(아래 "크라운" 절)
 #   {-gstar::uuid}     바운티 별 개수(기본 gStarBase())
 #   {-gstar_d::uuid}   머리 위 별 표시(텍스트 디스플레이)
 #   {-gdead::uuid}     녹아웃에서 이번 라운드에 죽은 플레이어
@@ -709,6 +710,10 @@ function gameStart(by: text):
 	# 이전 게임의 결과 무대(승리자 더미, 결과 디스플레이)를 치운다
 	gfClearStage()
 	set {-gmode} to gcMode()
+	# 맵/모드 투표(vote.sk)로 뽑힌 모드가 있으면 그걸 쓴다(한 번 쓰면 지움)
+	if {-gvmode} is set:
+		set {-gmode} to "%{-gvmode}%"
+		delete {-gvmode}
 	set {-gtarget} to gcTarget({-gmode})
 	set {_n} to gcTeams()
 	set {-gteams} to {_n}
@@ -728,11 +733,16 @@ function gameStart(by: text):
 	# 매 게임 랜덤 모드({gamecfg::maprandom})가 켜져 있으면 게임마다 후보 월드(mapCandidates) 중 하나를 새로 뽑는다(선택해 둔 맵 {gamecfg::map} 은 그대로 둔다).
 	set {-gworld} to ""
 	set {_target} to ""
-	if {gamecfg::maprandom} is true:
-		set {_cand::*} to mapCandidates()
-		if size of {_cand::*} > 0:
-			set {_rn} to random integer between 1 and size of {_cand::*}
-			set {_target} to {_cand::%{_rn}%}
+	# 맵/모드 투표(vote.sk)로 뽑힌 맵이 있으면 그걸 쓴다(한 번 쓰면 지움)
+	if {-gvmap} is set:
+		set {_target} to "%{-gvmap}%"
+		delete {-gvmap}
+	if {_target} is "":
+		if {gamecfg::maprandom} is true:
+			set {_cand::*} to mapCandidates()
+			if size of {_cand::*} > 0:
+				set {_rn} to random integer between 1 and size of {_cand::*}
+				set {_target} to {_cand::%{_rn}%}
 	if {_target} is "":
 		if {gamecfg::map} is set:
 			set {_target} to "%{gamecfg::map}%"
@@ -901,6 +911,11 @@ function gStartFinish(sg: number):
 	delete {-gbstart}
 	if {-gmode} is "bounty":
 		set {-gbstart} to now
+	# 크라운: 시작 gCrownWaitSec() 초 뒤 첫 소지자(gCrownTick)
+	delete {-gcrown}
+	delete {-gcwait}
+	if {-gmode} is "crown":
+		set {-gcwait} to gCrownWaitSec()
 	loop {-gplist::*}:
 		anvilClear(loop-value)
 		skillCdReset(loop-value)
@@ -911,6 +926,8 @@ function gStartFinish(sg: number):
 		set {_sub} to "%{-gtarget}%선승"
 	if {-gmode} is "bounty":
 		set {_sub} to "%{-gtarget}%&e★"
+	if {-gmode} is "crown":
+		set {_sub} to "%{-gtarget}%&6♛"
 	loop all players:
 		send title "&f%gcModeName({-gmode})%" with subtitle "&7%{_sub}%" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 
@@ -923,6 +940,8 @@ function gameCleanup():
 	add 1 to {-grgen}
 	delete {-grstart}
 	delete {-gbstart}
+	delete {-gcrown}
+	delete {-gcwait}
 	gStartCamRelease()
 	gsClear()
 	bgmStopAll()
@@ -934,6 +953,7 @@ function gameCleanup():
 	delete {-gslot::*}
 	loop {-gplist::*}:
 		gStarRemove("%uuid of loop-value%")
+		gCrownRemove(loop-value)
 		delete {-gdead::%uuid of loop-value%}
 		set {_pl} to loop-value
 		if {_pl} is online:
@@ -1079,6 +1099,8 @@ function gameOnKill(v: player, a: entity):
 	else if {-gmode} is "annihilation":
 		set {-gdead::%{_vid}%} to true
 		gAnnCheck()
+	else if {-gmode} is "crown":
+		gCrownKill({_v}, {_a}, {_kill})
 
 # ===== 바운티 =====
 # 죽은 사람의 별만큼 킬한 팀 스코어가 오르고, 킬한 사람의 별(현상금)이 1개 늘어난다. 죽은 사람의 별은 기본으로 돌아간다.
@@ -1174,6 +1196,159 @@ function gBountyTimeCheck():
 
 every second:
 	gBountyTimeCheck()
+
+# ===== 크라운 =====
+# 게임이 시작되고 gCrownWaitSec() 초 뒤 무작위 참가자 1명에게 크라운이 씌워진다({-gcrown} = 소지자 uuid). 소지자는 발광 효과(벽 너머로도 보임)와 머리 위 ♛ 표시로 모두에게 위치가 드러난다.
+# 소지자가 살아서 움직이는 동안 1초마다 소지자 팀(개인전은 본인)의 스코어가 1점 오르고, 목표 스코어({-gtarget}, 기본 100)를 먼저 채우면 승리한다.
+# 소지자를 처치하면(적 킬) 처치한 사람이 크라운을 빼앗는다. 킬로 인정되지 않는 죽음(자살/환경/아군)이면 소지자를 뺀 무작위 참가자에게 간다. 소지자가 나가면 무작위 참가자에게 간다.
+# 변수(RAM): {-gcrown}(소지자 uuid), {-gcwait}(첫 지급까지 남은 초), {-gcrown_d::uuid}(머리 위 표시), {-gcglow::uuid}(크라운 때문에 발광을 켠 사람)
+function gCrownWaitSec() :: number:
+	return 10
+
+# 소지자(없거나 접속 종료면 값 없음)
+function gCrownHolder() :: player:
+	if {-gcrown} is not set:
+		return {_none}
+	loop {-gplist::*}:
+		if "%uuid of loop-value%" is {-gcrown}:
+			if loop-value is online:
+				return loop-value
+	return {_none}
+
+# ex(uuid) 를 뺀, 접속해 있고 관전 상태가 아닌 참가자 중 무작위 1명(없으면 값 없음)
+function gCrownPick(ex: text) :: player:
+	delete {_c::*}
+	loop {-gplist::*}:
+		set {_pl} to loop-value
+		if {_pl} is online:
+			if "%uuid of {_pl}%" is not {_ex}:
+				if gamemode of {_pl} is not spectator:
+					add {_pl} to {_c::*}
+	if size of {_c::*} is 0:
+		return {_none}
+	return random element of {_c::*}
+
+function gCrownRemove(p: player):
+	set {_id} to "%uuid of {_p}%"
+	set {_d} to {-gcrown_d::%{_id}%}
+	if {_d} is set:
+		delete entity within {_d}
+	delete {-gcrown_d::%{_id}%}
+	if {-gcglow::%{_id}%} is set:
+		delete {-gcglow::%{_id}%}
+		if {_p} is online:
+			{_p}.setGlowing(false)
+
+# 한 명의 크라운 표시를 맞춘다: 소지자면 발광 + 머리 위 ♛(체력바/상태 이름 위 1.2 높이에 태움, 별과 같은 방식), 아니면 치운다.
+function gCrownSync(p: player):
+	set {_id} to "%uuid of {_p}%"
+	set {_show} to false
+	if {-ingame} is true:
+		if {-gmode} is "crown":
+			if {-gover} is not true:
+				if {-gcrown} is {_id}:
+					if {_p} is online:
+						if gamemode of {_p} is not spectator:
+							set {_show} to true
+	if {_show} is false:
+		gCrownRemove({_p})
+		stop
+	{_p}.setGlowing(true)
+	set {-gcglow::%{_id}%} to true
+	set {_d} to {-gcrown_d::%{_id}%}
+	set {_new} to false
+	if {_d} is not set:
+		set {_new} to true
+	else if {_d} is dead:
+		set {_new} to true
+	else if vehicle of {_d} is not {_p}:
+		delete entity within {_d}
+		set {_new} to true
+	if {_new} is true:
+		spawn a text display at location of {_p}:
+			set {_d} to event-entity
+			add "gcrown" to scoreboard tags of event-entity
+			set billboard of event-entity to center
+			set transformation translation of event-entity to vector(0, 1.2, 0)
+			add event-entity to passengers of {_p}
+		set {-gcrown_d::%{_id}%} to {_d}
+	set text of {_d} to "&6♛ &e크라운"
+
+function gCrownSyncAll():
+	loop {-gplist::*}:
+		gCrownSync(loop-value)
+
+# 크라운을 p 에게 준다. from 은 빼앗긴 사람 이름(처음 지급/그냥 떨어진 경우는 "").
+function gCrownGive(p: player, from: text):
+	set {-gcrown} to "%uuid of {_p}%"
+	gCrownSyncAll()
+	set {_pn} to {_p}.getName()
+	loop all players:
+		play sound "block.beacon.activate" with volume 0.8 and pitch 1.4 to loop-player
+		if {_from} is "":
+			send title "&6♛ 크라운" with subtitle "&f%{_pn}% &7님이 크라운을 얻었어요" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+		else:
+			send title "&6♛ 크라운" with subtitle "&f%{_pn}% &7님이 &f%{_from}% &7님의 크라운을 빼앗았어요" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+
+# 킬 처리(gameOnKill 에서 부른다): 죽은 사람이 소지자일 때만 크라운이 옮겨간다.
+function gCrownKill(v: player, a: entity, kill: boolean):
+	set {_vid} to "%uuid of {_v}%"
+	if {-gcrown} is not {_vid}:
+		stop
+	set {_vn} to {_v}.getName()
+	if {_kill} is true:
+		gCrownGive({_a}, {_vn})
+		stop
+	set {_np} to gCrownPick({_vid})
+	if {_np} is set:
+		gCrownGive({_np}, "")
+	else:
+		gCrownSyncAll()
+
+# 1초마다: 첫 지급 카운트다운, 소지자 확인(나갔으면 새로 뽑기), 스코어 +1, 승리 판정, 표시 갱신
+function gCrownTick():
+	if {-ingame} is not true:
+		stop
+	if {-gmode} is not "crown":
+		stop
+	if {-gover} is true:
+		stop
+	if {-gstarting} is true:
+		stop
+	if {-gcwait} is set:
+		subtract 1 from {-gcwait}
+		if {-gcwait} <= 0:
+			set {_np} to gCrownPick("")
+			if {_np} is set:
+				delete {-gcwait}
+				gCrownGive({_np}, "")
+			else:
+				set {-gcwait} to 1
+		else:
+			loop {-gplist::*}:
+				if loop-value is online:
+					send action bar colored "&6♛ 크라운 지급까지 %{-gcwait}%초" to loop-value
+		stop
+	set {_h} to gCrownHolder()
+	if {_h} is not set:
+		delete {-gcrown}
+		set {_np} to gCrownPick("")
+		if {_np} is set:
+			gCrownGive({_np}, "")
+		stop
+	set {_hid} to "%uuid of {_h}%"
+	if gamemode of {_h} is not spectator:
+		if {-kc::%{_hid}%} is not set:
+			set {_tk} to gTeamOf({_h})
+			add 1 to {-gscore::%{_tk}%}
+			send action bar colored "&6♛ 크라운 스코어 &f%{-gscore::%{_tk}%}%&7/%{-gtarget}%" to {_h}
+			if {-gscore::%{_tk}%} >= {-gtarget}:
+				gameWin({_tk})
+				stop
+	gCrownSyncAll()
+
+every second:
+	gCrownTick()
 
 # ===== 녹아웃 =====
 # 살아 있는 팀이 1개 이하면 라운드 종료. 마지막 한 팀이 승점 1점, 전원 사망이면 무승부.
@@ -1422,6 +1597,10 @@ function gameWin(key: text):
 		stop
 	set {-gover} to true
 	set {-gwinner} to {_key}
+	# 크라운: 승리가 정해지면 소지자 표시(발광, 머리 위 ♛)를 치운다(종료 연출에 안 나오게)
+	if {-gmode} is "crown":
+		loop {-gplist::*}:
+			gCrownRemove(loop-value)
 	# 킬 연출이 진행 중이면(killcine.sk 가 {-kc} 를 켜 둠) 그 연출을 모두가 본 뒤 killcine.sk 가 gameFinale() 을 부른다.
 	# 킬 연출 없이 승리가 정해진 경우(접속 종료로 녹아웃이 끝남 등)는 바로 종료 연출(gameend.sk)을 시작한다.
 	if size of {-kc::*} is 0:
@@ -1508,6 +1687,7 @@ on quit:
 		if {-gplist::*} contains player:
 			gDropEnd(player)
 			gStarRemove("%uuid of player%")
+			gCrownRemove(player)
 			set {-gdead::%uuid of player%} to true
 			gAnnCheck()
 
@@ -1525,6 +1705,17 @@ on load:
 		if {_e} has scoreboard tag "gstar":
 			delete entity within {_e}
 	delete {-gstar_d::*}
+	loop all text displays:
+		set {_e} to loop-entity
+		if {_e} has scoreboard tag "gcrown":
+			delete entity within {_e}
+	loop all players:
+		if {-gcglow::%uuid of loop-player%} is set:
+			loop-player.setGlowing(false)
+	delete {-gcrown_d::*}
+	delete {-gcglow::*}
+	delete {-gcrown}
+	delete {-gcwait}
 
 # 나간 사람의 팀 지정 정리(예전 team.sk 에 있던 것). 결과창은 시작 때 기록한 {-gpteam} 을 쓴다.
 on quit:

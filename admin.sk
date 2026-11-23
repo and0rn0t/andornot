@@ -13,7 +13,7 @@
 # ===== 설정 잠금(덮어쓰기 방지) =====
 # 켜져 있으면(기본값) 이미 저장된 로비 위치, 결과 무대 위치(월드별), 리스폰 지점(월드별), 시작 카메라 위치(월드별), 팀 라인업 위치(월드별), 훈련장 위치와, 이미 설치된 훈련장/로비 NPC 를 버튼으로 덮어쓰거나 다시 설치/치우지 못한다.
 # 처음 저장하는 것은 잠겨 있어도 된다. 바꾸려면 "설정 잠금" 버튼으로 끈 뒤 바꾸고 다시 켠다. 저장 변수 {gamecfg::unlock}(true 면 잠금 꺼짐, 없으면 켜짐).
-# 잠그지 않는 것: 맵 선택, 게임 설정(팀 수/모드/랜덤 아이템), 아이템 순서, 결과 무대 치우기(위치 설정이 아니라 남은 더미 청소).
+# 잠그는 것에 투표 더미 위치(votedummy)도 포함. 잠그지 않는 것: 맵/모드 투표 on/off, 맵 선택, 게임 설정(팀 수/모드/랜덤 아이템), 아이템 순서, 결과 무대 치우기(위치 설정이 아니라 남은 더미 청소).
 function adminLockOn() :: boolean:
 	if {gamecfg::unlock} is true:
 		return false
@@ -39,7 +39,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "setlineup", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
+	return "gamesetup", "map", "vote", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "setlineup", "setvotedummy", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -54,6 +54,18 @@ function adminButtonItem(id: text) :: itemtype:
 			set lore of {_i} to "&7게임이 진행될 월드를 골라요", "&7현재 맵: &f%{gamecfg::map}%", "", "&e▶ 클릭해서 열기"
 		else:
 			set lore of {_i} to "&7게임이 진행될 월드를 골라요", "&7현재 맵: &c선택 안 함", "", "&e▶ 클릭해서 열기"
+		return {_i}
+	if {_id} is "vote":
+		if gcVoteOn() is true:
+			set {_i} to paper named "&f맵/모드 투표: &aON"
+			set lore of {_i} to "&7게임 시작 전에 맵+모드 조합 3개 중", "&7하나를 투표로 정해요", "", "&e▶ 클릭해서 끄기"
+		else:
+			set {_i} to paper named "&f맵/모드 투표: &cOFF"
+			set lore of {_i} to "&7지금은 게임 설정/맵 설정대로", "&7바로 시작해요", "", "&e▶ 클릭해서 켜기"
+		return {_i}
+	if {_id} is "setvotedummy":
+		set {_i} to bell named "&f투표 더미 위치 지정"
+		set lore of {_i} to "&7맵/모드 투표 때 더미 3마리가 서는 자리를 저장해요", "&7지금 서 있는 자리 = 가운데 더미 자리", "&7바라보는 방향 = 더미가 바라볼 방향(사람들이 서는 쪽)", "&7(더미끼리 옆으로 2.5칸 떨어져요)", "&7(저장이 없으면 로비 위치 앞에 세워요)", "", "&e▶ 클릭해서 저장"
 		return {_i}
 	if {_id} is "gamestart":
 		set {_i} to lime concrete named "&a게임 시작"
@@ -139,14 +151,35 @@ function adminAction(p: player, id: text):
 		close {_p}'s inventory
 		if {-ingame} is true:
 			send "&c이미 게임이 진행 중입니다." to {_p}
+		else if {-gvoting} is true:
+			send "&c이미 맵/모드 투표가 진행 중입니다." to {_p}
 		else:
-			gameStart(name of {_p})
+			gameBegin(name of {_p})
 	else if {_id} is "gamestop":
 		close {_p}'s inventory
-		if {-ingame} is not true:
+		if {-gvoting} is true:
+			voteCancel()
+			send "&7맵/모드 투표를 취소했습니다." to {_p}
+		else if {-ingame} is not true:
 			send "&c진행 중인 게임이 없습니다." to {_p}
 		else:
 			gameForceStop(name of {_p})
+	else if {_id} is "vote":
+		if gcVoteOn() is true:
+			set {gamecfg::vote} to false
+			send "&c맵/모드 투표를 껐습니다. 게임 설정/맵 설정대로 바로 시작합니다." to {_p}
+		else:
+			set {gamecfg::vote} to true
+			send "&a맵/모드 투표를 켰습니다." to {_p}
+		adminOpen({_p})
+	else if {_id} is "setvotedummy":
+		close {_p}'s inventory
+		if adminLockOn() is true:
+			if gcLocSet("votedummy") is true:
+				adminLockDeny({_p}, "투표 더미 위치")
+				stop
+		gcSaveLoc("votedummy", location of {_p})
+		send "&a투표 더미 위치를 저장했습니다. 지금 서 있는 자리가 가운데 더미 자리이고, 바라보는 방향이 더미가 바라볼 방향입니다." to {_p}
 	else if {_id} is "lock":
 		if adminLockOn() is true:
 			set {gamecfg::unlock} to true

@@ -191,6 +191,10 @@ function gtHeader() :: text:
 			if {-gmode} is "bounty":
 				set {_st} to gtT("★", "yellow")
 				set {_c2} to "%{_c2}%,%{_st}%"
+			# 크라운은 점수 뒤에 금색 왕관
+			if {-gmode} is "crown":
+				set {_st} to gtT("♛", "gold")
+				set {_c2} to "%{_c2}%,%{_st}%"
 			if {_ex} is "":
 				set {_ex} to "%{_c1}%,%{_c2}%"
 			else:
@@ -246,7 +250,11 @@ function gtFooter() :: text:
 			set {_g3} to gtT(" · 남은 시간 %{_mm}%:%{_sp}%%{_ss}%", "gray")
 			return "%{_g1}%,%{_g2}%,%{_g3}%"
 		return "%{_g1}%,%{_g2}%"
-	# 바운티가 아닌 모드(녹아웃)는 목표 승점을 "n선승"으로 표시한다
+	if {-gmode} is "crown":
+		set {_g1} to gtT({_t}, "gray")
+		set {_g2} to gtT("♛", "gold")
+		return "%{_g1}%,%{_g2}%"
+	# 바운티/크라운이 아닌 모드(녹아웃)는 목표 승점을 "n선승"으로 표시한다
 	set {_t2} to "%{_mn}% · %{-gtarget}%선승"
 	return gtT({_t2}, "gray")
 

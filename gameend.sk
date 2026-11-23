@@ -1305,6 +1305,10 @@ command /gamestop:
 			if player is not op:
 				send "&c관리자만 사용할 수 있습니다."
 				stop
+		if {-gvoting} is true:
+			voteCancel()
+			send "&7맵/모드 투표를 취소했습니다."
+			stop
 		if {-ingame} is not true:
 			if {-gfinale} is not true:
 				gfClearStage()
