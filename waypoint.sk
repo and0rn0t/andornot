@@ -46,7 +46,12 @@ command /wptest:
 	trigger:
 		set {_l} to location 20 meters in front of player
 		set {_id} to "00000000-0000-4000-8000-000000000001"
-		wpSend(player, {_id}, x of {_l}, y of {_l}, z of {_l}, 3447003)
+		# "x of {_l}" 는 올바른 Skript 문법이 아니라서 값이 비었다(그래서 함수에 null 이 넘어갔다). x-coordinate of 를 쓰고 미리 변수에 담아 넘긴다.
+		set {_px} to x-coordinate of {_l}
+		set {_py} to y-coordinate of {_l}
+		set {_pz} to z-coordinate of {_l}
+		send "&7[wptest] 좌표 %{_px}% %{_py}% %{_pz}%" to player
+		wpSend(player, {_id}, {_px}, {_py}, {_pz}, 3447003)
 		send "&a[wptest] 파란 점을 보냈습니다. 10초 뒤 지웁니다." to player
 		wait 10 seconds
 		wpRemove(player, {_id})
