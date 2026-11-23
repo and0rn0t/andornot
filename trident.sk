@@ -8,6 +8,7 @@
 #   충돌 판정 없는 블럭(풀, 카펫, 물 등)과 충돌 높이 0.5 이하의 낮은 블럭(쌓인 눈, 반블럭)은 통과(그 위에 도착하면 윗면 높이로 올려 세움). 경로에 막히면 막히기 직전 자리까지만 이동한다.
 # 피해: 순간이동한 지점 반경 6칸의 생명체(본인/아군/갑옷 거치대/마네킹/관전 모드 플레이어 제외)에게 한 번씩 실 체력 4. 스킬 피해라 main.sk 무기 보정에서 제외({-skilldmg}).
 # 이펙트: 도착 지점에만 번개 이펙트(World#strikeLightningEffect, 불/피해 없음)와 전기 불꽃 파티클, 소리.
+# 오프핸드: 메인핸드/오프핸드 어느 쪽 삼지창이든 쓸 수 있다(skillHand 규칙). 미검증: 오프핸드 삼지창 우클릭 충전 중 isHandRaised 가 true 인지.
 # 미검증: on shoot 에서 삼지창 투척 취소 후 아이템이 손에 남고 클라이언트가 이상해지지 않는지, isHandRaised 가 삼지창 사용 중 true 인지, strikeLightningEffect, Particle.ELECTRIC_SPARK, 순간이동 후 시점 유지.
 
 using damage sources
@@ -175,8 +176,10 @@ on rightclick:
 		stop
 	if isStunned({_p}) is true:
 		stop
+	# 삼지창이 메인핸드나 오프핸드 어느 쪽에 있어도 된다(예전에는 메인핸드만 확인해서 오프핸드에서는 충전 후 발동하지 않았다)
 	if {_p}'s tool is not trident:
-		stop
+		if {_p}'s offhand tool is not trident:
+			stop
 	set {-tdcd::%{_id}%} to now + 18 seconds
 	set item cooldown of trident for {_p} to 18 seconds
 	tridentBlink({_p}, {_cf})

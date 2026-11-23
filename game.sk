@@ -236,11 +236,11 @@ function gJoinMid(p: player):
 		set {-team::%{_id}%} to gJoinTeam({_id}, {_oids::*})
 	set {_k} to gTeamOf({_p})
 	set {-gpteam::%{_id}%} to {_k}
-	set {-gpname::%{_id}%} to name of {_p}
+	set {-gpname::%{_id}%} to {_p}.getName()
 	if {-gscore::%{_k}%} is not set:
 		set {-gscore::%{_k}%} to 0
 		add {_k} to {-gteamlist::*}
-		set {-gname::%{_k}%} to name of {_p}
+		set {-gname::%{_k}%} to {_p}.getName()
 		if {-gteams} > 0:
 			set {_sorted::*} to sorted {-gteamlist::*}
 			set {-gteamlist::*} to {_sorted::*}
@@ -773,7 +773,7 @@ function gameStart(by: text):
 		loop {-gplist::*}:
 			set {_k} to "p_%uuid of loop-value%"
 			add {_k} to {-gteamlist::*}
-			set {-gname::%{_k}%} to name of loop-value
+			set {-gname::%{_k}%} to loop-value.getName()
 	else:
 		delete {_tl::*}
 		delete {_seen::*}
@@ -792,7 +792,7 @@ function gameStart(by: text):
 	delete {-gpname::*}
 	loop {-gplist::*}:
 		set {-gpteam::%uuid of loop-value%} to gTeamOf(loop-value)
-		set {-gpname::%uuid of loop-value%} to name of loop-value
+		set {-gpname::%uuid of loop-value%} to loop-value.getName()
 	# 전적 초기화
 	delete {-gk::*}
 	delete {-gd::*}

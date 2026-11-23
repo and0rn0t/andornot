@@ -153,6 +153,7 @@
 #   - bow.sk        : 활 스킬(충전 데미지, 소닉붐)
 #   - blazerod.sk   : 블레이즈 막대기 스킬(화염구, 3번째 사용 5연발)
 #   - bee.sk        : 꿀벌 스킬(쿨 75초, 분류 2): 꿀벌 드론을 탑승 조종(본체 더미는 앉아 있고 피격 피해는 본인에게 전달), 독침/자폭/조종 중지 3아이템, 가속(도약과 같은 입력, 꿀벌 스태미너 50 소모 x2.5 2초, 변수 {-beest}/{-beelock}/{-beedash})(조종 중지만 즉시 사용 가능(자폭 제외)), 본체 50칸 제한, 아이템은 벌 스폰 에그, 조종 중 화면 체력=꿀벌 체력/본체 체력은 더미 머리 위(변수 {-beebar}, {-beeslot}, {-beesnd}). 자세한 건 bee.sk 맨 위.
+#   - cdnotify.sk   : 쿨타임 8초 이상 스킬의 쿨타임이 끝나면 액션바에 "<스킬> 사용 가능"(소리 없음). 4틱마다 쿨타임 상태 변화를 감시(변수 {-cdn::uuid::이름}). 새 스킬이 8초 이상이면 cdScan 에 추가
 #   - endtest.sk    : op 전용 /endtest. 게임 없이 종료 연출(gameend.sk)을 바로 본다(승리자 = 실행한 관리자 + 더미2 + 더미3, 점수/티어 기록 안 함, 변수 {-gtest} {-gtestids} {-gtestteam})
 #   - evdummy.sk    : op 전용 회피형 연습 더미 /dummy (플레이어를 피해 걷고 스태미너 25 찰 때마다 도약, TTK 측정, 미검증)
 #   - soundfx.sk    : 거리 조절 사운드 함수 soundAround(소리, 위치, 볼륨, 피치) (최대 청음 60칸, 40칸까지 최대 볼륨, 40~60칸 감쇠. 월드 위치 효과음은 전부 이 함수를 쓴다, 미검증)
@@ -565,6 +566,8 @@ function skillCdReset(p: player):
 	delete {-tdcd::%{_id}%}
 	delete {-beecd::%{_id}%}
 	delete {-beestabcd::%{_id}%}
+	# 쿨타임 끝 알림(cdnotify.sk)의 "쿨타임 중" 기록도 지운다(초기화로 풀린 걸 알림으로 띄우지 않게)
+	delete {-cdn::%{_id}%::*}
 	set {_i} to 0
 	while {_i} <= 40:
 		set {_it} to {_p}.getInventory().getItem({_i})
