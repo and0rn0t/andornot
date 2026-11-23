@@ -63,6 +63,7 @@ function bgmPlay(p: player, name: text):
 function bgmStopAll():
 	loop all players:
 		loop-value.stopSound("mck:gamestart")
+		loop-value.stopSound("mck:end")
 
 # ===== 라인업 자리 찾기 =====
 function gsSearchCenter() :: location:

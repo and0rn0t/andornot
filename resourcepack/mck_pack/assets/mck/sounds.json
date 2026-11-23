@@ -21,5 +21,14 @@
         "name": "mck:killsound"
       }
     ]
+  },
+  "end": {
+    "sounds": [
+      {
+        "name": "mck:end",
+        "stream": true,
+        "attenuation_distance": 2000
+      }
+    ]
   }
 }

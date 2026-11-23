@@ -7,9 +7,10 @@
 # 결과 표시: 승리 팀 더미 뒤에 띄운 텍스트 디스플레이({-gdisp}). 투표는 승리 팀 더미를 우클릭해서 한다(좌클릭은 무반응)(gfVoteClick). 후보는 승리 팀뿐, 투표자는 참가자(본인 포함, 개인전은 투표 없음). 이 단계에서 관전을 풀고 어드벤처 + 무적으로 만든다(정리 때 gameCleanup 이 되돌림).
 # 흐름: 승리가 정해지면(gameWin) 킬 연출이 있으면 killcine.sk 가 모든 참가자에게 그 연출을 보여 준 뒤 gameFinale() 을 부르고(참가자는 관전 상태 유지),
 #   킬 연출이 없는 승리(접속 종료 등)는 gameWin 이 바로 gameFinale() 을 부른다.
-#   0초   게임 종료 + 승리 팀 타이틀/소리(3초)
-#   3초   시상대 컷씬 약 10초(순위 3-2-1위 받침대/더미/폭죽, 카메라 이동, gfPodRank). 그 뒤 승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고, 모두 그 앞(관전)으로 모은 뒤 결과를 채팅에 발표. 투표 시작
-#   (무대 이후) 15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
+#   0초   게임 종료 + 승리 팀 타이틀 + 효과음 end(mck:end, 팩) 동시 재생. 모두 관전 카메라로 시상대 컷씬(순위 3-2-1위 받침대/더미/폭죽, 3/5/7초에 나타남, gfPodRank/gfPodCam)
+#   10초  시상대를 치우고 승리 팀 플레이어와 똑같이 생긴 더미를 일렬로 세우고 결과 디스플레이 표시 + 폭죽, 카메라는 더미 앞을 훑으며 구경 자리로(gfEndCam2)
+#   15초  소리가 끝날 즈음 모두 관전을 풀고 구경 자리에 모은 뒤 투표 시작(결과 채팅 발표)
+#   투표 시작 후 15초  투표 마감(12초 지점에 Player Of The Match 발표, 시간은 gameFinale 의 wait 12 / wait 3) 후 정리: 더미 제거, 결과 채팅 고정 해제, 게임 정리, 로비로 이동 (발표 시작부터 15초)
 # 결과 표시: 팀 점수(승리 팀이 맨 위), 참가자 전원의 K/D/A·가한 피해·사용한 아이템(구성 아이콘)을 텍스트 디스플레이로 승리 팀 더미 뒤에 띄운다. 투표 수는 더미 머리 위 설명에 표시.
 # 로비/결과 무대 위치는 관리자 메뉴 버튼으로 저장한 위치({gamecfg::loc::lobby|stage::world|x|y|z|yaw|pitch}, 월드 이름 + 좌표)를 쓴다(멀티월드 가능). 결과 무대(더미 + 디스플레이)는 다음 게임 시작 전까지 남는다.
 # 미검증: 마네킹 소환/스킨(ResolvableProfile, SPIGOT-8084), 마네킹 이름표/설명, PlayerInteractEntityEvent 로 마네킹 클릭, 무적 더미 좌클릭 이벤트, TextDisplay#text/setLineWidth, 디스플레이 크기/위치.
@@ -765,9 +766,9 @@ function gfClearDummies():
 	delete {-gdisp}
 	delete {-gdisp2::*}
 
-# ===== 시상대 컷씬(승리 직후, 약 10초) =====
-# 결과 무대 위치(gameStageLoc)에 팀 순위 1~3위 시상대를 블럭 디스플레이(엔티티, 월드 블럭은 안 바꿈, 태그 gdummy)로 세운다. 3위 -> 2위 -> 1위 순서로 50틱 간격으로 나타나고,
-# 순위마다 그 팀 최고 성적 플레이어와 똑같이 생긴 더미 + 팀 색 받침대 + 이름표 + 폭죽. 카메라는 gameFinale 이 매 틱 모두를 gfPodCam 위치로 옮긴다(관전 상태).
+# ===== 시상대 컷씬(승리 직후 0~10초, 이어서 10~15초 승리 팀 더미) =====
+# 결과 무대 위치(gameStageLoc)에 팀 순위 1~3위 시상대를 블럭 디스플레이(엔티티, 월드 블럭은 안 바꿈, 태그 gdummy)로 세운다. 3위 -> 2위 -> 1위 순서로 나타나고,
+# 순위마다 그 팀 최고 성적 플레이어와 똑같이 생긴 더미 + 팀 색 받침대 + 이름표 + 폭죽(60/100/140틱). 카메라는 gameFinale 이 매 틱 모두를 gfPodCam 위치로 옮긴다(관전 상태).
 # 1위(구경꾼 기준 가운데), 2위(왼쪽), 3위(오른쪽): 왼쪽/오른쪽이 거울처럼 뒤집히면 gfPodRank 의 {_off} 부호를 바꾼다(미검증). 엔티티는 {-gpod::*}, 끝나면 지운다.
 # 미검증: 블럭 디스플레이 스폰/setBlock/transformation scale, 폭죽 FireworkEffect.builder/withColor/detonate, 더미 setGravity, 카메라 setDirection.
 function gfPodColor(i: number) :: object:
@@ -804,7 +805,7 @@ function gfPodFirework(loc: location, i: number):
 	{_fw}.setFireworkMeta({_fm})
 	{_fw}.detonate()
 
-# 카메라 위치: 구경꾼 쪽 앞에서 40도 옆에서 시작해 정면으로 천천히 돌며 다가간다. t = 0~199(틱)
+# 카메라 위치(시상대 구간 0~199틱): 구경꾼 쪽 앞에서 40도 옆에서 시작해 정면으로 천천히 돌며 다가간다. 위치는 발 기준이라 눈높이(+1.62)를 따로 더해 시선을 계산한다.
 function gfPodCam(stage: location, t: number) :: location:
 	set {_sy} to {_stage}.getYaw()
 	set {_fx} to 0 - sin({_sy})
@@ -813,10 +814,36 @@ function gfPodCam(stage: location, t: number) :: location:
 	set {_dx} to {_fx} * cos({_th}) - {_fz} * sin({_th})
 	set {_dz} to {_fx} * sin({_th}) + {_fz} * cos({_th})
 	set {_d} to 9 - 2 * {_t} / 200
-	set {_cam} to {_stage} ~ vector({_dx} * {_d}, 1.8 + 0.6 * {_t} / 200, {_dz} * {_d})
+	set {_fy} to 0.2 + 0.6 * {_t} / 200
+	set {_cam} to {_stage} ~ vector({_dx} * {_d}, {_fy}, {_dz} * {_d})
+	set {_eye} to {_cam} ~ vector(0, 1.62, 0)
 	set {_tg} to {_stage} ~ vector(0, 1.6, 0)
-	set {_v} to vector from {_cam} to {_tg}
+	set {_v} to vector from {_eye} to {_tg}
 	{_cam}.setDirection({_v})
+	return {_cam}
+
+# 카메라 위치(승리 팀 더미 구간 0~99틱 = 10~15초): 시상대 구간 끝 자리(정면 7칸)에서 출발해, 더미 줄 앞을 오른쪽 -> 왼쪽으로 훑고 가운데로 돌아오며 구경 자리(gfStageView)로 끝난다.
+# 끝에서 gfStageView 의 방향(yaw+180, pitch -5)과 정확히 겹치도록 시선을 섞는다(투표 시작 때 튀지 않게). t2 = 0~99, 100 이상이면 구경 자리.
+function gfEndCam2(stage: location, t2: number) :: location:
+	if {_t2} >= 100:
+		return gfStageView({_stage})
+	set {_sy} to {_stage}.getYaw()
+	set {_fx} to 0 - sin({_sy})
+	set {_fz} to cos({_sy})
+	set {_rx} to 0 - cos({_sy})
+	set {_rz} to 0 - sin({_sy})
+	set {_u} to {_t2} / 100
+	set {_e} to {_u} * {_u} * (3 - 2 * {_u})
+	set {_l} to 4 * sin(360 * {_e}) * (1 - {_e})
+	set {_d} to 7 - 2 * sin(180 * {_e})
+	set {_fy} to 0.8 * (1 - {_e})
+	set {_cam} to {_stage} ~ vector({_fx} * {_d} + {_rx} * {_l}, {_fy}, {_fz} * {_d} + {_rz} * {_l})
+	set {_eye} to {_cam} ~ vector(0, 1.62, 0)
+	set {_tg} to {_stage} ~ vector({_rx} * {_l} * 0.3, 1.6 - 0.4 * {_e}, {_rz} * {_l} * 0.3)
+	set {_v} to vector from {_eye} to {_tg}
+	{_cam}.setDirection({_v})
+	set {_pp} to {_cam}.getPitch()
+	{_cam}.setPitch({_pp} * (1 - {_e}) - 5 * {_e})
 	return {_cam}
 
 # 순위 rank(1~3)의 시상대 하나: 받침대 + 팀 최고 성적 플레이어 더미 + 이름표 + 폭죽 + 소리 (1위는 우승 타이틀도)
@@ -895,55 +922,27 @@ function gameFinale():
 	add 1 to {-gfgen}
 	set {_gen} to {-gfgen}
 	set {_wl} to gTeamLabel({-gwinner})
+	# 사운드 end(리소스팩 mck:end, 실제 소리는 약 15초): 타이틀과 동시에 재생. 타임라인(틱, 20틱 = 1초):
+	#   0      게임 종료 타이틀 + end 재생 + 관전 카메라 시작(시상대 컷씬: 순위 3 -> 2 -> 1위가 60/100/140틱에 나타남)
+	#   200    (10초) 시상대를 치우고 승리 팀 더미 + 결과 디스플레이 등장 + 폭죽, 카메라는 더미 앞을 훑으며 구경 자리로 이동
+	#   300    (15초, 소리가 끝날 즈음) 모두 어드벤처로 풀고 POTM 투표 시작(이미 구경 자리에 있어서 이동 거의 없음)
 	# 1) 게임 종료 + 승리 팀 알림(참가자는 관전 상태를 유지)
 	loop {-gplist::*}:
 		if loop-value is online:
 			set gamemode of loop-value to spectator
 	loop all players:
 		send title "&f게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
-		play sound "ui.toast.challenge_complete" with volume 0.8 to loop-player
-	wait 3 seconds
-	if {-gfgen} is not {_gen}:
-		stop
-	# 2) 시상대 컷씬(약 10초): 순위 3위 -> 2위 -> 1위가 50틱 간격으로 나타나고 카메라가 천천히 돌며 다가간다. 모두 관전 상태로 이 카메라를 본다(gfPodRank/gfPodCam).
-	set {_pgw} to "%{-gworld}%"
-	if {_pgw} is "":
-		set {_pgw} to {-gplist::1}.getWorld().getName()
-	set {_pst} to gameStageLoc({_pgw})
-	delete {-gpod::*}
-	set {_order::*} to gfTeamOrder()
-	set {_nr} to min(size of {_order::*}, 3)
-	set {_c0} to gfPodCam({_pst}, 0)
-	loop all players:
-		tpSafe(loop-player, {_c0})
-	set {_t} to 0
-	while {_t} < 200:
-		if {-gfgen} is not {_gen}:
-			stop
-		if mod({_t}, 50) is 0:
-			set {_r} to {_nr} - {_t} / 50
-			if {_r} >= 1:
-				gfPodRank({_r}, {_order::%{_r}%}, {_pst})
-		# 1위가 나온 뒤에는 12틱마다 우승 팀 색 폭죽을 무대 위로 쏜다
-		if {_t} >= ({_nr} - 1) * 50:
-			if mod({_t}, 12) is 0:
-				set {_fx} to random number between -3 and 3
-				set {_fz} to random number between -3 and 3
-				set {_fl} to {_pst} ~ vector({_fx}, 4.5, {_fz})
-				gfPodFirework({_fl}, gTeamIndex({-gwinner}))
-		set {_cam} to gfPodCam({_pst}, {_t})
-		loop all players:
-			teleport loop-player to {_cam}
-		wait 1 tick
-		add 1 to {_t}
-	loop {-gpod::*}:
-		loop-value.remove()
-	delete {-gpod::*}
-	# 3) 무대: 게임이 진행된 월드의 결과 무대에, 승리 팀 플레이어(접속 중인 사람)와 똑같이 생긴 더미를 가로로 일렬로 세운다(이름표 + 득표 별). 모두 관전을 풀고 그 앞으로 모은다.
+		bgmPlay(loop-player, "end")
 	set {_gw} to "%{-gworld}%"
 	if {_gw} is "":
 		set {_gw} to {-gplist::1}.getWorld().getName()
 	set {_stage} to gameStageLoc({_gw})
+	delete {-gpod::*}
+	set {_order::*} to gfTeamOrder()
+	set {_nr} to min(size of {_order::*}, 3)
+	set {_c0} to gfPodCam({_stage}, 0)
+	loop all players:
+		tpSafe(loop-player, {_c0})
 	delete {-gfwinp::*}
 	delete {-gfwinid::*}
 	loop {-gplist::*}:
@@ -953,11 +952,46 @@ function gameFinale():
 				add "%uuid of loop-value%" to {-gfwinid::*}
 	delete {-gpotm::*}
 	delete {-gpotmres}
-	# 개인전({-gteams} 0)은 Player Of The Match 투표를 하지 않는다
+	set {_t} to 0
+	while {_t} < 300:
+		if {-gfgen} is not {_gen}:
+			stop
+		# 0~199틱: 시상대 컷씬. 60틱부터 40틱 간격으로 꼴찌 순위(최대 3위)부터 나타남
+		if {_t} < 200:
+			if {_t} >= 60:
+				if mod({_t} - 60, 40) is 0:
+					set {_r} to {_nr} - ({_t} - 60) / 40
+					if {_r} >= 1:
+						gfPodRank({_r}, {_order::%{_r}%}, {_stage})
+			# 1위가 나온 뒤에는 12틱마다 우승 팀 색 폭죽을 무대 위로 쏜다
+			if {_t} >= 60 + ({_nr} - 1) * 40:
+				if mod({_t}, 12) is 0:
+					set {_fx} to random number between -3 and 3
+					set {_fz} to random number between -3 and 3
+					set {_fl} to {_stage} ~ vector({_fx}, 4.5, {_fz})
+					gfPodFirework({_fl}, gTeamIndex({-gwinner}))
+			set {_cam} to gfPodCam({_stage}, {_t})
+		else:
+			# 200틱(10초): 시상대를 치우고 승리 팀 더미 + 결과 디스플레이를 세운다(투표는 아직 안 받음)
+			if {_t} is 200:
+				loop {-gpod::*}:
+					loop-value.remove()
+				delete {-gpod::*}
+				set {_disp} to gfBuildStage({_stage})
+				set {-gdisp} to {_disp}
+				loop 5 times:
+					set {_fx} to random number between -4 and 4
+					set {_fz} to random number between -4 and 4
+					set {_fl} to {_stage} ~ vector({_fx}, 3, {_fz})
+					gfPodFirework({_fl}, gTeamIndex({-gwinner}))
+			set {_cam} to gfEndCam2({_stage}, {_t} - 200)
+		loop all players:
+			teleport loop-player to {_cam}
+		wait 1 tick
+		add 1 to {_t}
+	# 2) 투표 시작(300틱 = 소리가 끝날 즈음): 관전을 풀고 구경 자리에 모은다(카메라가 이미 그 자리라 거의 안 움직임). 개인전({-gteams} 0)은 Player Of The Match 투표를 하지 않는다.
 	if {-gteams} is not 0:
 		set {-gvote} to true
-	set {_disp} to gfBuildStage({_stage})
-	set {-gdisp} to {_disp}
 	set {_view} to gfStageView({_stage})
 	loop {-gplist::*}:
 		if loop-value is online:
