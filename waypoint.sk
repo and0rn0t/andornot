@@ -103,6 +103,8 @@ function wpActive(p: player) :: boolean:
 
 function wpTeamSync():
 	# 3초(30번, 2틱마다 실행)에 한 번은 좌표가 같아도 다시 보낸다: 월드를 옮기거나 리스폰하면 클라이언트가 점을 잃을 수 있어서
+	add 1 to {-wptick}
+	wpPingUpdate()
 	add 1 to {-wpcnt}
 	set {_force} to false
 	if {-wpcnt} >= 30:
@@ -128,6 +130,28 @@ function wpTeamSync():
 						if wpActive({_h}) is true:
 							delete {_want::%{_hid}%}
 							set {_want::00000000-0000-4000-8000-0000000000c0} to "%wpEffPos({_v}, x-coordinate of {_h}, y-coordinate of {_h}, z-coordinate of {_h})%,16747546"
+		# 핑: 찍은 사람과 같은 팀(시험 핑은 본인)에게만 보인다. 파랑 0x3498DB, 빨강 0xFF3333
+		loop {-wping_c::*}:
+			set {_pp} to loop-index-2
+			set {_show} to false
+			if {-wping_test::%{_pp}%} is set:
+				if {_pp} is {_vid}:
+					set {_show} to true
+			else if wpActive({_v}) is true:
+				if {_pp} is {_vid}:
+					set {_show} to true
+				else if isAlly({_vid}, {_pp}) is true:
+					set {_show} to true
+			if {_show} is true:
+				set {_pcol} to 3447003
+				if loop-value-2 is "red":
+					set {_pcol} to 16724787
+				set {_wid} to {-wping_id::%{_pp}%}
+				set {_gx} to {-wping_x::%{_pp}%}
+				set {_gy} to {-wping_y::%{_pp}%}
+				set {_gz} to {-wping_z::%{_pp}%}
+				set {_ep} to wpEffPos({_v}, {_gx}, {_gy}, {_gz})
+				set {_want::%{_wid}%} to "%{_ep}%,%{_pcol}%"
 		# 새로 생기거나 좌표가 바뀐 점만 보낸다
 		loop {_want::*}:
 			set {_k} to loop-index
@@ -141,6 +165,160 @@ function wpTeamSync():
 			if {_want::%{_k}%} is not set:
 				wpRemove({_v}, {_k})
 				delete {-wpset::%{_vid}%::%{_k}%}
+
+# ===== 핑 시스템(Q 키) =====
+# Q(아이템 버리기)를 누르면 바라보는 자리에 파란 핑, 그 근처(또는 조준선 위)에 적이 있으면 대신 그 적에게 빨간 핑(적이 움직이면 따라감)이 찍힌다.
+# 핑은 찍은 사람과 같은 팀(개인전은 본인)에게만 locate bar 로 보이고 소리(mck:pingblue / mck:pingred)가 난다. 한 사람당 핑은 하나(새로 찍으면 교체). 시야 밖이면 바 끝에 붙는다(wpEffPos).
+# 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운) {-wping_test::pid}(시험 핑: 게임 밖에서도 본인에게만)
+# 시간 단위 {-wptick} = wpTeamSync 실행 횟수(0.1초). 숫자는 아래 함수에서 바꾼다.
+function wpPingSec() :: number:
+	return 8
+
+function wpPingCoolSec() :: number:
+	return 1
+
+# 적 감지: 조준선에서 이 거리(칸) 안에 있는 적, 또는 조준한 자리에서 이 거리(칸) 안에 있는 적
+function wpPingRay() :: number:
+	return 2
+
+function wpPingNear() :: number:
+	return 4.5
+
+# 조준한 자리(블록이 없으면 100칸 앞)
+function wpAimLoc(p: player) :: location:
+	set {_b} to {_p}.getTargetBlockExact(120)
+	if {_b} is set:
+		return {_b}.getLocation().add(0.5, 0.5, 0.5)
+	set {_e} to eye location of {_p}
+	return {_e}.clone().add({_e}.getDirection().clone().multiply(100))
+
+# kind: "auto" = 조준/주변에 적이 있으면 빨강 아니면 파랑, "blue" = 무조건 파랑(시험), "red" = 가장 가까운 다른 플레이어를 대상으로 빨강(시험)
+function wpPingCreate(p: player, test: boolean, kind: text):
+	set {_pid} to "%uuid of {_p}%"
+	set {_hit} to wpAimLoc({_p})
+	set {_eye} to eye location of {_p}
+	set {_dir} to {_eye}.getDirection()
+	set {_hd} to distance between {_eye} and {_hit}
+	set {_best} to -1
+	set {_bestd} to 100000
+	if {_kind} is not "blue":
+		loop all players:
+			set {_t} to loop-player
+			if {_t} is not {_p}:
+				set {_tid} to "%uuid of {_t}%"
+				set {_ok} to false
+				if {_test} is true:
+					set {_ok} to true
+				else if wpActive({_t}) is true:
+					if isAlly({_pid}, {_tid}) is false:
+						set {_ok} to true
+				if {_ok} is true:
+					if world of {_t} is world of {_p}:
+						set {_ec} to ({_t}'s location) ~ vector(0, 1, 0)
+						set {_rel} to vector from {_eye} to {_ec}
+						set {_tt} to {_dir} dot {_rel}
+						set {_perp} to length of ({_rel} - ({_dir} * {_tt}))
+						set {_cand} to false
+						if {_tt} > 0:
+							if {_tt} <= {_hd} + 4:
+								if {_perp} <= wpPingRay():
+									set {_cand} to true
+						if distance between {_ec} and {_hit} <= wpPingNear():
+							set {_cand} to true
+						if {_kind} is "red":
+							set {_cand} to true
+						if {_cand} is true:
+							set {_sc} to {_perp} + distance between {_ec} and {_hit} / 10
+							if {_sc} < {_bestd}:
+								set {_bestd} to {_sc}
+								set {_best} to {_tid}
+								set {_bestp} to {_t}
+	delete {-wping_e::%{_pid}%}
+	set {-wping_c::%{_pid}%} to "blue"
+	set {_l} to {_hit}
+	if {_best} is not -1:
+		set {-wping_c::%{_pid}%} to "red"
+		set {-wping_e::%{_pid}%} to {_best}
+		set {_l} to {_bestp}'s location
+	set {-wping_x::%{_pid}%} to x-coordinate of {_l}
+	set {-wping_y::%{_pid}%} to y-coordinate of {_l}
+	set {-wping_z::%{_pid}%} to z-coordinate of {_l}
+	if {-wping_id::%{_pid}%} is not set:
+		set {_u} to UUID.randomUUID()
+		set {-wping_id::%{_pid}%} to "%{_u}%"
+	set {-wping_until::%{_pid}%} to {-wptick} + wpPingSec() * 10
+	if {_test} is true:
+		set {-wping_test::%{_pid}%} to true
+	else:
+		delete {-wping_test::%{_pid}%}
+	set {_snd} to "mck:pingblue"
+	if {-wping_c::%{_pid}%} is "red":
+		set {_snd} to "mck:pingred"
+	play sound {_snd} to {_p}
+	if {_test} is not true:
+		loop {-gplist::*}:
+			if loop-value is not {_p}:
+				if isAlly({_pid}, "%uuid of loop-value%") is true:
+					if wpActive(loop-value) is true:
+						play sound {_snd} to loop-value
+
+on drop:
+	if {-ingame} is not true:
+		stop
+	if wpActive(player) is not true:
+		stop
+	if {-beemode::%uuid of player%} is "drive":
+		stop
+	cancel event
+	set {_pid} to "%uuid of player%"
+	if {-wping_cd::%{_pid}%} > {-wptick}:
+		stop
+	set {-wping_cd::%{_pid}%} to {-wptick} + wpPingCoolSec() * 10
+	wpPingCreate(player, false, "auto")
+
+# 시험(op): /pingtest blue = 바라보는 자리에 파란 핑, /pingtest red = 가장 가까운 다른 플레이어에게 빨간 핑(혼자면 파란 핑), /pingtest clear = 지우기. 게임 밖에서도 되고 본인에게만 보인다.
+command /pingtest [<text>]:
+	permission: op
+	trigger:
+		set {_pid} to "%uuid of player%"
+		if arg-1 is "clear":
+			delete {-wping_c::%{_pid}%}
+			send "&a[pingtest] 핑을 지웠습니다." to player
+			stop
+		if arg-1 is "red":
+			wpPingCreate(player, true, "red")
+		else:
+			wpPingCreate(player, true, "blue")
+		set {_k} to {-wping_c::%{_pid}%}
+		set {_sx} to round({-wping_x::%{_pid}%})
+		set {_sy} to round({-wping_y::%{_pid}%})
+		set {_sz} to round({-wping_z::%{_pid}%})
+		send "&a[pingtest] %{_k}% 핑을 찍었습니다(좌표 %{_sx}% %{_sy}% %{_sz}%)." to player
+
+# 핑 상태 갱신: 만료/무효 핑 삭제, 빨간 핑은 대상 위치를 따라간다
+function wpPingUpdate():
+	loop {-wping_c::*}:
+		set {_pid} to loop-index
+		set {_keep} to true
+		if {-wping_until::%{_pid}%} < {-wptick}:
+			set {_keep} to false
+		if {-wping_test::%{_pid}%} is not set:
+			if {-ingame} is not true:
+				set {_keep} to false
+		if {_keep} is true:
+			if {-wping_c::%{_pid}%} is "red":
+				set {_found} to false
+				loop all players:
+					if "%uuid of loop-player%" is {-wping_e::%{_pid}%}:
+						if {-wping_test::%{_pid}%} is set or wpActive(loop-player) is true:
+							set {_found} to true
+							set {-wping_x::%{_pid}%} to x-coordinate of loop-player
+							set {-wping_y::%{_pid}%} to y-coordinate of loop-player
+							set {-wping_z::%{_pid}%} to z-coordinate of loop-player
+				if {_found} is false:
+					set {_keep} to false
+		if {_keep} is false:
+			delete {-wping_c::%{_pid}%}
 
 # 시야 밖 점이 시청자 회전을 따라가야 해서 2틱마다 갱신(바뀐 점만 전송)
 every 2 ticks:
