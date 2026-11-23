@@ -1155,8 +1155,12 @@ function gameFinale():
 		if {_titled} is false:
 			if {_t} >= {_tt}:
 				set {_titled} to true
+				# 킬 연출 뒤에 온 경우 "게임 종료" 타이틀은 이미 떠 있다(killcine.sk). 같은 글자로 다시 보내고(fadein 0) 서브타이틀(승리 팀)만 이 순간 나타나게 한다.
 				loop all players:
-					send title "&f게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
+					if {_pre0} > 0:
+						send title "&f게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 0 ticks and fade out 10 ticks
+					else:
+						send title "&f게임 종료" with subtitle colored "%{_wl}% &f승리!" to loop-player for 3 seconds with fadein 5 ticks and fade out 10 ticks
 				loop {-gfv::*}:
 					if loop-value is online:
 						loop-value.removePotionEffect(PotionEffectType.BLINDNESS)
