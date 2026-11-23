@@ -8,13 +8,30 @@ import:
 	net.minecraft.core.Vec3i
 	java.util.UUID
 	java.util.Optional
+	java.lang.Math
 
 # 점 하나를 시청자에게 보낸다(처음엔 추가, 이미 있으면 위치 갱신). color 는 0xRRGGBB 를 10진수로(파랑 3447003 등).
 function wpSend(v: player, id: text, x: number, y: number, z: number, color: number):
 	set {_u} to UUID.fromString({_id})
 	set {_ic} to new WpIcon()
-	set {_ic}.color to Optional.of({_color}.intValue())
-	set {_pos} to new Vec3i({_x}.intValue(), {_y}.intValue(), {_z}.intValue())
+	# 숫자 -> int: Skript 숫자에 intValue() 를 부르면 null 이 나와서(Vec3i 가 null 로 만들어지고 패킷 인코딩이 실패해 접속이 끊김) Math.round 와 Math.toIntExact 로 바꾼다.
+	set {_ci} to Math.toIntExact(Math.round({_color}))
+	set {_xi} to Math.toIntExact(Math.round({_x}))
+	set {_yi} to Math.toIntExact(Math.round({_y}))
+	set {_zi} to Math.toIntExact(Math.round({_z}))
+	# 값이 하나라도 비면 보내지 않는다(잘못된 패킷은 클라이언트 접속을 끊는다).
+	if {_ci} is not set:
+		stop
+	if {_xi} is not set:
+		stop
+	if {_yi} is not set:
+		stop
+	if {_zi} is not set:
+		stop
+	set {_ic}.color to Optional.of({_ci})
+	set {_pos} to new Vec3i({_xi}, {_yi}, {_zi})
+	if {_pos} is not set:
+		stop
 	set {_pk} to ClientboundTrackedWaypointPacket.addWaypointPosition({_u}, {_ic}, {_pos})
 	{_v}.getHandle().connection.send({_pk})
 
