@@ -498,6 +498,13 @@ function armoryHeld(p: player) :: boolean:
 function skillHand(p: player, t: itemtype) :: boolean:
 	if isStunned({_p}) is true:
 		return false
+	# 더미(마네킹: 투표 더미, NPC, 승리 팀 더미 등)를 클릭하면 스킬이 나가지 않는다. 4칸 안에서 바라보는 엔티티가 마네킹이면 막는다.
+	set {_te} to {_p}.getTargetEntity(4)
+	if {_te} is set:
+		set {_tt} to {_te}.getType()
+		set {_tn} to {_tt}.name()
+		if {_tn} is "MANNEQUIN":
+			return false
 	# 꿀벌 조종 중/직후에는 드론 아이템 말고 다른 스킬 아이템을 쓰지 못한다(bee.sk)
 	if beeUseLocked({_p}) is true:
 		return false
