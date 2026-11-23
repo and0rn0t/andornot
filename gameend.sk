@@ -33,6 +33,7 @@ import:
 	io.papermc.paper.event.player.PrePlayerAttackEntityEvent
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 	org.bukkit.Particle
+	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
 	org.bukkit.Particle$DustOptions
 
 # ===== 맵 연결 자리(멀티월드) =====
@@ -838,6 +839,26 @@ function gfEndCam2(stage: location, t2: number) :: location:
 	{_cam}.setPitch({_pp} * (1 - {_e}) - 5 * {_e})
 	return {_cam}
 
+# 종료 연출 카메라 해제: 모두의 관전 대상을 풀고 카메라 엔티티를 지운다. 연출이 끝날 때와 강제 종료(gfAbort)가 부른다.
+function gfCamRelease():
+	set {-gspecforce} to true
+	if {-gfcam} is set:
+		loop all players:
+			if gamemode of loop-player is spectator:
+				loop-player.setSpectatorTarget(null)
+		{-gfcam}.remove()
+	delete {-gfcam}
+	delete {-gfatt::*}
+	delete {-gspecforce}
+
+# 종료 연출 중 카메라(관전 대상)에서 내려오는 것(웅크리기 등)을 막는다.
+on PlayerStopSpectatingEntityEvent:
+	if {-gspecforce} is true:
+		stop
+	if {-gfcam} is not set:
+		stop
+	cancel event
+
 # ===== 종료 연출 =====
 # 승리 팀 키는 {-gwinner}. 킬 연출(killcine.sk)이 끝난 뒤, 또는 킬 연출 없는 승리에서 바로 불린다.
 function gameFinale():
@@ -872,9 +893,20 @@ function gameFinale():
 	if {_gw} is "":
 		set {_gw} to {-gplist::1}.getWorld().getName()
 	set {_stage} to gameStageLoc({_gw})
+	# 카메라: 시작 연출(startcine.sk)과 같은 방식. 글자 디스플레이 엔티티 카메라를 매 틱 옮기고, 관전 중인 모두가 그 카메라를 관전 대상(setSpectatorTarget)으로 본다.
+	# (플레이어를 매 틱 teleport 하면 game.sk 의 관전 이동 잠금/클라이언트 위치 보정과 부딪쳐 카메라가 제대로 안 움직인다.)
 	set {_c0} to gfPodCam({_stage}, 0)
 	loop all players:
-		tpSafe(loop-player, {_c0})
+		if gamemode of loop-player is spectator:
+			tpSafe(loop-player, {_c0})
+	set {_cw} to {_c0}.getWorld()
+	set {_ce} to {_cw}.spawnEntity({_c0}, EntityType.TEXT_DISPLAY)
+	{_ce}.setGravity(false)
+	{_ce}.setInvulnerable(true)
+	{_ce}.setSilent(true)
+	{_ce}.addScoreboardTag("gdummy")
+	set {-gfcam} to {_ce}
+	delete {-gfatt::*}
 	# 승리 팀 더미는 처음(0틱)부터 세운다. 테스트 연출(endtest.sk, {-gtest})는 승리자 목록을 미리 채워 두므로 그대로 쓴다.
 	if {-gtest} is not true:
 		delete {-gfwinp::*}
@@ -908,10 +940,32 @@ function gameFinale():
 			set {_cam} to gfPodCam({_stage}, {_t})
 		else:
 			set {_cam} to gfEndCam2({_stage}, {_t} - 200)
+		teleport {-gfcam} to {_cam}
+		# 카메라가 그 사람에게 전송된 뒤에 관전 대상을 건다(처음 한 번 + 6틱, 25틱에 강제로 다시, 평소엔 풀렸으면 다시)
+		set {_tr} to {-gfcam}.getTrackedBy()
 		loop all players:
-			teleport loop-player to {_cam}
+			set {_pl} to loop-player
+			if gamemode of {_pl} is spectator:
+				set {_has} to {_tr}.contains({_pl})
+				if {_has} is true:
+					set {_pid} to "%uuid of {_pl}%"
+					if {-gfatt::%{_pid}%} is not set:
+						set {-gfatt::%{_pid}%} to {_t}
+						gSpecForce({_pl}, {-gfcam})
+					else:
+						set {_age} to {_t} - {-gfatt::%{_pid}%}
+						if {_age} is 6:
+							gSpecForce({_pl}, {-gfcam})
+						else if {_age} is 25:
+							gSpecForce({_pl}, {-gfcam})
+						else:
+							set {_cur} to {_pl}.getSpectatorTarget()
+							if {_cur} is not {-gfcam}:
+								{_pl}.setSpectatorTarget({-gfcam})
 		wait 1 tick
 		add 1 to {_t}
+	# 카메라 해제(관전 대상 풀기 + 카메라 엔티티 삭제)
+	gfCamRelease()
 	# 2) 투표 시작(300틱 = 소리가 끝날 즈음): 관전을 풀고 구경 자리에 모은다(카메라가 이미 그 자리라 거의 안 움직임). 개인전({-gteams} 0)은 Player Of The Match 투표를 하지 않는다.
 	if {-gteams} is not 0:
 		set {-gvote} to true
@@ -997,6 +1051,7 @@ function gfPotmAnnounce():
 # 종료 연출을 중간에 끊는다(관리자 강제 종료용): 더미/채팅 고정/투표 상태를 지운다. gameCleanup() 보다 뒤에 부를 것.
 function gfAbort():
 	add 1 to {-gfgen}
+	gfCamRelease()
 	gfClearStage()
 	delete {-gvote}
 	delete {-gpotm::*}

@@ -63,7 +63,7 @@
 #   {-kcorig::uuid} {-groundwin}   라운드 종료 연출 중 원래 위치 / 라운드 승리 팀 키   killcine, game
 #   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
 #   {-gslot::uuid::아이템id}   게임 시작 직전 로비에서 정리해 둔 구성 아이템 칸(0~35). 게임 중 loadoutGive 가 이 칸에 먼저 넣음, gameCleanup 이 지움   game, items
-#   {-gfinale} {-gvote} {-gtest} {-gpotm::투표자uuid} {-gdummies::*} {-gpotmres} {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(투표, 더미, 결과 디스플레이)   gameend
+#   {-gfinale} {-gvote} {-gtest} {-gfcam}(종료 연출 카메라 엔티티) {-gfatt::uuid} {-gpotm::투표자uuid} {-gdummies::*} {-gpotmres} {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(투표, 더미, 결과 디스플레이)   gameend
 #   {-grand::uuid::1~5} {-grandon}   랜덤 아이템 모드로 게임 중 뽑은 구성/켜짐 표시(게임이 끝나면 지움, 저장된 구성 {loadout} 은 그대로)   items, game
 #   {gamecfg::map} 게임 맵 월드 이름, {gamecfg::maprandom} 매 게임 랜덤 모드(관리자 메뉴 맵 설정, 저장 변수)  admin, game
 #   {gamecfg::loc::lobby|stage_<월드>::world|x|y|z|yaw|pitch} 로비 위치/월드별 결과 무대 위치(저장 변수, 월드 이름+좌표라 월드가 안 올라와 있어도 안 사라짐)  gameend(gcSaveLoc/gcLoadLoc)
