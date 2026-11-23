@@ -253,8 +253,6 @@ function gfPotmPick():
 
 # 결과 표시용 참가자 id 목록(참가자 uuid 문자열)
 function gfIds() :: texts:
-	if {-gtest} is true:
-		return {-gtestids::*}
 	loop {-gplist::*}:
 		add "%uuid of loop-value%" to {_r::*}
 	return {_r::*}
@@ -998,19 +996,18 @@ function gameFinale():
 	# 이번 매치 번호(결과창 맨 윗줄에 표시). 저장은 gmRecord
 	set {-gmatchlbl} to matchLabel(mhCount() + 1)
 	# 내부 승점 갱신
-	if {-gtest} is not true:
-		ratingApply()
+	ratingApply()
 	# 강제 종료(gfAbort)가 {-gfgen} 을 올리면 대기 뒤에 이 연출은 멈춘다
 	add 1 to {-gfgen}
 	set {_gen} to {-gfgen}
 	set {_wl} to gTeamLabel({-gwinner})
-	# end 소리: 킬 연출(killcine.sk)이 끝날 때 이미 틀었고 앞 1.4초 무음을 킬 장면에서 기다린 뒤 여기로 왔다({-gfsnd}). 그 경우 소리는 이미 gfTitleTick 틱 흘렀다. 다른 경로(킬 연출 없는 승리, /endtest)는 여기서 튼다.
+	# end 소리: 킬 연출(killcine.sk)이 끝날 때 이미 틀었고 앞 1.4초 무음을 킬 장면에서 기다린 뒤 여기로 왔다({-gfsnd}). 그 경우 소리는 이미 gfTitleTick 틱 흘렀다. 다른 경로(킬 연출 없는 승리)는 여기서 튼다.
 	set {_pre0} to 0
 	if {-gfsnd} is true:
 		set {_pre0} to gfTitleTick()
 		delete {-gfsnd}
 	else:
-		# 킬 연출이 없는 승리(접속 종료로 끝남, /endtest): 킬 연출 대신 참가자를 제자리에 고정(위치 + 시점)한 채 end 소리와 "게임 종료" 타이틀을 틀고,
+		# 킬 연출이 없는 승리(접속 종료로 끝남): 킬 연출 대신 참가자를 제자리에 고정(위치 + 시점)한 채 end 소리와 "게임 종료" 타이틀을 틀고,
 		# 소리 앞 무음(gfTitleTick 틱) 동안 기다린 뒤 종료 연출 화면으로 넘어간다. 고정 방법은 킬 연출과 같다: 각자 눈 위치/시선 그대로의 카메라 엔티티를 관전한다.
 		loop {-gplist::*}:
 			set {_pl} to loop-value
@@ -1085,15 +1082,14 @@ function gameFinale():
 			{_pl}.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 1200, 0, false, false, false))
 			set gamemode of {_pl} to spectator
 			tpSafe({_pl}, {_c0})
-	# 승리 팀 더미 목록(더미는 암전 때 만든다). 테스트 연출(endtest.sk, {-gtest})는 승리자 목록을 미리 채워 두므로 그대로 쓴다.
-	if {-gtest} is not true:
-		delete {-gfwinp::*}
-		delete {-gfwinid::*}
-		loop {-gplist::*}:
-			if gTeamOf(loop-value) is {-gwinner}:
-				if loop-value is online:
-					add loop-value to {-gfwinp::*}
-					add "%uuid of loop-value%" to {-gfwinid::*}
+	# 승리 팀 더미 목록(더미는 암전 때 만든다).
+	delete {-gfwinp::*}
+	delete {-gfwinid::*}
+	loop {-gplist::*}:
+		if gTeamOf(loop-value) is {-gwinner}:
+			if loop-value is online:
+				add loop-value to {-gfwinp::*}
+				add "%uuid of loop-value%" to {-gfwinid::*}
 	# Player Of The Match 는 투표 없이 승리 기여도로 자동 선정(gfPotmPick). 더미/결과창을 만들기 전에 정해 둔다.
 	gfPotmPick()
 	# 승리 팀 더미와 결과 디스플레이는 처음부터 세워 둔다(카메라 1구도가 더미를 계속 바라본다). 10초 컷은 같은 더미를 정면에서 보여 주는 암전 전환이다.
@@ -1277,8 +1273,7 @@ function gameFinale():
 			loop all players:
 				if loop-player is op:
 					send "&b로비 월드(%{_lw}%)에 결과 무대가 저장되어 있지 않아 로비에는 더미를 놓지 못했습니다. 관리자 메뉴의 결과 무대 위치 설정을 로비에서 눌러 주세요." to loop-player
-	if {-gtest} is not true:
-		gmRecord()
+	gmRecord()
 	delete {-gpotmid}
 	delete {-gpotmres}
 	delete {-gmatchlbl}
@@ -1290,8 +1285,6 @@ function gameFinale():
 	loop {_pl::*}:
 		if loop-value is online:
 			gameLobby(loop-value)
-	if {-gtest} is true:
-		gtestEnd()
 	delete {-gfinale}
 	delete {-gwinner}
 	loop all players:
@@ -1308,8 +1301,6 @@ function gfAbort():
 	delete {-gfinale}
 	delete {-gwinner}
 	delete {-gfnw}
-	if {-gtest} is true:
-		gtestEnd()
 
 # 관리자 전용 게임 중단(진행 중인 게임, 종료 연출, 테스트 연출 모두). 플레이어와 콘솔 모두 쓸 수 있다.
 command /gamestop:
