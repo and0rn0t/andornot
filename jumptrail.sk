@@ -1,0 +1,99 @@
+# [jumptrail.sk] 시험용(op): 도약(jump.sk)할 때 발 밑에 "이어진 선" 트레일을 블록 디스플레이로 만들어 보는 테스트. 기존 파티클 이펙트는 그대로 두고 같이 나온다(비교용).
+# 사용: /jumptrail = 켜기(기본 흰 콘크리트), /jumptrail <블록 id> = 그 블록으로 켜기(예: light_blue_concrete, sea_lantern, glowstone), /jumptrail off = 끄기. 본인에게만 적용된다.
+# 방식: 도약이 시작되면 11틱 동안 틱마다 "지난 틱 발 위치 -> 지금 발 위치"를 잇는 가는(0.07칸) 직육면체 블록 디스플레이를 하나 세우고, 8틱 뒤에 지운다. 틱마다 선분을 이어 붙이므로 틈이 없다.
+# 변수(RAM): {-jtrail::uuid}(켜짐), {-jtblock}(블록 id), {-jtun::uuid}(트레일 끝 틱), {-jtlast::uuid}(지난 틱 위치), {-jttick}(틱 카운터), {-jtseg::n}/{-jtseg_t::n}(선분 엔티티/지울 틱), {-jtn}
+# 미검증: JOML(Quaternionf/Vector3f) 생성자에 Skript 숫자 넘기기, Transformation 순서(이동 -> 회전 -> 크기), 블록 디스플레이 밝기/모양, 지연 없이 틱마다 하나씩 세워도 되는 부하.
+# 테스트가 끝나면 이 파일을 지우거나 정식 이펙트로 jump.sk 에 옮긴다.
+
+import:
+	org.bukkit.Bukkit
+	org.bukkit.entity.EntityType
+	org.bukkit.entity.Display$Brightness as JtBright
+	org.bukkit.util.Transformation
+	org.joml.Quaternionf
+	org.joml.Vector3f
+
+# a -> b 를 잇는 선분 하나(블록 디스플레이)
+function jtSeg(a: location, b: location):
+	if {_a}.getWorld() is not {_b}.getWorld():
+		stop
+	set {_dv} to {_b}.toVector().subtract({_a}.toVector())
+	set {_len} to {_dv}.length()
+	if {_len} < 0.05:
+		stop
+	set {_w} to 0.07
+	set {_d} to new Vector3f({_dv}.getX(), {_dv}.getY(), {_dv}.getZ())
+	{_d}.normalize()
+	set {_q} to new Quaternionf()
+	{_q}.rotationTo(new Vector3f(0, 0, 1), {_d})
+	# 블록은 모서리가 기준점이라 단면의 중심이 선 위에 오도록 (w/2, w/2, 0) 만큼 밀어 준다(회전 반영)
+	set {_off} to new Vector3f({_w} / 2, {_w} / 2, 0)
+	{_q}.transform({_off})
+	{_off}.negate()
+	set {_tf} to new Transformation({_off}, {_q}, new Vector3f({_w}, {_w}, {_len}), new Quaternionf())
+	set {_e} to {_a}.getWorld().spawnEntity({_a}, EntityType.BLOCK_DISPLAY)
+	set {_bid} to {-jtblock}
+	if {_bid} is not set:
+		set {_bid} to "minecraft:white_concrete"
+	{_e}.setBlock(Bukkit.createBlockData({_bid}))
+	{_e}.setTransformation({_tf})
+	{_e}.setBrightness(new JtBright(15, 15))
+	{_e}.setPersistent(false)
+	{_e}.addScoreboardTag("jtrail")
+	add 1 to {-jtn}
+	set {-jtseg::%{-jtn}%} to {_e}
+	set {-jtseg_t::%{-jtn}%} to {-jttick} + 8
+
+every tick:
+	add 1 to {-jttick}
+	loop all players:
+		set {_p} to loop-player
+		set {_k} to "%uuid of {_p}%"
+		if {-jtrail::%{_k}%} is true:
+			if {-jump::%{_k}%} is set:
+				if {-jtun::%{_k}%} is not set:
+					set {-jtun::%{_k}%} to {-jttick} + 11
+			if {-jtun::%{_k}%} is set:
+				if {-jtun::%{_k}%} < {-jttick}:
+					delete {-jtun::%{_k}%}
+					delete {-jtlast::%{_k}%}
+				else:
+					set {_cur} to location of {_p}
+					set {_lst} to {-jtlast::%{_k}%}
+					if {_lst} is set:
+						jtSeg({_lst}, {_cur})
+					set {-jtlast::%{_k}%} to {_cur}.clone()
+	loop {-jtseg::*}:
+		set {_i} to loop-index
+		if {-jtseg_t::%{_i}%} <= {-jttick}:
+			set {_e} to loop-value-2
+			{_e}.remove()
+			delete {-jtseg::%{_i}%}
+			delete {-jtseg_t::%{_i}%}
+
+command /jumptrail [<text>]:
+	permission: op
+	trigger:
+		set {_k} to "%uuid of player%"
+		if arg-1 is "off":
+			delete {-jtrail::%{_k}%}
+			send "&7[jumptrail] 껐습니다." to player
+			stop
+		if arg-1 is set:
+			set {-jtblock} to "minecraft:%arg-1%"
+		else:
+			delete {-jtblock}
+		set {-jtrail::%{_k}%} to true
+		send "&a[jumptrail] 켰습니다. 도약(스페이스 두 번)해 보세요. 블록: %{-jtblock}%" to player
+
+on load:
+	delete {-jtrail::*}
+	delete {-jtun::*}
+	delete {-jtlast::*}
+	delete {-jtseg::*}
+	delete {-jtseg_t::*}
+	loop all entities:
+		set {_e} to loop-entity
+		set {_has} to {_e}.getScoreboardTags().contains("jtrail")
+		if {_has} is true:
+			{_e}.remove()
