@@ -535,11 +535,11 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 							set {_nm} to {_p}.getName()
 							set {_cj} to "{""text"":"""",""extra"":[{""object"":""player"",""player"":{""name"":""%{_nm}%""}},{""text"":"" ""},{""text"":""%{_nm}%"",""color"":""green""},{""text"":""님이 적을 발견했습니다.""}]}"
 							loop-value.sendMessage(GsonComponentSerializer.gson().deserialize({_cj}))
-		# 본인에게도 같은 메시지를 보낸다
-		if {-wping_c::%{_pid}%} is "red":
-			set {_nm} to {_p}.getName()
-			set {_cj} to "{""text"":"""",""extra"":[{""object"":""player"",""player"":{""name"":""%{_nm}%""}},{""text"":"" ""},{""text"":""%{_nm}%"",""color"":""green""},{""text"":""님이 적을 발견했습니다.""}]}"
-			{_p}.sendMessage(GsonComponentSerializer.gson().deserialize({_cj}))
+	# 본인에게도 같은 메시지를 보낸다
+	if {-wping_c::%{_pid}%} is "red":
+		set {_nm} to {_p}.getName()
+		set {_cj} to "{""text"":"""",""extra"":[{""object"":""player"",""player"":{""name"":""%{_nm}%""}},{""text"":"" ""},{""text"":""%{_nm}%"",""color"":""green""},{""text"":""님이 적을 발견했습니다.""}]}"
+		{_p}.sendMessage(GsonComponentSerializer.gson().deserialize({_cj}))
 	# 표식(pingmark.sk)과 locate bar 점, 발광을 같은 순간에 맞춘다(다음 2틱 갱신을 기다리지 않고 바로)
 	pmSync()
 	wpSyncViewers(false, true)
