@@ -16,6 +16,7 @@ import:
 	java.util.UUID
 	java.util.Optional
 	java.lang.Math
+	java.lang.reflect.Array as JArray
 	net.minecraft.ChatFormatting
 	net.minecraft.world.scores.PlayerTeam as WpPT
 	net.minecraft.world.scores.Scoreboard as WpSB
@@ -559,14 +560,18 @@ function wpAtkField(h: object) :: object:
 	set {_c} to {_h}.getClass()
 	set {_n} to 0
 	while {_c} is set:
-		set {_F::*} to {_c}.getDeclaredFields()
-		loop {_F::*}:
-			set {_fd} to loop-value
+		# 배열은 반복문에 못 넣으므로(단일 값 취급) java.lang.reflect.Array 로 번호로 꺼낸다
+		set {_arr} to {_c}.getDeclaredFields()
+		set {_len} to JArray.getLength({_arr})
+		set {_i} to 0
+		while {_i} < {_len}:
+			set {_fd} to JArray.get({_arr}, {_i})
 			set {_fn} to {_fd}.getName()
 			if {_fn} is "attackStrengthTicker":
 				{_fd}.setAccessible(true)
 				set {-wpatkf} to {_fd}
 				return {_fd}
+			add 1 to {_i}
 		set {_c} to {_c}.getSuperclass()
 		add 1 to {_n}
 		if {_n} > 12:
