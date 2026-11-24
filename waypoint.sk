@@ -494,7 +494,7 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 							set {_cand} to true
 						if {_kind} is "red":
 							set {_cand} to true
-							if {_cand} is true:
+						if {_cand} is true:
 							if {_kind} is not "red":
 								# 화면에 보이는 적만(벽 뒤는 제외): 시야각 안 + 눈/몸통에서 시선이 안 막힘
 								set {_vis} to false
