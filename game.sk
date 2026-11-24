@@ -654,22 +654,30 @@ function gStarSync(p: player):
 	set {_n} to {-gstar::%{_id}%}
 	if {_n} is not a number:
 		set {_n} to gStarBase()
+	# 별을 태울 대상: 꿀벌을 조종 중(bee.sk drive)이면 남아 있는 본체 더미(마네킹), 아니면 플레이어 본인
+	set {_tg} to {_p}
+	if {-beemode::%{_id}%} is "drive":
+		set {_bd} to {-beebody::%{_id}%}
+		if {_bd} is set:
+			set {_bok} to {_bd}.isValid()
+			if {_bok} is true:
+				set {_tg} to {_bd}
 	set {_d} to {-gstar_d::%{_id}%}
 	set {_new} to false
 	if {_d} is not set:
 		set {_new} to true
 	else if {_d} is dead:
 		set {_new} to true
-	else if vehicle of {_d} is not {_p}:
+	else if vehicle of {_d} is not {_tg}:
 		delete entity within {_d}
 		set {_new} to true
 	if {_new} is true:
-		spawn a text display at location of {_p}:
+		spawn a text display at location of {_tg}:
 			set {_d} to event-entity
 			add "gstar" to scoreboard tags of event-entity
 			set billboard of event-entity to center
 			set transformation translation of event-entity to vector(0, 1.2, 0)
-			add event-entity to passengers of {_p}
+			add event-entity to passengers of {_tg}
 		set {-gstar_d::%{_id}%} to {_d}
 	set text of {_d} to gStarText({_n})
 
