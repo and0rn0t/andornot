@@ -59,6 +59,12 @@ function tntBlast(owner: text, ownerp: player, loc: location):
 				set {_hit} to false
 			if isAlly({_owner}, {_vid}) is true:
 				set {_hit} to false
+			# 첨벙첨벙(splash.sk) 중인 플레이어는 폭발 피해/기절을 흡수한다
+			if {_e} is a player:
+				if splashActive({_e}) is true:
+					if {_hit} is true:
+						splashBlock({_e}, {_e}.getLocation())
+					set {_hit} to false
 			if {_hit} is true:
 				if {_hasp} is true:
 					damage {_e} by hp(2) hearts using {_src}

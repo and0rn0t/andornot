@@ -16,7 +16,7 @@
 #   - 구성 1~4번 아이템은 실제 인벤토리에도 지급된다(loadoutGive). 입장, 리스폰, 구성 변경 때만 확인해서 없는 아이템을 채우고, 핫바 어느 칸에 두든 자유다.
 #     처음 넣는 칸은 loadoutSlot() 의 선호 칸이 비었으면 거기, 아니면 빈 칸. 게임 중이 아닐 때는 구성 아이템을 버릴 수 없다(잃어버려도 다시 확인하지 않아서).
 #   - 구성 1~4번 아이템은 탭리스트의 플레이어 이름 옆에 아이콘으로 표시된다(킬로그와 같은 방식).
-#   - 정렬 기준: GUI 와 탭 아이콘은 분류 순서(금속 -> 나무 -> cc기 -> 포션류, itemCategory)로 정렬된다. 새 아이템이 이 분류에 안 맞으면 사용자에게 정렬 기준을 물어볼 것.
+#   - 정렬 기준: GUI 와 탭 아이콘은 분류 순서(금속 -> 나무 -> cc기 -> 포션류 -> 양동이류, itemCategory)로 정렬된다. 새 아이템이 이 분류에 안 맞으면 사용자에게 정렬 기준을 물어볼 것.
 #   - /itemorder (op 전용): 같은 분류 안에서 GUI 에 나오는 순서를 바꾸는 편집 GUI(분류가 다른 아이템끼리는 못 바꿈). 아이템을 클릭 -> 바꿀 다른 아이템 클릭 하면 두 아이템의 자리가 서로 바뀌고 저장된다.
 #
 # ===== 직접 고치는 곳 =====
@@ -44,7 +44,7 @@ import:
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
 function itemIds() :: texts:
-	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident" and "bee"
+	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident", "bee" and "splash"
 
 # 아이템 이름
 function itemName(id: text) :: text:
@@ -70,6 +70,8 @@ function itemName(id: text) :: text:
 		return "&f네더의 별"
 	if {_id} is "ominous_bottle":
 		return "&5불길한 병"
+	if {_id} is "splash":
+		return "&b첨벙첨벙"
 	if {_id} is "potion_heal":
 		return "&c체력 포션"
 	if {_id} is "potion_stamina":
@@ -124,6 +126,8 @@ function itemBase(id: text) :: itemtype:
 		return nether star
 	if {_id} is "ominous_bottle":
 		return ominous bottle
+	if {_id} is "splash":
+		return water bucket
 	if {_id} is "potion_heal":
 		return potion of healing
 	if {_id} is "potion_stamina":
@@ -174,6 +178,8 @@ function itemLoreLines(id: text) :: texts:
 		return "6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다."
 	if {_id} is "ominous_bottle":
 		return "7초간 가하는 피해의 30%%를 흡혈하고, 스태미너가 초당 20 회복됩니다.", "지속 시간이 끝나면 탈진해 스태미너를 전부 소진하고, 5초간 자연 회복되지 않습니다."
+	if {_id} is "splash":
+		return "3초간 날아오는 모든 투사체를 흡수합니다."
 	if {_id} is "potion_heal":
 		return "체력 5를 회복합니다."
 	if {_id} is "potion_stamina":
@@ -254,6 +260,8 @@ function itemCooldownText(id: text) :: text:
 		return "45"
 	if {_id} is "ominous_bottle":
 		return "30"
+	if {_id} is "splash":
+		return "15"
 	if {_id} is "potion_heal":
 		return "12"
 	if {_id} is "potion_stamina":
@@ -386,7 +394,7 @@ function itemIdAt(p: player, s: number) :: text:
 			return loop-value
 	return ""
 
-# 아이템 분류 번호. GUI 와 탭리스트 정렬 기준이다: 1 금속 무기/도구 -> 2 나무 무기/도구 -> 3 cc기 -> 4 포션류(버프 아이템 포함) -> 0 미분류(맨 뒤).
+# 아이템 분류 번호. GUI 와 탭리스트 정렬 기준이다: 1 금속 무기/도구 -> 2 나무 무기/도구 -> 3 cc기 -> 4 포션류(버프 아이템 포함) -> 5 양동이류(첨벙첨벙, 우유) -> 0 미분류(맨 뒤).
 # 새 아이템이 이 분류에 해당하지 않으면 임의로 정하지 말고 사용자에게 정렬 기준을 먼저 물어볼 것.
 function itemCategory(id: text) :: number:
 	if {_id} is "iron_axe":
@@ -423,6 +431,8 @@ function itemCategory(id: text) :: number:
 		return 4
 	if {_id} is "ominous_bottle":
 		return 4
+	if {_id} is "splash":
+		return 5
 	if {_id} is "potion_heal":
 		return 4
 	if {_id} is "potion_stamina":
@@ -453,11 +463,12 @@ function itemOrder() :: texts:
 	loop {_ids::*}:
 		if {_o::*} does not contain loop-value:
 			add loop-value to {_o::*}
-	# 분류 순서(1 금속, 2 나무(활/쇠뇌류 포함), 3 cc기, 4 포션류, 0 미분류)로 안정 정렬한다. 같은 분류 안에서는 저장된 순서를 유지.
+	# 분류 순서(1 금속, 2 나무(활/쇠뇌류 포함), 3 cc기, 4 포션류, 5 양동이류, 0 미분류)로 안정 정렬한다. 같은 분류 안에서는 저장된 순서를 유지.
 	set {_r::*} to itemCatPick({_o::*}, 1)
 	add itemCatPick({_o::*}, 2) to {_r::*}
 	add itemCatPick({_o::*}, 3) to {_r::*}
 	add itemCatPick({_o::*}, 4) to {_r::*}
+	add itemCatPick({_o::*}, 5) to {_r::*}
 	add itemCatPick({_o::*}, 0) to {_r::*}
 	delete {itemorder::*}
 	set {itemorder::*} to {_r::*}
@@ -496,6 +507,8 @@ function itemSprite(id: text) :: text:
 		return "nether_star"
 	if {_id} is "ominous_bottle":
 		return "ominous_bottle"
+	if {_id} is "splash":
+		return "water_bucket"
 	if {_id} is "potion_heal":
 		return "mck:potion_heal"
 	if {_id} is "potion_stamina":

@@ -115,6 +115,13 @@ function arrowAssistCheck(ar: entity, a: location, b: location):
 		set {_bd} to distance between {_a} and {_bp}
 		if {_bd} < {_best}:
 			stop
+	# 첨벙첨벙(splash.sk) 중인 플레이어가 맞은 것이면 화살을 흡수한다(피해 없음)
+	if {_hit} is a player:
+		if splashActive({_hit}) is true:
+			splashBlock({_hit}, {_hit}.getLocation())
+			delete {-bowextra::%uuid of {_ar}%}
+			{_ar}.remove()
+			stop
 	# 피해 = 화살 기본 3 + 활 충전 추가분(crossbow.sk 의 on damage 와 같은 식: hp(3) + 추가분은 스크립트 단위, x2 가 실 체력)
 	set {_xe} to {-bowextra::%uuid of {_ar}%}
 	set {_dm} to hp(3)

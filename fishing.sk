@@ -99,6 +99,14 @@ on fishing line cast:
 							set {_assisted} to true
 							exit loop
 				set {_t} to {_h}.getHookedEntity()
+		# 첨벙첨벙(splash.sk) 중인 플레이어에게 걸리려 하면 흡수한다(못 맞힌 것으로 처리: 찌 제거 + 쿨타임)
+		if {_t} is a player:
+			if {-hooked::%{_id}%} is not set:
+				if splashActive({_t}) is true:
+					splashBlock({_t}, {_h}.getLocation())
+					{_h}.setHookedEntity(null)
+					hookMiss({_p}, {_h})
+					delete {_t}
 		if {_t} is set:
 			if {-hooked::%{_id}%} is not set:
 				# 엔티티에 처음 걸린 순간: 5초 걸림 시작
@@ -172,6 +180,11 @@ on fishing line cast:
 # 찌를 당겨서 걸린 대상을 끌어올 때 피해. 모든 엔티티 대상. 이미 줬다는 표시를 남겨 찌가 사라질 때 중복 피해를 막는다.
 # (낚싯대를 손에서 치워 찌가 사라지는 경우는 위 loop 끝에서 피해. 대상이 먼저 사라지는 경우는 피해 없음)
 on entity hooked:
+	# 첨벙첨벙(splash.sk) 중인 플레이어는 걸리지 않는다(위 루프가 찌를 제거)
+	if hooked entity is a player:
+		if splashActive(hooked entity) is true:
+			cancel event
+			stop
 	hookDamage(player, hooked entity)
 	set {-hookdmg::%player's uuid%} to true
 

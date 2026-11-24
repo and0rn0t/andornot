@@ -74,6 +74,7 @@ function cdScan(p: player):
 	cdItem({_p}, {_fs}, "부싯돌과 부시")
 	cdItem({_p}, nether star, "네더의 별")
 	cdItem({_p}, ominous bottle, "불길한 병")
+	cdItem({_p}, water bucket, "첨벙첨벙")
 	cdItem({_p}, netherite sword, "검")
 	cdItem({_p}, tnt, "TNT")
 	cdItem({_p}, totem of undying, "불사의 토템")
