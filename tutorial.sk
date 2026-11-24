@@ -444,6 +444,7 @@ function helpWindowTitle() :: text:
 function helpWelcomeLines() :: texts:
 	add "MCK에 오신 것을 환영합니다!" to {_r::*}
 	add "MCK는 팀 기반 PVP 미니게임 서버입니다." to {_r::*}
+	add "항목을 클릭하면 해당 파트에 대한 설명을 볼 수 있습니다." to {_r::*}
 	return {_r::*}
 
 function helpTopicTitle(i: number) :: text:
