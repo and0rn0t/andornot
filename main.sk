@@ -349,7 +349,7 @@ on damage:
 			remove 1 from {-oc::%victim's uuid%}
 		loop 10 times:
 			if {-oc::%victim's uuid%} = 0:
-				heal victim by 1
+				heal victim by 1.5
 				wait 0.75 seconds
 
 on heal:
