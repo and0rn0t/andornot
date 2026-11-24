@@ -255,9 +255,9 @@ function itemCooldownText(id: text) :: text:
 	if {_id} is "ominous_bottle":
 		return "30"
 	if {_id} is "potion_heal":
-		return "10"
+		return "12"
 	if {_id} is "potion_stamina":
-		return "10"
+		return "12"
 	if {_id} is "totem":
 		return "60"
 	if {_id} is "bow":
