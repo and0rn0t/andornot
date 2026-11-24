@@ -497,11 +497,11 @@ function itemSprite(id: text) :: text:
 	if {_id} is "ominous_bottle":
 		return "ominous_bottle"
 	if {_id} is "potion_heal":
-		return "potion"
+		return "mck:potion_heal"
 	if {_id} is "potion_stamina":
-		return "potion"
+		return "mck:potion_stamina"
 	if {_id} is "potion_invis":
-		return "potion"
+		return "mck:potion_invis"
 	if {_id} is "totem":
 		return "totem_of_undying"
 	if {_id} is "anvil":
@@ -576,12 +576,7 @@ function loadoutInit(p: player):
 # 탭 아이콘 색(텍스트 색으로 스프라이트를 물들임, 미검증: 색이 안 입혀지면 itemSprite 에서 포션마다 다른 아이템 스프라이트를 쓰는 방법으로 바꿀 것).
 # 색을 안 입힐 아이템은 "" 를 돌려준다. 색은 #RRGGBB.
 function itemTint(id: text) :: text:
-	if {_id} is "potion_heal":
-		return "#ff5555"
-	if {_id} is "potion_stamina":
-		return "#55ff55"
-	if {_id} is "potion_invis":
-		return "#55ffff"
+	# 포션 3종은 리소스팩의 전용 스프라이트(mck:potion_heal/stamina/invis, 액체 색이 이미 칠해져 있음)라 색조를 안 쓴다
 	return ""
 
 # 탭 아이콘 컴포넌트 JSON 한 조각(킬로그 killIcon 에 색만 덧붙임)
