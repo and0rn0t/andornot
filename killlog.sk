@@ -54,7 +54,7 @@ function killCauseSprite(v: player, a: entity, c: text, dt: text) :: text:
 		return "lava_bucket"
 	if {_c} is "VOID":
 		return "ender_pearl"
-	# 폭발: 블레이즈 막대기 화염구 킬이면 화염구(fire_charge), TNT 스킬 킬(피해 종류 player_explosion)이면 TNT 블럭 아이콘(tnt_side, 미검증), 그 외 gunpowder
+	# 폭발: 블레이즈 지팡이 화염구 킬이면 화염구(fire_charge), TNT 스킬 킬(피해 종류 player_explosion)이면 TNT 블럭 아이콘(tnt_side, 미검증), 그 외 gunpowder
 	if {_c} is "ENTITY_EXPLOSION":
 		if {-fbhit::%uuid of {_v}%} is set:
 			return "fire_charge"

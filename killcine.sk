@@ -93,7 +93,7 @@ function kcClearState(v: player):
 	set item cooldown of netherite sword for {_v} to 0 seconds
 	# 활(bow.sk): 당기던 충전 기록 정리(충전 보스바 루프는 기록이 지워지면 스스로 끝난다)
 	delete {-bowstart::%{_id}%}
-	# 곡괭이 중첩(main.sk), 블레이즈 막대기 사용 횟수(blazerod.sk), 낚싯대에 걸린 상태(fishing.sk)
+	# 곡괭이 중첩(main.sk), 블레이즈 지팡이 사용 횟수(blazerod.sk), 낚싯대에 걸린 상태(fishing.sk)
 	delete {-pickstack::%{_id}%}
 	delete {-pickexp::%{_id}%}
 	delete {-brcount::%{_id}%}

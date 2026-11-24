@@ -233,7 +233,7 @@ on damage:
 				if {_cz} is "FIRE_TICK" or "FIRE":
 					cancel event
 					stop
-	# 블레이즈 막대기(blazerod.sk) 화염구가 직접 맞은 바닐라 피해는 취소한다(피해는 폭발 처리에서 한 번만 줌)
+	# 블레이즈 지팡이(blazerod.sk) 화염구가 직접 맞은 바닐라 피해는 취소한다(피해는 폭발 처리에서 한 번만 줌)
 	if projectile is set:
 		if {-fb::%uuid of projectile%} is set:
 			cancel event

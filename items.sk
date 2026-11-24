@@ -83,7 +83,7 @@ function itemName(id: text) :: text:
 	if {_id} is "bow":
 		return "&f활"
 	if {_id} is "blaze_rod":
-		return "&6블레이즈 막대기"
+		return "&6블레이즈 지팡이"
 	if {_id} is "wind_charge":
 		return "&b연막탄"
 	if {_id} is "flint_steel":
@@ -435,7 +435,7 @@ function itemCategory(id: text) :: number:
 		return 4
 	return 0
 
-# blaze_rod(블레이즈 막대기)는 사용자 지정으로 활/쇠뇌류와 같은 분류(2)다.
+# blaze_rod(블레이즈 지팡이)는 사용자 지정으로 활/쇠뇌류와 같은 분류(2)다.
 # ids 중 분류가 c 인 것만 순서 그대로 돌려준다.
 function itemCatPick(ids: texts, c: number) :: texts:
 	loop {_ids::*}:
