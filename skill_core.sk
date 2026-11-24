@@ -140,7 +140,7 @@
 #   - gamesetup.sk  : 게임 사전 설정 GUI(팀 수/게임모드/랜덤 아이템, 변경 시 전체 알림). 게임 시스템은 gcTeams()/gcMode()/gcRandom() 로 읽는다
 #   - admin.sk      : /admin 관리자 메뉴(6줄 GUI, op 전용). 앞으로 관리자 전용 기능은 이 메뉴에 버튼으로 추가한다(추가법은 admin.sk 맨 위)
 #   - world.sk      : 월드 관리 명령(/world list|create|rename|forget|tp|info, 관리자 전용). 게임 로직과 무관
-#   - tutorial.sk   : 첫 접속자 튜토리얼(리소스 팩 대기 -> 튜토리얼 월드 로딩 -> 시작 카메라 -> 스폰 -> 단계: 도약/핑/무기고/포션), 도움말 GUI(/도움말, 무기고 칸 8), /튜토리얼. 훅: tutHook(p, "leap"|"ping"|"loadout"|"potion"). 새 조작을 튜토리얼에 넣으려면 tutKey/tutTitle/tutLines/tutStepCount 를 고치고 해당 기능에서 tutHook 를 부른다.
+#   - tutorial.sk   : 첫 접속자 튜토리얼(리소스 팩 대기 -> 튜토리얼 월드 로딩 -> 시작 카메라 -> 스폰 -> 단계: 도약/핑/무기고/포션), 도움말 다이얼로그(/도움말, 무기고 칸 8, 항목: 튜토리얼 4단계 + 모드/티어/자동 회복), /튜토리얼. 훅: tutHook(p, "leap"|"ping"|"loadout"|"potion"). 새 조작을 튜토리얼에 넣으려면 tutKey/tutTitle/tutLines/tutStepCount 를 고치고 해당 기능에서 tutHook 를 부른다.
 #   - lobby.sk      : 로비 근처 PvP 금지(반경 lobbyPvpRadius()=50), 훈련장 위치({gamecfg::loc::training}), 훈련장 이동 NPC(관리자 메뉴 버튼으로 설치)
 #   - killcine.sk   : 킬 연출(치명타 취소 -> 킬 처리 -> 고정 방향 스켈레톤+정면 가까운 관전 카메라 -> 폭발 -> 5초 뒤 리스폰, 녹아웃 라운드를 끝내는 킬은 전원 관람 + 승리자 더미 클로즈업 + 타이틀). 새 스킬에 on death 정리를 만들면 kcClearState 에도 추가
 #   - killlog.sk    : 킬로그(killLogShow 함수를 killcine 도 호출)

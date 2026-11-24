@@ -840,7 +840,7 @@ function armoryFill(p: player, inv: inventory):
 	# 즉시 사용 토글(칸 17, 아랫줄 맨 오른쪽): 우클릭 <-> 칸 바꾸면 즉시 사용(quickuse.sk)
 	set slot 17 of {_inv} to quickUseItem({_p})
 	set {-itemguimap::%{_uid}%::17} to "__quick"
-	# 도움말(칸 8, 윗줄 맨 오른쪽): 기초 조작/튜토리얼 내용(tutorial.sk 의 helpOpen)
+	# 도움말(칸 8, 윗줄 맨 오른쪽): 기초 조작/튜토리얼 내용(tutorial.sk 의 helpDialog)
 	set slot 8 of {_inv} to helpItem()
 	set {-itemguimap::%{_uid}%::8} to "__help"
 
@@ -1038,7 +1038,8 @@ on inventory click:
 			itemGuiOpen({_p}, "armory")
 			stop
 		if {_idt} is "__help":
-			helpOpen({_p})
+			close {_p}'s inventory
+			helpDialog({_p}, 0)
 			stop
 		if {_idt} is "__quick":
 			quickUseToggle({_p})
