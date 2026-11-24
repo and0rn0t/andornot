@@ -467,11 +467,15 @@ function helpTopicLines(i: number) :: texts:
 				add {_l::%{_k}%} to {_r::*}
 		return {_r::*}
 	if {_i} is 5:
-		add "■ 바운티  (목표 %gcTarget("bounty")%점)" to {_r::*}
+		# 목표 점수는 관리자 설정값(gamesetup.sk 의 gcTarget)을 그대로 보여 준다
+		set {_tb} to gcTarget("bounty")
+		set {_ta} to gcTarget("annihilation")
+		set {_tc} to gcTarget("crown")
+		add "■ 바운티  (목표 %{_tb}%점)" to {_r::*}
 		add "머리 위에 별이 생겨요(기본 2개). 처치하면 상대의 별만큼 스코어가 오르고 내 별(현상금)이 하나 늘어요. 먼저 목표 스코어를 채운 팀/플레이어가 승리해요." to {_r::*}
-		add "■ 녹아웃  (목표 %gcTarget("annihilation")%점)" to {_r::*}
+		add "■ 녹아웃  (목표 %{_ta}%점)" to {_r::*}
 		add "모두 목숨이 1개예요. 마지막까지 살아남은 팀이 승점 1점을 얻고 전투가 다시 시작돼요. 먼저 목표 승점을 쌓은 팀/플레이어가 승리해요." to {_r::*}
-		add "■ 크라운  (목표 %gcTarget("crown")%점)" to {_r::*}
+		add "■ 크라운  (목표 %{_tc}%점)" to {_r::*}
 		add "게임이 시작되고 10초 뒤 무작위 플레이어에게 왕관이 씌워져요. 왕관 소지자는 모두에게 위치가 보이고 1초마다 크라운 스코어가 1점씩 올라요. 소지자를 처치하면 왕관을 빼앗고, 먼저 목표 스코어를 채운 팀/플레이어가 승리해요." to {_r::*}
 		return {_r::*}
 	if {_i} is 6:
