@@ -39,7 +39,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "vote", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "setlineup", "setvotedummy", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "settutorial", "settutorialcam", "tuttext", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
+	return "gamesetup", "map", "vote", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "setlineup", "setvotedummy", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "settutorial", "settutorialcam", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -110,10 +110,6 @@ function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "settutorialcam":
 		set {_i} to spyglass named "&f튜토리얼 카메라 지정"
 		set lore of {_i} to "&7지금 서 있는 자리와 바라보는 방향을", "&7튜토리얼 시작 연출의 카메라로 저장해요", "&7(없으면 카메라 연출 없이 바로 스폰으로 가요)"
-		return {_i}
-	if {_id} is "tuttext":
-		set {_i} to writable book named "&f튜토리얼 문구"
-		set lore of {_i} to "&7튜토리얼/도움말의 단계별 제목과 설명을", "&7채팅 명령(/튜토리얼문구)으로 직접 바꿔요", "&e▶ 클릭하면 현재 문구와 사용법을 보여 줘요"
 		return {_i}
 	if {_id} is "clearstage":
 		set {_i} to barrier named "&c결과 무대 치우기"
@@ -261,9 +257,6 @@ function adminAction(p: player, id: text):
 		gcSaveLoc("tutorial", location of {_p})
 		set {_tw} to {_p}.getWorld().getName()
 		send "&a튜토리얼 스폰을 '%{_tw}%' 월드의 지금 자리로 저장했습니다. 처음 접속한 플레이어는 여기서 튜토리얼을 하고, 이 월드는 맵 추첨/선택에서 제외됩니다." to {_p}
-	else if {_id} is "tuttext":
-		close {_p}'s inventory
-		tutTextShow({_p})
 	else if {_id} is "settutorialcam":
 		close {_p}'s inventory
 		if adminLockOn() is true:
