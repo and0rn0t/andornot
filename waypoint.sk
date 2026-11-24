@@ -647,6 +647,51 @@ command /pingtest [<text>]:
 		set {_sz} to round({-wping_z::%{_pid}%})
 		send "&a[pingtest] %{_k}% 핑을 찍었습니다(좌표 %{_sx}% %{_sy}% %{_sz}%)." to player
 
+# 시험(op, 혼자서 확인용): /glowtest <green|red|orange> = 가장 가까운(30칸 안) 더미/다른 플레이어를 10초 동안 본인에게만 그 색으로 발광시킨다. 게임 밖에서도 된다. 미검증.
+command /glowtest [<text>]:
+	permission: op
+	trigger:
+		set {_col} to arg-1
+		if {_col} is not set:
+			set {_col} to "green"
+		if {_col} is not "green":
+			if {_col} is not "red":
+				if {_col} is not "orange":
+					send "&c[glowtest] /glowtest <green|red|orange>" to player
+					stop
+		set {_best} to 31
+		loop all entities:
+			set {_e} to loop-entity
+			set {_ok} to false
+			if {_e} is a player:
+				if {_e} is not player:
+					set {_ok} to true
+			else if {_e}.getType().name() is "MANNEQUIN":
+				set {_ok} to true
+			if {_ok} is true:
+				if world of {_e} is world of player:
+					set {_d} to distance between {_e} and player
+					if {_d} < {_best}:
+						set {_best} to {_d}
+						set {_te} to {_e}
+		if {_te} is not set:
+			send "&c[glowtest] 30칸 안에 더미/다른 플레이어가 없습니다." to player
+			stop
+		set {_pl} to player
+		set {_tid} to "%uuid of {_te}%"
+		send "&a[glowtest] %{_col}% 발광을 10초 동안 본인에게만 보여 줍니다." to {_pl}
+		set {_n} to 0
+		while {_n} < 33:
+			if {_pl} is not online:
+				stop
+			if {_te}.isValid() is not true:
+				stop
+			wpColorApply({_pl}, {_te}, {_tid}, {_col}, true)
+			wait 3 ticks
+			add 1 to {_n}
+		wpColorClear({_pl}, {_tid})
+		send "&a[glowtest] 끝." to {_pl}
+
 # 핑 상태 갱신: 만료/무효 핑 삭제, 빨간 핑은 대상 위치를 따라간다
 function wpPingUpdate():
 	loop {-wping_c::*}:
