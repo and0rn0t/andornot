@@ -235,7 +235,7 @@ function tutBegin(p: player, first: boolean):
 				if {_t} >= tutPackGrace():
 					set {_go} to true
 			if {_go} is false:
-				send action bar colored "&e리소스 팩을 불러오는 중이에요..." to {_p}
+				send action bar colored "&e리소스 팩을 불러오는 중..." to {_p}
 				wait 5 ticks
 				add 5 to {_t}
 	set {_sp} to gcLoadLoc("tutorial")
@@ -298,7 +298,7 @@ function tutBegin(p: player, first: boolean):
 			wait 2 ticks
 		gSpecForce({_p}, {_he})
 		{_p}.clearActivePotionEffects()
-		send title "&e튜토리얼" with subtitle "&7기초 조작을 익혀 봐요" to {_p} for 3 seconds with fadein 10 ticks and fade out 10 ticks
+		send title "&e튜토리얼" with subtitle "&7기초 조작을 익혀요" to {_p} for 3 seconds with fadein 10 ticks and fade out 10 ticks
 		set {_t} to 0
 		while {_t} < tutCamTicks():
 			if tutAlive({_p}, {_g}) is not true:
@@ -402,12 +402,12 @@ command /튜토리얼 [<text>]:
 	trigger:
 		if arg-1 is "skip":
 			if tutActive(player) is not true:
-				send "&7진행 중인 튜토리얼이 없어요."
+				send "&7진행 중인 튜토리얼이 없습니다."
 				stop
 			tutEnd(player, true)
 			stop
 		if tutActive(player) is true:
-			send "&7이미 튜토리얼 중이에요. 건너뛰려면 /튜토리얼 skip"
+			send "&7이미 튜토리얼 중입니다. 건너뛰려면 /튜토리얼 skip"
 			stop
 		set {_first} to false
 		tutBegin(player, {_first})
@@ -415,7 +415,7 @@ command /튜토리얼 [<text>]:
 # ===== 도움말 GUI =====
 function helpItem() :: itemtype:
 	set {_i} to book named "&e도움말"
-	set lore of {_i} to "&7기초 조작과 튜토리얼 내용을 봐요", "", "&e▶ 클릭해서 열기"
+	set lore of {_i} to "&7기초 조작과 튜토리얼 내용을 봅니다.", "", "&e▶ 클릭해서 열기"
 	return {_i}
 
 function helpOpen(p: player):
@@ -433,7 +433,7 @@ function helpOpen(p: player):
 		set lore of {_b} to tutLore({_n})
 		set slot ({_n} + 9) of {_inv} to {_b}
 	set {_r} to emerald named "&a튜토리얼 다시 하기"
-	set lore of {_r} to "&7튜토리얼 월드에서 기초 조작을", "&7처음부터 다시 연습해요", "", "&e▶ 클릭해서 시작"
+	set lore of {_r} to "&7튜토리얼 월드에서 기초 조작을", "&7처음부터 다시 연습합니다.", "", "&e▶ 클릭해서 시작"
 	set slot 16 of {_inv} to {_r}
 	set {-helpmap::%{_uid}%::16} to "replay"
 
@@ -467,7 +467,7 @@ on inventory close:
 	delete {-helpmap::%player's uuid%::*}
 
 command /도움말:
-	description: 기초 조작 도움말을 열어요
+	description: 기초 조작 도움말을 엽니다.
 	executable by: players
 	trigger:
 		helpOpen(player)
