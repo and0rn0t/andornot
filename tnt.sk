@@ -68,7 +68,7 @@ function tntBlast(owner: text, ownerp: player, loc: location):
 					add {_e} to {_stunl::*}
 	delete {-skilldmg::%{_owner}%}
 	loop {_stunl::*}:
-		stun(loop-value, "tnt_%{_owner}%", 2 seconds)
+		stun(loop-value, "tnt_%{_owner}%", 3 seconds)
 
 on rightclick:
 	if skillHand(player, tnt) is false:

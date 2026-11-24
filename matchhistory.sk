@@ -13,6 +13,12 @@
 import:
 	org.bukkit.Bukkit
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	com.google.gson.JsonParser
+	com.mojang.serialization.JsonOps
+	net.minecraft.server.dialog.Dialog as NmsDialog
+	net.minecraft.core.Holder
+	net.minecraft.resources.RegistryOps
+	net.minecraft.network.protocol.common.ClientboundShowDialogPacket
 
 # MATCH 012 형태 이름(100 미만은 3자리 0 채움)
 function matchLabel(n: number) :: text:
@@ -93,9 +99,15 @@ function gmDialog(p: player, n: number):
 	set {_d} to "%{_d}%""body"":[{""type"":""minecraft:plain_message"",""contents"":%{_body}%,""width"":420}],"
 	set {_d} to "%{_d}%""yes"":{""label"":{""text"":""리뷰 작성 (채팅으로 입력)"",""color"":""green""},""action"":{""type"":""minecraft:run_command"",""command"":""%{_cmd}%""}},"
 	set {_d} to "%{_d}%""no"":{""label"":{""text"":""닫기""}}}"
-	set {_pn} to {_p}.getName()
-	# 콘솔 명령으로 바로 부르면 콘솔에 로그가 남을 수 있어, 플레이어를 실행 주체로 한 execute as 로 부른다(미검증: 그래도 메시지가 뜨면 로그를 확인할 것).
-	execute console command "execute as %{_pn}% run dialog show @s %{_d}%"
+	# 명령(/dialog show)으로 띄우면 콘솔에 "Displayed dialog to ..." 로그가 남아서, 같은 JSON 을 파싱해 패킷으로 직접 보낸다. 미검증:
+	# Dialog.DIRECT_CODEC / RegistryOps.create / ClientboundShowDialogPacket 시그니처. 안 되면 이 커밋을 되돌리면 된다(예전: execute console command "execute as 이름 run dialog show @s JSON").
+	set {_je} to JsonParser.parseString({_d})
+	set {_srv} to Bukkit.getServer().getServer()
+	set {_ops} to RegistryOps.create(JsonOps.INSTANCE, {_srv}.registryAccess())
+	set {_res} to NmsDialog.DIRECT_CODEC.parse({_ops}, {_je})
+	set {_dlg} to {_res}.getOrThrow()
+	set {_pk} to new ClientboundShowDialogPacket(Holder.direct({_dlg}))
+	{_p}.getHandle().connection.send({_pk})
 
 # 한글을 못 넣는 dialog 입력칸 대신 채팅으로 리뷰를 받는다: 이 명령(글 없이)을 부르면 다음 채팅 한 줄이 리뷰가 된다. 글을 같이 주면 바로 등록.
 # 일반 플레이어가 결과 창 버튼으로 실행하므로 권한 제한을 두지 않는다.

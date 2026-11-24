@@ -146,15 +146,12 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 							if {_dc::%{_hid}%} is not set:
 								set {_dc::%{_hid}%} to "orange"
 								set {_de::%{_hid}%} to {_h}
-		# 핑: 찍은 사람과 같은 팀(시험 핑은 본인)에게만 보인다. 파랑 0x3498DB, 빨강 0xFF3333
+		# 핑: 찍은 사람과 같은 팀에게만 보인다. 파랑 0x3498DB, 빨강 0xFF3333
 		loop {-wping_c::*}:
 			set {_pp} to loop-index
 			set {_pt} to loop-value-2
 			set {_show} to false
-			if {-wping_test::%{_pp}%} is set:
-				if {_pp} is {_vid}:
-					set {_show} to true
-			else if wpActive({_v}) is true:
+			if wpActive({_v}) is true:
 				if {_pp} is {_vid}:
 					set {_show} to true
 				else if isAlly({_vid}, {_pp}) is true:
@@ -183,14 +180,6 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 								if {_inv} is false:
 									set {_dc::%{_pet}%} to "red"
 									set {_de::%{_pet}%} to {_pe}
-		# /glowtest 시험 발광(본인에게만): 동기화가 지우지 않도록 같은 목록에 넣는다
-		if {-wpgt_e::%{_vid}%} is set:
-			set {_gte} to {-wpgt_e::%{_vid}%}
-			set {_gtv} to {_gte}.isValid()
-			if {_gtv} is true:
-				set {_gtid} to "%uuid of {_gte}%"
-				set {_dc::%{_gtid}%} to {-wpgt_c::%{_vid}%}
-				set {_de::%{_gtid}%} to {_gte}
 		# 새로 생기거나 좌표가 바뀐 점만 보낸다
 		loop {_want::*}:
 			set {_k} to loop-index
@@ -372,7 +361,7 @@ function wpPingClear(pid: text):
 # 빨간 핑 대상은 "화면에 보이는" 적만: 시야각 안(약 37도) + 눈/몸통에서 시선이 블록에 안 막혀야 하고(벽 뒤 제외), 후보 중 가장 가까운 적 하나만. 시험 핑도 이 검사를 한다(단 /pingtest red 는 강제라 건너뜀).
 # 입력: F키(손 바꾸기, on swap hand items). 허공이면 파란 핑은 안 찍힌다. 스팸 방지: 3초 안에 5번 찍으면 5초 동안 제한(액션바 알림).
 # 변수 추가: {-wping_ent::pid}(빨간 핑 대상 엔티티), {-wping_hist::pid::*}(최근 핑 시각), {-wping_lock::pid}(제한 끝 틱).
-# 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운) {-wping_test::pid}(시험 핑: 게임 밖에서도 본인에게만)
+# 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운)
 # 시간 단위 {-wptick} = wpTeamSync 실행 횟수(0.1초). 숫자는 아래 함수에서 바꾼다.
 function wpPingSec() :: number:
 	return 5
@@ -404,8 +393,8 @@ function wpAimLoc(p: player) :: location:
 		return {_b}.getLocation().add(0.5, 0.5, 0.5)
 	return {_none}
 
-# kind: "auto" = 조준/주변에 적이 있으면 빨강 아니면 파랑, "blue" = 무조건 파랑(시험), "red" = 가장 가까운 다른 플레이어를 대상으로 빨강(시험)
-function wpPingCreate(p: player, test: boolean, kind: text):
+# 핑 하나를 찍는다: 조준/주변에 화면에 보이는 적이 있으면 빨강, 아니면 파랑
+function wpPingCreate(p: player):
 	set {_pid} to "%uuid of {_p}%"
 	set {_hit} to wpAimLoc({_p})
 	set {_eye} to eye location of {_p}
@@ -418,85 +407,78 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 	set {_hd} to distance between {_eye} and {_hit}
 	set {_best} to -1
 	set {_bestd} to 100000
-	if {_kind} is not "blue":
-		loop all entities:
-			set {_t} to loop-entity
-			set {_tk} to "none"
-			if {_t} is a player:
-				set {_tk} to "player"
-			else if {_t}.getType().name() is "MANNEQUIN":
-				set {_tk} to "dummy"
-			else if {_t}.getType().name() is "BEE":
-				set {_tk} to "bee"
-			if {_t} is not {_p}:
-				set {_tid} to "%uuid of {_t}%"
-				set {_ok} to false
-				if {_tk} is "player":
-					if {_test} is true:
+	loop all entities:
+		set {_t} to loop-entity
+		set {_tk} to "none"
+		if {_t} is a player:
+			set {_tk} to "player"
+		else if {_t}.getType().name() is "MANNEQUIN":
+			set {_tk} to "dummy"
+		else if {_t}.getType().name() is "BEE":
+			set {_tk} to "bee"
+		if {_t} is not {_p}:
+			set {_tid} to "%uuid of {_t}%"
+			set {_ok} to false
+			if {_tk} is "player":
+				if wpActive({_t}) is true:
+					if isAlly({_pid}, {_tid}) is false:
 						set {_ok} to true
-					else if wpActive({_t}) is true:
-						if isAlly({_pid}, {_tid}) is false:
-							set {_ok} to true
-					# 꿀벌에 탑승 중인(조종 중) 적 몸은 핑 대상이 아니다(대신 적 꿀벌이 대상, 아래)
-					if {-beemode::%{_tid}%} is "drive":
-						set {_ok} to false
-				else if {_tk} is "bee":
-					# 적 꿀벌 드론(bee.sk 의 {-bee::주인uuid}): 본인/아군 꿀벌은 제외
-					loop {-bee::*}:
-						set {_bz} to loop-value-2
-						set {_bo2} to loop-index
-						if "%uuid of {_bz}%" is {_tid}:
-							if {_bo2} is not {_pid}:
-								if isAlly({_pid}, {_bo2}) is false:
-									set {_ok} to true
-				else if {_tk} is "dummy":
-					# 더미(마네킹)도 적처럼 핑이 찍힌다. 단 본인/아군의 꿀벌 조종 중 본체 더미는 제외.
-					set {_ok} to true
-					loop {-beebody::*}:
-						set {_bb} to loop-value-2
-						set {_bo} to loop-index
-						if "%uuid of {_bb}%" is {_tid}:
-							if {_bo} is {_pid}:
-								set {_ok} to false
-							else if isAlly({_pid}, {_bo}) is true:
-								set {_ok} to false
-				if {_ok} is true:
-					if world of {_t} is world of {_p}:
-						set {_ec} to ({_t}'s location) ~ vector(0, 1, 0)
-						set {_rel} to vector from {_eye} to {_ec}
-						set {_tt} to {_dir} dot {_rel}
-						set {_pv} to {_rel} - ({_dir} * {_tt})
-						set {_perp} to vector length of {_pv}
-						set {_cand} to false
-						if {_tt} > 0:
-							if {_tt} <= {_hd} + 4:
-								if {_perp} <= wpPingRay():
-									set {_cand} to true
-						if distance between {_ec} and {_hit} <= wpPingNear():
-							set {_cand} to true
-						if {_kind} is "red":
-							set {_cand} to true
-						if {_cand} is true:
-							if {_kind} is not "red":
-								# 화면에 보이는 적만(벽 뒤는 제외): 시야각 안 + 눈/몸통에서 시선이 안 막힘
-								set {_vis} to false
-								set {_rlen} to vector length of {_rel}
-								if {_rlen} > 0.1:
-									if {_tt} / {_rlen} >= 0.8:
-										if {_p}.hasLineOfSight({_t}) is true:
-											set {_vis} to true
-										else if {_p}.hasLineOfSight({_ec}) is true:
-											set {_vis} to true
-								if {_vis} is not true:
-									set {_cand} to false
-						if {_cand} is true:
-							set {_sc} to {_perp} + distance between {_ec} and {_hit} / 10
-							if {_kind} is not "red":
-								set {_sc} to distance between {_eye} and {_ec}
-							if {_sc} < {_bestd}:
-								set {_bestd} to {_sc}
-								set {_best} to {_tid}
-								set {_bestp} to {_t}
+				# 꿀벌에 탑승 중인(조종 중) 적 몸은 핑 대상이 아니다(대신 적 꿀벌이 대상, 아래)
+				if {-beemode::%{_tid}%} is "drive":
+					set {_ok} to false
+			else if {_tk} is "bee":
+				# 적 꿀벌 드론(bee.sk 의 {-bee::주인uuid}): 본인/아군 꿀벌은 제외
+				loop {-bee::*}:
+					set {_bz} to loop-value-2
+					set {_bo2} to loop-index
+					if "%uuid of {_bz}%" is {_tid}:
+						if {_bo2} is not {_pid}:
+							if isAlly({_pid}, {_bo2}) is false:
+								set {_ok} to true
+			else if {_tk} is "dummy":
+				# 더미(마네킹)도 적처럼 핑이 찍힌다. 단 본인/아군의 꿀벌 조종 중 본체 더미는 제외.
+				set {_ok} to true
+				loop {-beebody::*}:
+					set {_bb} to loop-value-2
+					set {_bo} to loop-index
+					if "%uuid of {_bb}%" is {_tid}:
+						if {_bo} is {_pid}:
+							set {_ok} to false
+						else if isAlly({_pid}, {_bo}) is true:
+							set {_ok} to false
+			if {_ok} is true:
+				if world of {_t} is world of {_p}:
+					set {_ec} to ({_t}'s location) ~ vector(0, 1, 0)
+					set {_rel} to vector from {_eye} to {_ec}
+					set {_tt} to {_dir} dot {_rel}
+					set {_pv} to {_rel} - ({_dir} * {_tt})
+					set {_perp} to vector length of {_pv}
+					set {_cand} to false
+					if {_tt} > 0:
+						if {_tt} <= {_hd} + 4:
+							if {_perp} <= wpPingRay():
+								set {_cand} to true
+					if distance between {_ec} and {_hit} <= wpPingNear():
+						set {_cand} to true
+					if {_cand} is true:
+						# 화면에 보이는 적만(벽 뒤는 제외): 시야각 안 + 눈/몸통에서 시선이 안 막힘
+						set {_vis} to false
+						set {_rlen} to vector length of {_rel}
+						if {_rlen} > 0.1:
+							if {_tt} / {_rlen} >= 0.8:
+								if {_p}.hasLineOfSight({_t}) is true:
+									set {_vis} to true
+								else if {_p}.hasLineOfSight({_ec}) is true:
+									set {_vis} to true
+						if {_vis} is not true:
+							set {_cand} to false
+					if {_cand} is true:
+						set {_sc} to {_perp} + distance between {_ec} and {_hit} / 10
+						set {_sc} to distance between {_eye} and {_ec}
+						if {_sc} < {_bestd}:
+							set {_bestd} to {_sc}
+							set {_best} to {_tid}
+							set {_bestp} to {_t}
 	if {_air} is true:
 		if {_best} is -1:
 			stop
@@ -516,25 +498,20 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 		set {_u} to UUID.randomUUID()
 		set {-wping_id::%{_pid}%} to "%{_u}%"
 	set {-wping_until::%{_pid}%} to {-wptick} + wpPingSec() * 10
-	if {_test} is true:
-		set {-wping_test::%{_pid}%} to true
-	else:
-		delete {-wping_test::%{_pid}%}
 	set {_snd} to "mck:pingblue"
 	if {-wping_c::%{_pid}%} is "red":
 		set {_snd} to "mck:pingred"
 	play sound {_snd} to {_p}
-	if {_test} is not true:
-		loop {-gplist::*}:
-			if loop-value is not {_p}:
-				if isAlly({_pid}, "%uuid of loop-value%") is true:
-					if wpActive(loop-value) is true:
-						play sound {_snd} to loop-value
-						# 빨간 핑: 팀원에게 채팅으로 알린다(머리 얼굴 + 이름). 미검증: 1.21.9+ 플레이어 머리 오브젝트 컴포넌트
-						if {-wping_c::%{_pid}%} is "red":
-							set {_nm} to {_p}.getName()
-							set {_cj} to "{""text"":"""",""extra"":[{""object"":""player"",""player"":{""name"":""%{_nm}%""}},{""text"":"" ""},{""text"":""%{_nm}%"",""color"":""green""},{""text"":""님이 적을 발견했습니다.""}]}"
-							loop-value.sendMessage(GsonComponentSerializer.gson().deserialize({_cj}))
+	loop {-gplist::*}:
+		if loop-value is not {_p}:
+			if isAlly({_pid}, "%uuid of loop-value%") is true:
+				if wpActive(loop-value) is true:
+					play sound {_snd} to loop-value
+					# 빨간 핑: 팀원에게 채팅으로 알린다(머리 얼굴 + 이름). 미검증: 1.21.9+ 플레이어 머리 오브젝트 컴포넌트
+					if {-wping_c::%{_pid}%} is "red":
+						set {_nm} to {_p}.getName()
+						set {_cj} to "{""text"":"""",""extra"":[{""object"":""player"",""player"":{""name"":""%{_nm}%""}},{""text"":"" ""},{""text"":""%{_nm}%"",""color"":""green""},{""text"":""님이 적을 발견했습니다.""}]}"
+						loop-value.sendMessage(GsonComponentSerializer.gson().deserialize({_cj}))
 	# 본인에게도 같은 메시지를 보낸다
 	if {-wping_c::%{_pid}%} is "red":
 		set {_nm} to {_p}.getName()
@@ -550,20 +527,16 @@ function wpPingInput(p: player) :: boolean:
 	if {-gstarting} is true:
 		return false
 	if {-ingame} is not true:
-		# 게임 밖 시험: /pingtest on 을 켠 op 는 본인에게만 보이는 시험 핑을 찍는다
-		if {-wping_qtest::%uuid of {_p}%} is true:
-			wpPingTry({_p}, true)
-			return true
 		return false
 	if wpActive({_p}) is not true:
 		return false
 	if {-beemode::%uuid of {_p}%} is "drive":
 		return false
-	wpPingTry({_p}, false)
+	wpPingTry({_p})
 	return true
 
 # 쿨다운 + 스팸 방지를 거쳐 핑을 찍는다
-function wpPingTry(p: player, test: boolean):
+function wpPingTry(p: player):
 	set {_pid} to "%uuid of {_p}%"
 	if {-wping_lock::%{_pid}%} > {-wptick}:
 		send action bar colored "&c핑을 너무 자주 사용해 잠시 제한됩니다." to {_p}
@@ -581,7 +554,7 @@ function wpPingTry(p: player, test: boolean):
 	if size of {-wping_hist::%{_pid}%::*} >= wpPingSpamCount():
 		set {-wping_lock::%{_pid}%} to {-wptick} + wpPingLockSec() * 10
 		delete {-wping_hist::%{_pid}%::*}
-	wpPingCreate({_p}, {_test}, "auto")
+	wpPingCreate({_p})
 
 # 공격 쿨타임(attackStrengthTicker) 접근: F 로 손 바꾸기를 취소하면 손 아이템이 잠깐 바뀐 걸로 처리되어 공격 쿨타임이 돌 수 있어, 전후로 값을 저장/복원한다(서버 쪽 값, 미검증).
 function wpAtkField(h: object) :: object:
@@ -651,76 +624,6 @@ on drop:
 		if wpActive(player) is true:
 			cancel event
 
-# 시험(op): /pingtest blue = 바라보는 자리에 파란 핑, /pingtest red = 가장 가까운 다른 플레이어에게 빨간 핑(혼자면 파란 핑), /pingtest clear = 지우기. 게임 밖에서도 되고 본인에게만 보인다.
-command /pingtest [<text>]:
-	permission: op
-	trigger:
-		set {_pid} to "%uuid of player%"
-		if arg-1 is "on":
-			set {-wping_qtest::%{_pid}%} to true
-			send "&a[pingtest] 게임 밖에서도 F 로 시험 핑을 찍습니다(본인에게만 보임, 더미/플레이어에게 빨간 핑)." to player
-			stop
-		if arg-1 is "off":
-			delete {-wping_qtest::%{_pid}%}
-			send "&a[pingtest] F 시험 핑을 껐습니다." to player
-			stop
-		if arg-1 is "clear":
-			wpPingClear({_pid})
-			send "&a[pingtest] 핑을 지웠습니다." to player
-			stop
-		if arg-1 is "red":
-			wpPingCreate(player, true, "red")
-		else:
-			wpPingCreate(player, true, "blue")
-		if {-wping_c::%{_pid}%} is not set:
-			send "&c[pingtest] 허공이라 핑이 찍히지 않았습니다." to player
-			stop
-		set {_k} to {-wping_c::%{_pid}%}
-		set {_sx} to round({-wping_x::%{_pid}%})
-		set {_sy} to round({-wping_y::%{_pid}%})
-		set {_sz} to round({-wping_z::%{_pid}%})
-		send "&a[pingtest] %{_k}% 핑을 찍었습니다(좌표 %{_sx}% %{_sy}% %{_sz}%)." to player
-
-# 시험(op, 혼자서 확인용): /glowtest <green|red|orange> = 가장 가까운(30칸 안) 더미/다른 플레이어를 10초 동안 본인에게만 그 색으로 발광시킨다. 게임 밖에서도 된다. 미검증.
-command /glowtest [<text>]:
-	permission: op
-	trigger:
-		set {_col} to arg-1
-		if {_col} is not set:
-			set {_col} to "green"
-		if {_col} is not "green":
-			if {_col} is not "red":
-				if {_col} is not "orange":
-					send "&c[glowtest] /glowtest <green|red|orange>" to player
-					stop
-		set {_best} to 31
-		loop all entities:
-			set {_e} to loop-entity
-			set {_ok} to false
-			if {_e} is a player:
-				if {_e} is not player:
-					set {_ok} to true
-			else if {_e}.getType().name() is "MANNEQUIN":
-				set {_ok} to true
-			if {_ok} is true:
-				if world of {_e} is world of player:
-					set {_d} to distance between {_e} and player
-					if {_d} < {_best}:
-						set {_best} to {_d}
-						set {_te} to {_e}
-		if {_te} is not set:
-			send "&c[glowtest] 30칸 안에 더미/다른 플레이어가 없습니다." to player
-			stop
-		set {_pl} to player
-		send "&a[glowtest] %{_col}% 발광을 10초 동안 본인에게만 보여 줍니다." to {_pl}
-		set {_vk} to "%uuid of {_pl}%"
-		set {-wpgt_e::%{_vk}%} to {_te}
-		set {-wpgt_c::%{_vk}%} to {_col}
-		wait 10 seconds
-		delete {-wpgt_e::%{_vk}%}
-		delete {-wpgt_c::%{_vk}%}
-		send "&a[glowtest] 끝." to {_pl}
-
 # 핑 상태 갱신: 만료/무효 핑 삭제, 빨간 핑은 대상 위치를 따라간다
 function wpPingUpdate():
 	loop {-wping_c::*}:
@@ -728,9 +631,8 @@ function wpPingUpdate():
 		set {_keep} to true
 		if {-wping_until::%{_pid}%} < {-wptick}:
 			set {_keep} to false
-		if {-wping_test::%{_pid}%} is not set:
-			if {-ingame} is not true:
-				set {_keep} to false
+		if {-ingame} is not true:
+			set {_keep} to false
 		if {_keep} is true:
 			if {-wping_c::%{_pid}%} is "red":
 				set {_found} to false
@@ -741,9 +643,7 @@ function wpPingUpdate():
 						set {_okp} to true
 						if {_te} is a player:
 							set {_okp} to false
-							if {-wping_test::%{_pid}%} is set:
-								set {_okp} to true
-							else if wpActive({_te}) is true:
+							if wpActive({_te}) is true:
 								set {_okp} to true
 						if {_okp} is true:
 							set {_found} to true

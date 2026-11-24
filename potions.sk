@@ -1,4 +1,4 @@
-# [potions.sk] 포션 3종 스킬(우클릭, 마시지 않고 효과만): 체력 포션(쿨 7초, 체력 5 회복), 스태미너 포션(쿨 7초, 스태미너 50 회복),
+# [potions.sk] 포션 3종 스킬(우클릭, 마시지 않고 효과만): 체력 포션(쿨 12초, 체력 5 회복), 스태미너 포션(쿨 12초, 스태미너 50 회복),
 #   투명 포션(쿨 18초, 4초간 투명화 - 피해를 입거나 입히면 풀림). 메인핸드 우선, 오프핸드도 작동.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-potcd}(종류별 쿨타임 종료 시각), {-invis}(투명 효과 종료 시각), {-invishid}(손 아이템을 숨겨 둔 상태 표시), {-healok}(회복이 전투 중 차단을 통과하는 표시, main.sk 가 읽음)
@@ -76,20 +76,20 @@ function potionUse(p: player, kind: text):
 		stop
 	set {_id} to "%uuid of {_p}%"
 	if {_kind} is "heal":
-		set {-potcd::%{_id}%::heal} to now + 10 seconds
+		set {-potcd::%{_id}%::heal} to now + 12 seconds
 		# 체력 5 = 2.5 하트. 전투 중 회복 차단(main.sk on heal)을 통과시킨다.
 		set {-healok::%{_id}%} to true
 		heal {_p} by 2.5 hearts
 		delete {-healok::%{_id}%}
 		play sound "entity.generic.drink" with volume 1 and pitch 1 to {_p}
-		potionVisual({_p}, "heal", 10)
+		potionVisual({_p}, "heal", 12)
 	else if {_kind} is "stamina":
-		set {-potcd::%{_id}%::stamina} to now + 10 seconds
+		set {-potcd::%{_id}%::stamina} to now + 12 seconds
 		add 50 to {-st::%{_id}%}
 		if {-st::%{_id}%} > 100:
 			set {-st::%{_id}%} to 100
 		play sound "entity.generic.drink" with volume 1 and pitch 1.3 to {_p}
-		potionVisual({_p}, "stamina", 10)
+		potionVisual({_p}, "stamina", 12)
 	else if {_kind} is "invis":
 		set {-potcd::%{_id}%::invis} to now + 18 seconds
 		set {-invis::%{_id}%} to now + 4 seconds
