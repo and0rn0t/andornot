@@ -16,6 +16,7 @@ import:
 	java.util.UUID
 	java.util.Optional
 	java.lang.Math
+	org.bukkit.attribute.Attribute
 	java.lang.reflect.Array as JArray
 	net.minecraft.ChatFormatting
 	net.minecraft.world.scores.PlayerTeam as WpPT
@@ -107,6 +108,23 @@ function wpTeamSync():
 		set {_gforce} to true
 	wpSyncViewers({_force}, {_gforce})
 
+# 휠 클릭 핑 사거리: 클라이언트는 블록 상호작용 사거리(block_interaction_range, 기본 4.5칸) 안의 블록을 볼 때만 휠 클릭(집기) 신호를 보낸다.
+# 그래서 게임 중 활성 참가자는 이 속성을 wpReachBlocks() 칸으로 늘리고, 그 밖에는 기본 4.5 로 돌린다(블록 설치/파괴 사거리도 같이 늘어남. 공격 사거리는 entity_interaction_range 라서 그대로). 미검증.
+function wpReachBlocks() :: number:
+	return 64
+
+function wpReachSync(v: player):
+	set {_want} to 4.5
+	if {-ingame} is true:
+		if wpActive({_v}) is true:
+			set {_want} to wpReachBlocks()
+	set {_at} to {_v}.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)
+	if {_at} is not set:
+		stop
+	set {_cur} to {_at}.getBaseValue()
+	if abs({_cur} - {_want}) > 0.01:
+		{_at}.setBaseValue({_want})
+
 # 모든 시청자에게 점(locate bar)과 발광 색을 맞춘다. force = 점을 전부 다시 보냄, gforce = 발광/팀 색을 전부 다시 보냄.
 function wpSyncViewers(force: boolean, gforce: boolean):
 	loop all players:
@@ -115,6 +133,7 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 		delete {_want::*}
 		delete {_dc::*}
 		delete {_de::*}
+		wpReachSync({_v})
 		if {-ingame} is true:
 			if wpActive({_v}) is true:
 				loop {-gplist::*}:
