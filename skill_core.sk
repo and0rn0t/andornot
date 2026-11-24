@@ -224,6 +224,7 @@
 #     skript-reflect 의 {_x}.remove() 로 제거한다.
 #
 # 8. 알려진 설계 메모
+#   - 시작 연출 조작(startcine.sk): 연출 중 점프/앉기 입력은 그 사람 자신의 라인업 더미가 똑같이 하고(gsJump/gsSneak, PlayerInputEvent), F/Q/핫바/클릭은 전부 취소. 미검증.
 #   - 도약 발동: 서바이벌/어드벤처에 비행 허용을 켜 두고 on flight toggle(스페이스 두 번)을 취소하며 도약을 쓴다(jump.sk). 발동 키는 더블 점프 고정(F키 모드/무기고 토글/{leapmode}는 삭제, F키는 핑 전용이라 waypoint.sk 가 취소). push 속도 1.1.
 #     비행 허용은 접속/리스폰/게임모드 변경 때 jumpFlightOn() 으로 다시 켠다. 다른 곳에서 비행 허용을 끄는 코드를 만들면 도약이 안 나가니 주의.
 #   - 도약(jump.sk)은 스킬 아이템이 아니라 기본 이동기. 도약 잠금은 jumplock 출처 키로 분리됨.

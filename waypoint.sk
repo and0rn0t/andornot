@@ -546,6 +546,9 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 
 # 입력 하나를 핑으로 처리한다. 처리했으면(이벤트를 취소해야 하면) true.
 function wpPingInput(p: player) :: boolean:
+	# 시작 연출 중에는 핑 불가(조작은 점프/앉기뿐)
+	if {-gstarting} is true:
+		return false
 	if {-ingame} is not true:
 		# 게임 밖 시험: /pingtest on 을 켠 op 는 본인에게만 보이는 시험 핑을 찍는다
 		if {-wping_qtest::%uuid of {_p}%} is true:

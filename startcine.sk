@@ -18,6 +18,9 @@
 #   개인전은 한 사람당 더미 하나(자기 것만 보인다). 더미는 마네킹(이름표: 티어 아이콘 + 닉네임).
 # 녹아웃 라운드 시작 카운트다운(game.sk 의 gRoundNext, "강하를 준비하세요" + 5초): game.sk 는 건드리지 않고 이 파일의 every 1 tick 이 카운트다운 중({-grcount} 가 켜져 있을 때, gSpecIntro())인 것을 보고
 #   리스폰 지점(없으면 시작 카메라, 없으면 월드 스폰)에 카메라({-grcam})를 세워 참가자 전원을 그 자리로 옮기고 강한 카메라 잠금을 건다(카운트다운이 끝나 관전이 풀리거나 게임이 멈추면 카메라를 지운다).
+# 시작 연출 중 조작: 라인업 더미 조작은 점프와 앉기뿐이다. 점프(스페이스)를 누르면 그 사람 자신의 더미({-gsdummy::uuid})가 점프하고(gsJump), 앉기(Shift)를 누르고 있는 동안 더미가 앉는다(gsSneak, Pose.SNEAKING).
+#   입력은 PlayerInputEvent 로 받는다(관전 중 카메라에 붙어 있어도 서버에 오는지 미검증). 앉기는 카메라에서 내려오려는 시도(PlayerStopSpectatingEntityEvent)로도 짧게(6틱) 앉힌다(대체 경로).
+#   그 밖의 입력(손 바꾸기 F, 버리기 Q, 핫바 바꾸기, 클릭)은 시작 연출 중 모두 취소한다. 변수(RAM): {-gsdummy::uuid}(그 사람 더미), {-gsjump::uuid}(점프 중), {-gsin::sneak/jump::uuid}(눌림 상태), {-gsin::pulse::uuid}
 # 음악 크기: 파일 자체를 -6dB 로 낮춰 팩에 넣었고, 재생 음량은 bgmVolume() 하나로 조절한다.
 # [수정] 클라이언트 미연결 감지(아래 on PlayerMoveEvent): 서버의 getSpectatorTarget() 은 "서버가 건 것"일 뿐 클라이언트가 실제로 카메라에 붙었다는 뜻이 아니다. 붙은 클라이언트는 이동 패킷을 안 보내고
 #   서버가 매 틱 플레이어를 카메라 자리로 옮기므로, 관전 대상이 걸려 있는데 카메라에서 떨어진 자리로 이동 이벤트가 오면 클라이언트가 카메라를 무시한 것이다. 그때 이동을 취소하고 관전 대상을 다시 건다.
@@ -37,6 +40,9 @@ import:
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	com.destroystokyo.paper.event.player.PlayerStopSpectatingEntityEvent
 	org.bukkit.event.player.PlayerMoveEvent
+	org.bukkit.event.player.PlayerInputEvent
+	org.bukkit.event.player.PlayerItemHeldEvent
+	org.bukkit.entity.Pose
 
 # ===== 배경 음악 =====
 # 재생 음량(0~1). 파일이 이미 -6dB 낮춰져 있다. 아직 크면 이 값을 줄인다.
@@ -275,6 +281,65 @@ function gsHideOthers(d: entity, key: text):
 			if gTeamOf(loop-value) is not {_key}:
 				loop-value.hideEntity({_pg}, {_d})
 
+# ===== 시작 연출 중 더미 조작(점프/앉기) =====
+# 더미 점프: 바닐라 점프 물리(초속 0.42, 중력 0.08, 공기 저항 0.98)대로 매 틱 위치를 옮긴다. 점프 중에는 다시 점프하지 않는다.
+function gsJump(p: player):
+	set {_id} to "%uuid of {_p}%"
+	set {_m} to {-gsdummy::%{_id}%}
+	if {_m} is not set:
+		stop
+	if {-gsjump::%{_id}%} is true:
+		stop
+	set {-gsjump::%{_id}%} to true
+	set {_base} to {_m}.getLocation()
+	set {_bx} to {_base}.getY()
+	set {_v} to 0.42
+	set {_y} to 0
+	set {_i} to 0
+	while {_i} < 40:
+		wait 1 tick
+		if {-gstarting} is not true:
+			delete {-gsjump::%{_id}%}
+			stop
+		if {_m}.isValid() is not true:
+			delete {-gsjump::%{_id}%}
+			stop
+		add {_v} to {_y}
+		set {_v} to ({_v} - 0.08) * 0.98
+		set {_l} to {_base}.clone()
+		if {_y} <= 0:
+			{_m}.teleport({_l})
+			set {_i} to 99
+		else:
+			{_l}.setY({_bx} + {_y})
+			{_m}.teleport({_l})
+			add 1 to {_i}
+	delete {-gsjump::%{_id}%}
+
+# 더미 앉기/서기(fixed 자세로 고정). 미검증: 마네킹에 Entity#setPose(Pose, boolean) 가 보이는지.
+function gsSneak(p: player, down: boolean):
+	set {_m} to {-gsdummy::%uuid of {_p}%}
+	if {_m} is not set:
+		stop
+	if {_m}.isValid() is not true:
+		stop
+	if {_down} is true:
+		{_m}.setPose(Pose.SNEAKING, true)
+	else:
+		{_m}.setPose(Pose.STANDING, true)
+
+# 입력 이벤트가 안 올 때의 대체: Shift 로 카메라에서 내려오려는 시도마다 6틱 앉았다 선다(Shift 를 누르고 있는 상태가 입력 이벤트로 확인되면 그 동안은 유지)
+function gsSneakPulse(p: player):
+	set {_id} to "%uuid of {_p}%"
+	if {-gsin::pulse::%{_id}%} is true:
+		stop
+	set {-gsin::pulse::%{_id}%} to true
+	gsSneak({_p}, true)
+	wait 6 ticks
+	delete {-gsin::pulse::%{_id}%}
+	if {-gsin::sneak::%{_id}%} is not true:
+		gsSneak({_p}, false)
+
 # 팀별로 일렬 더미를 세운다(자리를 못 찾았으면 아무것도 안 함). 줄 가운데가 라인업 자리.
 function gsSpawnDummies():
 	if {-gsl::ok} is not true:
@@ -295,12 +360,16 @@ function gsSpawnDummies():
 			set {_j} to ({_o} - 1 - ({_m} - 1) / 2) * 1.4
 			set {_loc} to {-gsl::loc} ~ vector({-gsl::ux} * {_j}, 0, {-gsl::uz} * {_j})
 			set {_d} to gsDummy({_p}, {_loc}, {-gsl::yaw})
+			set {-gsdummy::%uuid of {_p}%} to {_d}
 			gsHideOthers({_d}, {_k})
 
 function gsClear():
 	loop {-gsdummies::*}:
 		loop-value.remove()
 	delete {-gsdummies::*}
+	delete {-gsdummy::*}
+	delete {-gsjump::*}
+	delete {-gsin::*}
 	delete {-gsl::*}
 
 # ===== 시작 연출 본체 =====
@@ -667,6 +736,67 @@ on PlayerMoveEvent:
 	wait 10 ticks
 	delete {-gstartretry::%{_id}%}
 
+# 시작 연출 중 점프/앉기 입력 -> 더미 조작(눌리는 순간에만 반응)
+on PlayerInputEvent:
+	if {-gstarting} is not true:
+		stop
+	set {_p} to event.getPlayer()
+	if {-gplist::*} does not contain {_p}:
+		stop
+	set {_id} to "%uuid of {_p}%"
+	set {_in} to event.getInput()
+	set {_sn} to {_in}.isSneak()
+	set {_jp} to {_in}.isJump()
+	if {_sn} is true:
+		if {-gsin::sneak::%{_id}%} is not true:
+			set {-gsin::sneak::%{_id}%} to true
+			gsSneak({_p}, true)
+	else if {-gsin::sneak::%{_id}%} is true:
+		delete {-gsin::sneak::%{_id}%}
+		gsSneak({_p}, false)
+	if {_jp} is true:
+		if {-gsin::jump::%{_id}%} is not true:
+			set {-gsin::jump::%{_id}%} to true
+			gsJump({_p})
+	else:
+		delete {-gsin::jump::%{_id}%}
+
+on PlayerStopSpectatingEntityEvent:
+	if {-gspecforce} is true:
+		stop
+	if {-gstarting} is not true:
+		stop
+	set {_sp} to event.getPlayer()
+	if {-gplist::*} contains {_sp}:
+		gsSneakPulse({_sp})
+
+# 시작 연출 중 그 밖의 조작은 전부 막는다(점프/앉기만 허용)
+on swap hand items:
+	if {-gstarting} is true:
+		if {-gplist::*} contains player:
+			cancel event
+
+on drop:
+	if {-gstarting} is true:
+		if {-gplist::*} contains player:
+			cancel event
+
+on right click:
+	if {-gstarting} is true:
+		if {-gplist::*} contains player:
+			cancel event
+
+on left click:
+	if {-gstarting} is true:
+		if {-gplist::*} contains player:
+			cancel event
+
+on PlayerItemHeldEvent:
+	if {-gstarting} is true:
+		set {_hp} to event.getPlayer()
+		if {-gplist::*} contains {_hp}:
+			event.setCancelled(true)
+
 # 스크립트를 다시 불러올 때 남은 카운트다운 카메라를 지운다
 on load:
 	if {-grcam} is set:
@@ -674,3 +804,6 @@ on load:
 	delete {-grcam}
 	delete {-grcamt}
 	delete {-gstartretry::*}
+	delete {-gsdummy::*}
+	delete {-gsjump::*}
+	delete {-gsin::*}
