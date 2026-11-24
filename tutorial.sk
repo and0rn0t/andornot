@@ -8,7 +8,7 @@
 # 단계(tutKey 순서): 1 leap(더블 점프 도약, jump.sk), 2 ping(F 핑, waypoint.sk), 3 loadout(무기고에서 아이템 바꾸기, items.sk), 4 potion(포션 사용, potions.sk). 각 파일이 tutHook(플레이어, 키)를 부르면 그 단계가 끝난다.
 #   4단계에서 구성에 포션이 없으면 체력 포션을 하나 지급한다. 끝나면 로비로 돌려보내고 구성 아이템을 다시 맞춘다. 단계 안내(tutTitle/tutLines)는 도움말 GUI 와 같은 글이다.
 # 튜토리얼 중인 사람은 게임 참가/관전/준비/투표 대상이 아니다(spectate.sk 의 specOn 이 true, game.sk 의 참가자 목록에서 제외). 게임/투표가 시작되면 튜토리얼은 중단되고({tutpending} 은 그대로) 다음 접속이나 /튜토리얼 로 다시 한다.
-# 명령: /튜토리얼(시작), /튜토리얼 skip(건너뛰기, 다시 안 함), /도움말(도움말 GUI).
+# 명령: /튜토리얼(시작), /튜토리얼 skip(건너뛰기, 다시 안 함), /도움말(도움말 GUI), /튜토리얼문구(op, 단계별 제목/줄 직접 설정. 변수 {tuttext::단계::title}, {tuttext::단계::lines::번호}(저장). 관리자 메뉴 "튜토리얼 문구" 버튼은 현재 문구와 사용법을 채팅으로 보여 줌).
 # 튜토리얼 월드는 맵 추첨/선택 대상에서 제외된다(admin.sk 의 mapExcluded).
 # 미검증: PlayerResourcePackStatusEvent(서버 리소스 팩이 설정 단계에서 로드되면 상태 이벤트가 안 올 수 있음 -> 유예 시간 후 진행), hasPlayedBefore, 로딩 중 실명(PotionEffect), 카메라 관전, 단계 훅 전부.
 
@@ -41,7 +41,7 @@ function tutKey(n: number) :: text:
 		return "loadout"
 	return "potion"
 
-function tutTitle(n: number) :: text:
+function tutDefTitle(n: number) :: text:
 	if {_n} is 1:
 		return "더블 점프로 도약"
 	if {_n} is 2:
@@ -50,8 +50,8 @@ function tutTitle(n: number) :: text:
 		return "무기고에서 아이템 바꾸기"
 	return "아이템 사용하기"
 
-# 단계 설명(도움말 GUI 와 튜토리얼 채팅이 같이 쓴다)
-function tutLines(n: number) :: texts:
+# 기본 단계 설명(관리자가 /튜토리얼문구 로 바꾸지 않았을 때 쓴다)
+function tutDefLines(n: number) :: texts:
 	if {_n} is 1:
 		return "스페이스를 빠르게 두 번 누르면 바라보는 쪽으로 도약해요.", "도약할 때마다 스태미너(배고픔 바)가 줄어요.", "지금: 스페이스를 두 번 눌러 보세요."
 	if {_n} is 2:
@@ -68,6 +68,18 @@ function tutLore(n: number) :: texts:
 		add 1 to {_i}
 		add "&7%{_l::%{_i}%}%" to {_r::*}
 	return {_r::*}
+
+# 단계 제목/설명: 관리자가 /튜토리얼문구 로 저장한 문구({tuttext::단계::title}, {tuttext::단계::lines::번호}, 저장 변수)가 있으면 그걸, 없으면 기본 문구를 쓴다.
+# 도움말 GUI 와 튜토리얼 채팅이 같이 쓴다. 단계 안내 줄(액션바)은 마지막 줄이므로 마지막 줄을 "지금: ..." 같은 할 일로 두는 게 좋다.
+function tutTitle(n: number) :: text:
+	if {tuttext::%{_n}%::title} is set:
+		return "%{tuttext::%{_n}%::title}%"
+	return tutDefTitle({_n})
+
+function tutLines(n: number) :: texts:
+	if {tuttext::%{_n}%::lines::*} is set:
+		return {tuttext::%{_n}%::lines::*}
+	return tutDefLines({_n})
 
 # 설정이 돼 있는지(튜토리얼 스폰이 저장돼 있어야 한다)
 function tutConfigured() :: boolean:
@@ -453,3 +465,131 @@ command /도움말:
 	executable by: players
 	trigger:
 		helpOpen(player)
+
+# ===== 문구 설정(op 전용) =====
+# 단계 n 의 현재 줄들을 {tuttext::n::lines::*} 로 복사해 둔다(기본 문구를 바탕으로 한 줄만 고칠 수 있게)
+function tutTextInit(n: number):
+	if {tuttext::%{_n}%::lines::*} is set:
+		stop
+	set {_l::*} to tutDefLines({_n})
+	set {_i} to 0
+	while {_i} < size of {_l::*}:
+		add 1 to {_i}
+		set {tuttext::%{_n}%::lines::%{_i}%} to {_l::%{_i}%}
+
+# 모든 단계의 제목/줄을 번호와 함께 채팅으로 보여 준다
+function tutTextShow(p: player):
+	send colored "&6===== 튜토리얼 문구 =====" to {_p}
+	set {_n} to 0
+	while {_n} < tutStepCount():
+		add 1 to {_n}
+		set {_cu} to ""
+		if {tuttext::%{_n}%::title} is set:
+			set {_cu} to " &7(직접 설정)"
+		send colored "&e%{_n}%단계 &f%tutTitle({_n})%%{_cu}%" to {_p}
+		set {_l::*} to tutLines({_n})
+		set {_i} to 0
+		while {_i} < size of {_l::*}:
+			add 1 to {_i}
+			send colored "  &7%{_i}%. &f%{_l::%{_i}%}%" to {_p}
+	send colored "&7명령: /튜토리얼문구 제목 <단계> ""내용"" | 줄 <단계> <줄번호> ""내용""(줄번호가 끝 번호+1 이면 추가) | 줄삭제 <단계> <줄번호> | 초기화 <단계|all>. 글자에 공백이 있으면 따옴표로 감싸세요. 색은 &색코드." to {_p}
+
+command /튜토리얼문구 [<text>] [<text>] [<text>] [<text>]:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
+	description: 튜토리얼/도움말 문구를 직접 설정해요 (op 전용)
+	executable by: players
+	trigger:
+		if player is not op:
+			send "&c권한이 없습니다."
+			stop
+		if arg-1 is not set:
+			tutTextShow(player)
+			stop
+		if arg-1 is "목록":
+			tutTextShow(player)
+			stop
+		if arg-1 is "초기화":
+			if arg-2 is "all":
+				delete {tuttext::*}
+				send "&a모든 단계의 문구를 기본값으로 되돌렸습니다."
+				stop
+			set {_n} to arg-2 parsed as number
+			if {_n} is not set:
+				send "&c사용법: /튜토리얼문구 초기화 <단계|all>"
+				stop
+			if {_n} < 1:
+				send "&c단계는 1~%tutStepCount()% 입니다."
+				stop
+			if {_n} > tutStepCount():
+				send "&c단계는 1~%tutStepCount()% 입니다."
+				stop
+			delete {tuttext::%{_n}%::*}
+			send "&a%{_n}%단계 문구를 기본값으로 되돌렸습니다."
+			stop
+		set {_n} to arg-2 parsed as number
+		if {_n} is not set:
+			send "&c단계 번호가 필요합니다. 예: /튜토리얼문구 제목 1 ""더블 점프"""
+			stop
+		if {_n} < 1:
+			send "&c단계는 1~%tutStepCount()% 입니다."
+			stop
+		if {_n} > tutStepCount():
+			send "&c단계는 1~%tutStepCount()% 입니다."
+			stop
+		if arg-1 is "제목":
+			if arg-3 is not set:
+				send "&c사용법: /튜토리얼문구 제목 <단계> ""내용"""
+				stop
+			set {tuttext::%{_n}%::title} to arg-3
+			send "&a%{_n}%단계 제목을 저장했습니다: &f%arg-3%"
+			stop
+		if arg-1 is "줄":
+			set {_ln} to arg-3 parsed as number
+			if {_ln} is not set:
+				send "&c사용법: /튜토리얼문구 줄 <단계> <줄번호> ""내용"""
+				stop
+			if arg-4 is not set:
+				send "&c사용법: /튜토리얼문구 줄 <단계> <줄번호> ""내용"""
+				stop
+			tutTextInit({_n})
+			set {_cnt} to size of {tuttext::%{_n}%::lines::*}
+			if {_ln} < 1:
+				send "&c줄번호는 1 이상입니다."
+				stop
+			if {_ln} > {_cnt} + 1:
+				send "&c줄번호는 1~%{_cnt} + 1% 입니다(끝 번호+1 이면 새 줄 추가)."
+				stop
+			set {tuttext::%{_n}%::lines::%{_ln}%} to arg-4
+			send "&a%{_n}%단계 %{_ln}%번 줄을 저장했습니다: &f%arg-4%"
+			stop
+		if arg-1 is "줄삭제":
+			set {_ln} to arg-3 parsed as number
+			if {_ln} is not set:
+				send "&c사용법: /튜토리얼문구 줄삭제 <단계> <줄번호>"
+				stop
+			tutTextInit({_n})
+			set {_cnt} to size of {tuttext::%{_n}%::lines::*}
+			if {_ln} < 1:
+				send "&c줄번호는 1~%{_cnt}% 입니다."
+				stop
+			if {_ln} > {_cnt}:
+				send "&c줄번호는 1~%{_cnt}% 입니다."
+				stop
+			if {_cnt} <= 1:
+				send "&c마지막 한 줄은 지울 수 없습니다(기본값으로 되돌리려면 초기화)."
+				stop
+			# 번호를 당겨서 다시 채운다
+			set {_k} to 0
+			while {_k} < {_cnt}:
+				add 1 to {_k}
+				if {_k} is not {_ln}:
+					add {tuttext::%{_n}%::lines::%{_k}%} to {_keep::*}
+			delete {tuttext::%{_n}%::lines::*}
+			set {_i} to 0
+			while {_i} < size of {_keep::*}:
+				add 1 to {_i}
+				set {tuttext::%{_n}%::lines::%{_i}%} to {_keep::%{_i}%}
+			send "&a%{_n}%단계 %{_ln}%번 줄을 지웠습니다."
+			stop
+		send "&c사용법: /튜토리얼문구 [목록 | 제목 | 줄 | 줄삭제 | 초기화]"
