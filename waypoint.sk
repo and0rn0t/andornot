@@ -599,12 +599,9 @@ function wpAtkSet(p: player, n: number):
 		stop
 	{_fd}.setInt({_h}, {_iv})
 
-# F키(손 바꾸기)가 핑 키다. 앉은 채로 누르면 진짜 손 바꾸기, 서 있으면 취소하고 핑. Q(버리기)와 휠 클릭은 더 이상 핑이 아니다.
+# F키(손 바꾸기)가 핑 키다. 앉아 있든 서 있든 항상 취소하고 핑. Q(버리기)와 휠 클릭은 더 이상 핑이 아니다.
 # 공격 쿨타임이 돌지 않게 복원(틱마다 1씩 오르므로 지난 틱 수만큼 더한다).
 on swap hand items:
-	# 앉기 + F 는 진짜 손 바꾸기(취소 안 함, 핑 안 찍힘)
-	if player is sneaking:
-		stop
 	cancel event
 	set {_p} to player
 	set {_a} to wpAtkGet({_p})
