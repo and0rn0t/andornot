@@ -22,12 +22,12 @@ function gtKdaW() :: number:
 function gtDmgW() :: number:
 	return 24
 
-# ITEM 칸: 구성 아이템 아이콘 최대 5개. 아이콘 하나 = 공백 1칸(4픽셀) + 아이콘 gtIconPx() 픽셀
+# ITEM 칸: 구성 아이템 아이콘 최대 4개. 아이콘 하나 = 공백 1칸(4픽셀) + 아이콘 gtIconPx() 픽셀
 function gtIconPx() :: number:
 	return 9
 
 function gtItemW() :: number:
-	return 5 * (4 + gtIconPx())
+	return 4 * (4 + gtIconPx())
 
 # 헤더 앞에 둘 공백 수(머리 아이콘 폭 보정)
 function gtHeadPad() :: number:
@@ -134,9 +134,9 @@ function gtEntry(p: player) :: text:
 	if {_dm} is not a number:
 		set {_dm} to 0
 	set {_dms} to "%round({_dm})%"
-	# ITEM: 로비 탭리스트와 같은 구성 1~5번 아이템 아이콘(정렬 순서도 같음)
+	# ITEM: 로비 탭리스트와 같은 구성 1~4번 아이템 아이콘(정렬 순서도 같음)
 	delete {_ld::*}
-	loop integers from 1 to 5:
+	loop integers from 1 to 4:
 		add loadoutGet({_p}, loop-value) to {_ld::*}
 	set {_ic} to ""
 	set {_nic} to 0

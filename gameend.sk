@@ -398,7 +398,7 @@ function gfHeaderJson() :: text:
 	set {_c4} to gfT({_h4}, "gray", false)
 	set {_c5} to gfT({_h5}, "gray", false)
 	set {_s6} to "아이템"
-	# 아이콘 5개 칸(gtItemW) 가운데에 오도록 앞에 공백을 둔다
+	# 아이콘 4개 칸(gtItemW) 가운데에 오도록 앞에 공백을 둔다
 	set {_lead} to round((gtItemW() - gtPx({_s6})) / 8)
 	if {_lead} < 0:
 		set {_lead} to 0
@@ -481,9 +481,9 @@ function gfLineJson(id: text, nm: text, ci: number, src: player) :: text:
 	set {_ca} to gfCol({_as}, gfKdaW(), {_ha})
 	set {_cm} to gfCol({_ms}, gfDmgW(), {_hm})
 	set {_ex} to "%{_c1}%,%{_c2}%,%{_ck}%,%{_cd}%,%{_ca}%,%{_cm}%"
-	# 사용한 아이템: 구성 1~5번 아이템 아이콘(탭리스트와 같은 정렬 순서)
+	# 사용한 아이템: 구성 1~4번 아이템 아이콘(탭리스트와 같은 정렬 순서)
 	delete {_ld::*}
-	loop integers from 1 to 5:
+	loop integers from 1 to 4:
 		add loadoutGet({_src}, loop-value) to {_ld::*}
 	set {_gap} to "{""text"":"" ""}"
 	set {_nic} to 0

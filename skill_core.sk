@@ -63,7 +63,7 @@
 #   {-g*}                    게임 진행 상태({-gmode} {-gtarget} {-gteams} {-gplist::*} {-gteamlist::*} {-gname} {-gscore} {-gk/gd/ga/gdmg::uuid} {-gstar} {-gdead} {-gwinner} {-gpteam/gpname::uuid} 등)   game(자세한 설명은 game.sk 맨 위)
 #   {-gslot::uuid::아이템id}   게임 시작 직전 로비에서 정리해 둔 구성 아이템 칸(0~35). 게임 중 loadoutGive 가 이 칸에 먼저 넣음, gameCleanup 이 지움   game, items
 #   {-gfinale} {-gfcam}(종료 연출 카메라 엔티티) {-gfatt::uuid} {-gfv::*}(종료 연출 시청자 = 참가자+관전자) {-gfretry::uuid} {-gdummies::*} {-gpotmres}(POTM 이름) {-gpotmid}(POTM 참가자 id) {-gfgen} {-gdisp} {-gdummyid::uuid}   종료 연출 상태(POTM 자동 선정, 더미, 결과 디스플레이)   gameend
-#   {-grand::uuid::1~5} {-grandon}   랜덤 아이템 모드로 게임 중 뽑은 구성/켜짐 표시(게임이 끝나면 지움, 저장된 구성 {loadout} 은 그대로)   items, game
+#   {-grand::uuid::1~4} {-grandon}   랜덤 아이템 모드로 게임 중 뽑은 구성/켜짐 표시(게임이 끝나면 지움, 저장된 구성 {loadout} 은 그대로)   items, game
 #   {gamecfg::map} 게임 맵 월드 이름, {gamecfg::maprandom} 매 게임 랜덤 모드(관리자 메뉴 맵 설정, 저장 변수)  admin, game
 #   {gamecfg::loc::lobby|stage_<월드>::world|x|y|z|yaw|pitch} 로비 위치/월드별 결과 무대 위치(저장 변수, 월드 이름+좌표라 월드가 안 올라와 있어도 안 사라짐)  gameend(gcSaveLoc/gcLoadLoc)
 #   {gamecfg::loc::respawn_<월드>::world|x|y|z|yaw|pitch} 월드별 리스폰 지점(저장 변수)  admin, game(gcRespawnKey)
@@ -79,7 +79,7 @@
 #   {gamecfg::target::모드}   목표 스코어/승점(저장 변수, 대시 없음)                  gamesetup(gcTarget)
 #   {-ingame}                게임 진행 여부(true 면 무기고 해제). 지금은 아무도 안 켬   items(읽기), 나중에 게임 설계에서 설정
 #   {itemorder::*}           아이템 GUI 표시 순서(저장 변수, 대시 없음)           items
-#   {loadout::uuid::1~15} {loadoutset::uuid}  플레이어별 아이템 구성 id(3세트 x 5칸, 사용 중 세트 번호, 저장 변수, 대시 없음)       items
+#   {loadout::uuid::1~20} {loadoutset::uuid}  플레이어별 아이템 구성 id(4세트 x 4칸, 저장칸은 세트당 5칸 간격, 사용 중 세트 번호, 저장 변수, 대시 없음)       items
 #   {-itemgui::uuid} {-itemguislot::uuid} {-itemguimap::uuid::슬롯} {-itemguipick::uuid}  아이템 GUI 상태   items
 #   {-skillitems::키}        스킬 아이템 등록 (crossbow, fishing_rod) 각 스킬 파일의 on load
 #   {-status::uuid::출처}    상태이상 종료 시각(날짜). 만료되면 main 이 지움   skill_core 함수, main(표시/만료), fishing
