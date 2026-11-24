@@ -99,9 +99,9 @@ function wpTeamSync():
 	if {-wpcnt} >= 30:
 		set {-wpcnt} to 0
 		set {_force} to true
-	# 발광/팀 색은 0.3초(3번)마다 다시 보낸다: 서버가 엔티티 데이터/팀을 다시 보내면 덮어써질 수 있어서
+	# 발광 플래그는 1.5초(15번)마다 다시 보낸다(바뀔 때는 바로). 같은 값을 자주 다시 보내면 발광이 깜빡여서 팀 항목은 바뀔 때만 보낸다.
 	set {_gforce} to false
-	if {-wpgcnt} >= 3:
+	if {-wpgcnt} >= 15:
 		set {-wpgcnt} to 0
 		set {_gforce} to true
 	wpSyncViewers({_force}, {_gforce})
@@ -206,7 +206,7 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 # ===== 시청자별 발광(패킷) =====
 # 발광 켜기 = 시청자에게만 "발광" 플래그를 켠 엔티티 데이터 패킷을 보낸다(다른 사람에겐 안 보냄). 발광 색 = 클라이언트가 아는 팀 색이라,
 # 시청자에게만 가짜 팀(wpgrn 초록 / wpred 빨강 / wporg 주황, 서버에는 없음)을 팀 패킷으로 만들고 대상을 그 팀에 넣는다 -> 서버 스코어보드 팀(크라운 gcrown, 낙하 dropc 등)과 상관없이 시청자별로 색이 정해진다.
-# 우선순위: 동료 초록 > 빨간 핑 > 크라운 주황(wpSyncViewers 가 대상마다 하나의 색만 정한다). 서버가 팀/데이터를 다시 보내면 덮어써지므로 0.3초마다 다시 보낸다. 전부 미검증.
+# 우선순위: 동료 초록 > 빨간 핑 > 크라운 주황(wpSyncViewers 가 대상마다 하나의 색만 정한다). 서버가 팀/데이터를 다시 보내면 덮어써지므로 팀 항목은 바뀔 때만, 발광 플래그는 바뀔 때+1.5초마다 보낸다. 전부 미검증.
 # 캐시: {-wpvm::시청자::대상uuid} = 지금 넣은 색, {-wpvme::시청자::대상uuid} = 팀 항목 이름(플레이어 이름/그 외 uuid), {-wpgf::시청자::대상uuid} = 마지막으로 보낸 플래그 값, {-wpvt::시청자} = 가짜 팀을 만들어 보냈는지.
 # 플래그: 불 1, 웅크림 2, 달리기 8, 수영 16, 투명 32, 발광 64, 겉날개 128(그 밖의 플래그는 생략).
 function wpFlags(t: entity) :: number:
@@ -292,8 +292,6 @@ function wpColorApply(v: player, t: entity, tid: text, col: text, gforce: boolea
 		wpTeamPut({_v}, wpColTeam({_col}), {_entry}, "add")
 		set {-wpvm::%{_vid}%::%{_tid}%} to {_col}
 		set {-wpvme::%{_vid}%::%{_tid}%} to {_entry}
-	else if {_gforce} is true:
-		wpTeamPut({_v}, wpColTeam({_col}), {_entry}, "add")
 	set {_gl} to false
 	if {_col} is "green":
 		set {_gl} to true
@@ -686,7 +684,7 @@ command /glowtest [<text>]:
 				stop
 			if {_te}.isValid() is not true:
 				stop
-			wpColorApply({_pl}, {_te}, {_tid}, {_col}, true)
+			wpColorApply({_pl}, {_te}, {_tid}, {_col}, false)
 			wait 3 ticks
 			add 1 to {_n}
 		wpColorClear({_pl}, {_tid})
