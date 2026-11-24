@@ -387,7 +387,7 @@ function wpPingClear(pid: text):
 # ===== 핑 시스템(Q 키) =====
 # Q(아이템 버리기)를 누르면 바라보는 자리에 파란 핑, 그 근처(또는 조준선 위)에 적이 있으면 대신 그 적에게 빨간 핑(적이 움직이면 따라감)이 찍힌다.
 # 핑은 찍은 사람과 같은 팀(개인전은 본인)에게만 locate bar 로 보이고 소리(mck:pingblue / mck:pingred)가 난다. 한 사람당 핑은 하나(새로 찍으면 교체).
-# 빨간 핑 대상은 "화면에 보이는" 적만: 시야각 안(약 37도) + 눈/몸통에서 시선이 블록에 안 막혀야 하고(벽 뒤 제외), 후보 중 가장 가까운 적 하나만. 시험 핑은 이 검사를 건너뛴다.
+# 빨간 핑 대상은 "화면에 보이는" 적만: 시야각 안(약 37도) + 눈/몸통에서 시선이 블록에 안 막혀야 하고(벽 뒤 제외), 후보 중 가장 가까운 적 하나만. 시험 핑도 이 검사를 한다(단 /pingtest red 는 강제라 건너뜀).
 # 입력: Q(버리기) 또는 휠 클릭(블록/엔티티를 바라볼 때만 서버로 신호가 온다: PlayerPickBlockEvent/PlayerPickEntityEvent, 허공은 안 옴). 스팸 방지: 3초 안에 5번 찍으면 5초 동안 제한(액션바 알림).
 # 변수 추가: {-wping_ent::pid}(빨간 핑 대상 엔티티), {-wping_hist::pid::*}(최근 핑 시각), {-wping_lock::pid}(제한 끝 틱).
 # 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운) {-wping_test::pid}(시험 핑: 게임 밖에서도 본인에게만)
@@ -495,7 +495,7 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 						if {_kind} is "red":
 							set {_cand} to true
 							if {_cand} is true:
-							if {_test} is not true:
+							if {_kind} is not "red":
 								# 화면에 보이는 적만(벽 뒤는 제외): 시야각 안 + 눈/몸통에서 시선이 안 막힘
 								set {_vis} to false
 								set {_rlen} to vector length of {_rel}
@@ -509,7 +509,7 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 									set {_cand} to false
 						if {_cand} is true:
 							set {_sc} to {_perp} + distance between {_ec} and {_hit} / 10
-							if {_test} is not true:
+							if {_kind} is not "red":
 								set {_sc} to distance between {_eye} and {_ec}
 							if {_sc} < {_bestd}:
 								set {_bestd} to {_sc}
