@@ -169,7 +169,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "iron_sword":
 		return "들고 있으면 받는 피해를 한 번 막습니다."
 	if {_id} is "tnt":
-		return "TNT를 투척해 적을 2초간 기절시키고 피해를 입힙니다."
+		return "TNT를 투척해 적을 3초간 기절시키고 피해를 입힙니다."
 	if {_id} is "nether_star":
 		return "6초간 저항, 힘, 재생, 신속 1 효과를 얻습니다."
 	if {_id} is "ominous_bottle":
