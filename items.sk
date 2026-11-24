@@ -44,7 +44,7 @@ import:
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
 function itemIds() :: texts:
-	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident", "bee" and "splash"
+	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident", "bee", "splash" and "milk"
 
 # 아이템 이름
 function itemName(id: text) :: text:
@@ -72,6 +72,8 @@ function itemName(id: text) :: text:
 		return "&5불길한 병"
 	if {_id} is "splash":
 		return "&b첨벙첨벙"
+	if {_id} is "milk":
+		return "&f우유"
 	if {_id} is "potion_heal":
 		return "&c체력 포션"
 	if {_id} is "potion_stamina":
@@ -128,6 +130,8 @@ function itemBase(id: text) :: itemtype:
 		return ominous bottle
 	if {_id} is "splash":
 		return water bucket
+	if {_id} is "milk":
+		return milk bucket
 	if {_id} is "potion_heal":
 		return potion of healing
 	if {_id} is "potion_stamina":
@@ -180,6 +184,8 @@ function itemLoreLines(id: text) :: texts:
 		return "7초간 가하는 피해의 30%%를 흡혈하고, 스태미너가 초당 20 회복됩니다.", "지속 시간이 끝나면 탈진해 스태미너를 전부 소진하고, 5초간 자연 회복되지 않습니다."
 	if {_id} is "splash":
 		return "3초간 날아오는 모든 투사체를 흡수합니다."
+	if {_id} is "milk":
+		return "걸린 모든 해로운 효과를 해제합니다.", "기절 상태에서도 사용할 수 있습니다."
 	if {_id} is "potion_heal":
 		return "체력 5를 회복합니다."
 	if {_id} is "potion_stamina":
@@ -261,6 +267,8 @@ function itemCooldownText(id: text) :: text:
 	if {_id} is "ominous_bottle":
 		return "30"
 	if {_id} is "splash":
+		return "15"
+	if {_id} is "milk":
 		return "15"
 	if {_id} is "potion_heal":
 		return "12"
@@ -433,6 +441,8 @@ function itemCategory(id: text) :: number:
 		return 4
 	if {_id} is "splash":
 		return 5
+	if {_id} is "milk":
+		return 5
 	if {_id} is "potion_heal":
 		return 4
 	if {_id} is "potion_stamina":
@@ -509,6 +519,8 @@ function itemSprite(id: text) :: text:
 		return "ominous_bottle"
 	if {_id} is "splash":
 		return "water_bucket"
+	if {_id} is "milk":
+		return "milk_bucket"
 	if {_id} is "potion_heal":
 		return "mck:potion_heal"
 	if {_id} is "potion_stamina":

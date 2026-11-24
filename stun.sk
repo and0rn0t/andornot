@@ -6,6 +6,11 @@
 
 on click:
 	if isStunned(player) is true:
+		# 우유(milk.sk)는 기절 중에도 쓸 수 있다: 이 클릭의 아이템이 우유면 취소하지 않는다(우유 스킬이 직접 이벤트를 취소한다)
+		set {_it} to event.getItem()
+		if {_it} is set:
+			if {_it} is milk bucket:
+				stop
 		cancel event
 
 on break:
