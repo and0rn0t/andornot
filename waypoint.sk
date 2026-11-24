@@ -118,12 +118,20 @@ function wpReachSync(v: player):
 	if {-ingame} is true:
 		if wpActive({_v}) is true:
 			set {_want} to wpReachBlocks()
+	# 게임 밖 시험(/pingtest on)을 켠 op 도 늘린다
+	if {-wping_qtest::%uuid of {_v}%} is true:
+		set {_want} to wpReachBlocks()
 	set {_at} to {_v}.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)
 	if {_at} is not set:
 		stop
 	set {_cur} to {_at}.getBaseValue()
 	if abs({_cur} - {_want}) > 0.01:
 		{_at}.setBaseValue({_want})
+
+# 현재 블록 상호작용 사거리 확인: /pingtest range
+function wpReachNow(p: player) :: number:
+	set {_at} to {_p}.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)
+	return {_at}.getValue()
 
 # 모든 시청자에게 점(locate bar)과 발광 색을 맞춘다. force = 점을 전부 다시 보냄, gforce = 발광/팀 색을 전부 다시 보냄.
 function wpSyncViewers(force: boolean, gforce: boolean):
@@ -659,6 +667,10 @@ command /pingtest [<text>]:
 		if arg-1 is "off":
 			delete {-wping_qtest::%{_pid}%}
 			send "&a[pingtest] Q 시험 핑을 껐습니다." to player
+			stop
+		if arg-1 is "range":
+			set {_rn} to wpReachNow(player)
+			send "&a[pingtest] 지금 블록 상호작용 사거리: %{_rn}%" to player
 			stop
 		if arg-1 is "clear":
 			wpPingClear({_pid})
