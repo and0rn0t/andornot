@@ -60,6 +60,15 @@ function tutLines(n: number) :: texts:
 		return "핫바 9번 칸의 무기고(상자)를 우클릭하면 아이템 구성을 바꿀 수 있어요.", "구성 칸을 클릭해 아이템을 고르고, 로드아웃은 4세트까지 저장돼요.", "지금: 무기고에서 아이템을 하나 바꿔 보세요."
 	return "핫바에서 포션을 골라 우클릭하면 마시지 않고 효과가 바로 나가요.", "쓰고 나면 아이템 위에 쿨타임 게이지가 돌아요.", "지금: 포션을 들고 우클릭해 보세요."
 
+# 도움말 GUI 아이템 설명(회색 글씨). 반복문 안의 반복문은 loop-value 가 헷갈려서 별도 함수로 뺐다.
+function tutLore(n: number) :: texts:
+	set {_l::*} to tutLines({_n})
+	set {_i} to 0
+	while {_i} < size of {_l::*}:
+		add 1 to {_i}
+		add "&7%{_l::%{_i}%}%" to {_r::*}
+	return {_r::*}
+
 # 설정이 돼 있는지(튜토리얼 스폰이 저장돼 있어야 한다)
 function tutConfigured() :: boolean:
 	if {gamecfg::loc::tutorial::world} is set:
@@ -403,12 +412,7 @@ function helpOpen(p: player):
 	loop integers from 1 to tutStepCount():
 		set {_n} to loop-value
 		set {_b} to writable book named "&e%{_n}%. %tutTitle({_n})%"
-		set {_l::*} to tutLines({_n})
-		set {_lore::*} to ""
-		delete {_lore::*}
-		loop {_l::*}:
-			add "&7%loop-value%" to {_lore::*}
-		set lore of {_b} to {_lore::*}
+		set lore of {_b} to tutLore({_n})
 		set slot ({_n} + 9) of {_inv} to {_b}
 	set {_r} to emerald named "&a튜토리얼 다시 하기"
 	set lore of {_r} to "&7튜토리얼 월드에서 기초 조작을", "&7처음부터 다시 연습해요", "", "&e▶ 클릭해서 시작"
