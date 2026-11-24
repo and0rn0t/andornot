@@ -11,6 +11,7 @@
 
 import:
 	java.lang.System
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 
 # 현재 시각(밀리초)
 function tierNowMs() :: number:
@@ -100,3 +101,15 @@ function tierPreW(id: text) :: number:
 # 표기 폭(누구나 같음). 이름 칸 폭에 더한다.
 function tierPreMax() :: number:
 	return gtIconPx() + 4
+
+# /tiericons: 티어 아이콘 8종(브론즈 ~ 챌린저)을 채팅에 한 줄씩 보여 준다(색 확인용).
+command /tiericons:
+	trigger:
+		set {_idx::*} to 0, 3, 6, 9, 12, 15, 16, 17
+		send "&e[티어 아이콘]"
+		loop {_idx::*}:
+			set {_i} to loop-value
+			set {_ic} to tierIconJ({_i})
+			set {_nm} to tierName({_i})
+			set {_js} to "[%{_ic}%,{""text"":"" %{_nm}%""}]"
+			player.sendMessage(GsonComponentSerializer.gson().deserialize({_js}))
