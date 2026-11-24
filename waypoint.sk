@@ -1,4 +1,4 @@
-# [waypoint.sk] locate bar 에 서버가 직접 웨이포인트(점)를 보낸다. 추가 기획 3~5단계의 바탕. 서버에서 /wptest 로 동작 확인됨(파란 점이 locate bar 에 뜸).
+# [waypoint.sk] locate bar 에 서버가 직접 웨이포인트(점)를 보낸다. 같은 파일에 핑(Q/휠 클릭), 시청자별 발광(동료 초록/빨간 핑/크라운 주황)도 있다. 미검증: 가짜 팀 패킷(PlayerTeam/ClientboundSetPlayerTeamPacket 시그니처), hasLineOfSight, PlayerPickBlockEvent/PlayerPickEntityEvent 수신, attackStrengthTicker 리플렉션. 추가 기획 3~5단계의 바탕. 서버에서 /wptest 로 동작 확인됨(파란 점이 locate bar 에 뜸).
 # 바닐라 플레이어 점은 main.sk locatorHide 로 전원 위치 전송 범위 0 이라 안 보인다. 여기서 보내는 점만 보인다(시청자별로 따로 보낼 수 있음).
 # 패킷: ClientboundTrackedWaypointPacket.addWaypointPosition(uuid, icon, Vec3i) / removeWaypoint(uuid). 색은 Icon.color(Optional<Integer> RGB).
 # 서버로 보내기: ((CraftPlayer)p).getHandle().connection.send(packet).
@@ -16,6 +16,13 @@ import:
 	java.util.UUID
 	java.util.Optional
 	java.lang.Math
+	net.minecraft.ChatFormatting
+	net.minecraft.world.scores.PlayerTeam as WpPT
+	net.minecraft.world.scores.Scoreboard as WpSB
+	net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket as WpTP
+	net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Action as WpTAct
+	io.papermc.paper.event.player.PlayerPickBlockEvent
+	io.papermc.paper.event.player.PlayerPickEntityEvent
 
 # 점 하나를 시청자에게 보낸다(처음엔 추가, 이미 있으면 위치 갱신). color 는 0xRRGGBB 를 10진수로(파랑 3447003 등).
 function wpSend(v: player, id: text, x: number, y: number, z: number, color: number):
@@ -83,18 +90,30 @@ function wpActive(p: player) :: boolean:
 	return true
 
 function wpTeamSync():
-	# 3초(30번, 2틱마다 실행)에 한 번은 좌표가 같아도 다시 보낸다: 월드를 옮기거나 리스폰하면 클라이언트가 점을 잃을 수 있어서
 	add 1 to {-wptick}
 	wpPingUpdate()
 	add 1 to {-wpcnt}
+	add 1 to {-wpgcnt}
+	# 3초(30번, 2틱마다 실행)에 한 번은 좌표가 같아도 다시 보낸다: 월드를 옮기거나 리스폰하면 클라이언트가 점을 잃을 수 있어서
 	set {_force} to false
 	if {-wpcnt} >= 30:
 		set {-wpcnt} to 0
 		set {_force} to true
+	# 발광/팀 색은 0.3초(3번)마다 다시 보낸다: 서버가 엔티티 데이터/팀을 다시 보내면 덮어써질 수 있어서
+	set {_gforce} to false
+	if {-wpgcnt} >= 3:
+		set {-wpgcnt} to 0
+		set {_gforce} to true
+	wpSyncViewers({_force}, {_gforce})
+
+# 모든 시청자에게 점(locate bar)과 발광 색을 맞춘다. force = 점을 전부 다시 보냄, gforce = 발광/팀 색을 전부 다시 보냄.
+function wpSyncViewers(force: boolean, gforce: boolean):
 	loop all players:
 		set {_v} to loop-player
 		set {_vid} to "%uuid of {_v}%"
 		delete {_want::*}
+		delete {_dc::*}
+		delete {_de::*}
 		if {-ingame} is true:
 			if wpActive({_v}) is true:
 				loop {-gplist::*}:
@@ -104,6 +123,9 @@ function wpTeamSync():
 						if isAlly({_vid}, {_tid}) is true:
 							if wpActive({_t}) is true:
 								set {_want::%{_tid}%} to "%wpEffPos({_v}, x-coordinate of {_t}, y-coordinate of {_t}, z-coordinate of {_t})%,5635925"
+								# 동료는 항상 초록 발광(우선순위 최상). 적에게는 이 패킷을 보내지 않으므로 보이지 않는다.
+								set {_dc::%{_tid}%} to "green"
+								set {_de::%{_tid}%} to {_t}
 				set {_h} to gCrownHolder()
 				if {_h} is set:
 					set {_hid} to "%uuid of {_h}%"
@@ -111,6 +133,9 @@ function wpTeamSync():
 						if wpActive({_h}) is true:
 							delete {_want::%{_hid}%}
 							set {_want::00000000-0000-4000-8000-0000000000c0} to "%wpEffPos({_v}, x-coordinate of {_h}, y-coordinate of {_h}, z-coordinate of {_h})%,16747546"
+							if {_dc::%{_hid}%} is not set:
+								set {_dc::%{_hid}%} to "orange"
+								set {_de::%{_hid}%} to {_h}
 		# 핑: 찍은 사람과 같은 팀(시험 핑은 본인)에게만 보인다. 파랑 0x3498DB, 빨강 0xFF3333
 		loop {-wping_c::*}:
 			set {_pp} to loop-index
@@ -134,6 +159,20 @@ function wpTeamSync():
 				set {_gz} to {-wping_z::%{_pp}%}
 				set {_ep} to wpEffPos({_v}, {_gx}, {_gy}, {_gz})
 				set {_want::%{_wid}%} to "%{_ep}%,%{_pcol}%"
+				# 빨간 핑 대상의 붉은 발광: 동료 초록보다 아래, 크라운 주황보다 위. 투명 상태(invisible)인 대상은 발광을 켜지 않는다(풀리면 다시 켜짐).
+				if {_pt} is "red":
+					set {_pe} to {-wping_ent::%{_pp}%}
+					set {_pet} to {-wping_e::%{_pp}%}
+					if {_pe} is set:
+						if {_pet} is not {_vid}:
+							if {_dc::%{_pet}%} is not "green":
+								set {_inv} to false
+								if {_pe} is a player:
+									if {_pe}.isInvisible() is true:
+										set {_inv} to true
+								if {_inv} is false:
+									set {_dc::%{_pet}%} to "red"
+									set {_de::%{_pet}%} to {_pe}
 		# 새로 생기거나 좌표가 바뀐 점만 보낸다
 		loop {_want::*}:
 			set {_k} to loop-index
@@ -153,20 +192,42 @@ function wpTeamSync():
 			if {_want::%{_k}%} is not set:
 				wpRemove({_v}, {_k})
 				delete {-wpset::%{_vid}%::%{_k}%}
+		# 발광 색 적용/해제
+		loop {_dc::*}:
+			set {_k} to loop-index
+			set {_ent} to {_de::%{_k}%}
+			if {_ent} is set:
+				wpColorApply({_v}, {_ent}, {_k}, loop-value-2, {_gforce})
+		loop {-wpvm::%{_vid}%::*}:
+			set {_k} to loop-index
+			if {_dc::%{_k}%} is not set:
+				wpColorClear({_v}, {_k})
 
-# ===== 빨간 핑 대상의 팀 전용 붉은 발광 =====
-# 시청자별로 "발광" 플래그만 켠 엔티티 데이터 패킷을 보내서 핑을 찍은 팀에게만 발광이 보이게 한다(다른 사람에겐 패킷을 안 보냄). 발광 색은 스코어보드 팀 색이라 핑 중에는 대상을 RED 팀 gpingred 에 넣는다(크라운 소지자는 그 팀을 쓰므로 그대로 둠).
-# 서버가 다른 이유로 엔티티 데이터를 다시 보내면 발광이 풀리므로 0.5초마다 다시 보낸다. 플래그: 웅크림 2, 달리기 8, 투명 32, 발광 64(기본 플래그만 다시 구성, 불/겉날개는 생략).
-function wpGlowSend(v: player, t: entity, on: boolean):
+# ===== 시청자별 발광(패킷) =====
+# 발광 켜기 = 시청자에게만 "발광" 플래그를 켠 엔티티 데이터 패킷을 보낸다(다른 사람에겐 안 보냄). 발광 색 = 클라이언트가 아는 팀 색이라,
+# 시청자에게만 가짜 팀(wpgrn 초록 / wpred 빨강 / wporg 주황, 서버에는 없음)을 팀 패킷으로 만들고 대상을 그 팀에 넣는다 -> 서버 스코어보드 팀(크라운 gcrown, 낙하 dropc 등)과 상관없이 시청자별로 색이 정해진다.
+# 우선순위: 동료 초록 > 빨간 핑 > 크라운 주황(wpSyncViewers 가 대상마다 하나의 색만 정한다). 서버가 팀/데이터를 다시 보내면 덮어써지므로 0.3초마다 다시 보낸다. 전부 미검증.
+# 캐시: {-wpvm::시청자::대상uuid} = 지금 넣은 색, {-wpvme::시청자::대상uuid} = 팀 항목 이름(플레이어 이름/그 외 uuid), {-wpgf::시청자::대상uuid} = 마지막으로 보낸 플래그 값, {-wpvt::시청자} = 가짜 팀을 만들어 보냈는지.
+# 플래그: 불 1, 웅크림 2, 달리기 8, 수영 16, 투명 32, 발광 64, 겉날개 128(그 밖의 플래그는 생략).
+function wpFlags(t: entity) :: number:
 	set {_f} to 0
-	# 웅크림/달리기 플래그는 플레이어만(더미 마네킹은 기본 플래그)
+	if {_t}.getFireTicks() > 0:
+		add 1 to {_f}
 	if {_t} is a player:
 		if {_t}.isSneaking() is true:
 			add 2 to {_f}
 		if {_t}.isSprinting() is true:
 			add 8 to {_f}
+		if {_t}.isSwimming() is true:
+			add 16 to {_f}
 		if {_t}.isInvisible() is true:
 			add 32 to {_f}
+		if {_t}.isGliding() is true:
+			add 128 to {_f}
+	return {_f}
+
+function wpGlowSend(v: player, t: entity, on: boolean):
+	set {_f} to wpFlags({_t})
 	if {_on} is true:
 		add 64 to {_f}
 	set {_bv} to Byte.parseByte("%{_f}%")
@@ -174,42 +235,108 @@ function wpGlowSend(v: player, t: entity, on: boolean):
 	set {_pk} to new ClientboundSetEntityDataPacket({_t}.getEntityId(), Collections.singletonList({_dv}))
 	{_v}.getHandle().connection.send({_pk})
 
-function wpGlowTeam(t: entity, on: boolean):
-	set {_tid} to "%uuid of {_t}%"
-	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
-	if {_on} is true:
-		if {-wpglow_t::%{_tid}%} is set:
-			stop
-		set {_ct} to {_sb}.getTeam("gpingred")
-		if {_ct} is not set:
-			set {_ct} to {_sb}.registerNewTeam("gpingred")
-		{_ct}.setColor(ChatColor.RED)
-		set {_ent} to "%uuid of {_t}%"
-		if {_t} is a player:
-			set {_ent} to {_t}.getName()
-		set {_old} to {_sb}.getEntryTeam({_ent})
-		if {_old} is set:
-			set {_on2} to {_old}.getName()
-			if {_on2} is "gcrown":
-				stop
-			set {-wpglow_old::%{_tid}%} to {_on2}
-		{_ct}.addEntry({_ent})
-		set {-wpglow_t::%{_tid}%} to true
+# 가짜 팀 객체(서버 전체에서 하나씩, 멤버는 넣지 않고 항목은 패킷으로만 넣고 뺀다)
+function wpVTeam(n: text) :: object:
+	if {-wpvto::%{_n}%} is not set:
+		set {_tm} to new WpPT(new WpSB(), {_n})
+		if {_n} is "wpgrn":
+			{_tm}.setColor(ChatFormatting.GREEN)
+		else if {_n} is "wpred":
+			{_tm}.setColor(ChatFormatting.RED)
+		else:
+			{_tm}.setColor(ChatFormatting.GOLD)
+		set {-wpvto::%{_n}%} to {_tm}
+	return {-wpvto::%{_n}%}
+
+function wpColTeam(col: text) :: text:
+	if {_col} is "green":
+		return "wpgrn"
+	if {_col} is "red":
+		return "wpred"
+	return "wporg"
+
+# 시청자에게 가짜 팀 3개를 만들어 보낸다(한 번만). 이미 있는 팀 이름을 또 만들면 클라이언트가 오류를 내므로 먼저 지우는 패킷을 보낸다(없으면 무시됨).
+function wpVTEnsure(v: player):
+	set {_vid} to "%uuid of {_v}%"
+	if {-wpvt::%{_vid}%} is true:
+		stop
+	set {-wpvt::%{_vid}%} to true
+	loop "wpgrn", "wpred", "wporg":
+		set {_tm} to wpVTeam(loop-value)
+		set {_p1} to WpTP.createRemovePacket({_tm})
+		{_v}.getHandle().connection.send({_p1})
+		set {_p2} to WpTP.createAddOrModifyPacket({_tm}, true)
+		{_v}.getHandle().connection.send({_p2})
+
+# 가짜 팀에 항목을 넣거나(act "add") 뺀다(act "remove")
+function wpTeamPut(v: player, n: text, entry: text, act: text):
+	set {_tm} to wpVTeam({_n})
+	if {_act} is "add":
+		set {_pk} to WpTP.createPlayerPacket({_tm}, {_entry}, WpTAct.ADD)
 	else:
-		if {-wpglow_t::%{_tid}%} is not set:
-			stop
-		set {_ct} to {_sb}.getTeam("gpingred")
-		set {_ent} to "%uuid of {_t}%"
-		if {_t} is a player:
-			set {_ent} to {_t}.getName()
-		if {_ct} is set:
-			{_ct}.removeEntry({_ent})
-		if {-wpglow_old::%{_tid}%} is set:
-			set {_ot} to {_sb}.getTeam({-wpglow_old::%{_tid}%})
-			if {_ot} is set:
-				{_ot}.addEntry({_ent})
-		delete {-wpglow_t::%{_tid}%}
-		delete {-wpglow_old::%{_tid}%}
+		set {_pk} to WpTP.createPlayerPacket({_tm}, {_entry}, WpTAct.REMOVE)
+	{_v}.getHandle().connection.send({_pk})
+
+# v 에게 t(대상, 아이디 tid)의 발광 색을 col("green"/"red"/"orange")로 맞춘다. 초록/빨강은 발광 플래그도 보낸다(주황은 크라운의 실제 발광을 그대로 쓰고 색만 바꿈).
+function wpColorApply(v: player, t: entity, tid: text, col: text, gforce: boolean):
+	set {_vid} to "%uuid of {_v}%"
+	wpVTEnsure({_v})
+	set {_cur} to {-wpvm::%{_vid}%::%{_tid}%}
+	set {_entry} to "%uuid of {_t}%"
+	if {_t} is a player:
+		set {_entry} to {_t}.getName()
+	set {_changed} to false
+	if {_cur} is not {_col}:
+		set {_changed} to true
+	if {_changed} is true:
+		wpTeamPut({_v}, wpColTeam({_col}), {_entry}, "add")
+		set {-wpvm::%{_vid}%::%{_tid}%} to {_col}
+		set {-wpvme::%{_vid}%::%{_tid}%} to {_entry}
+	else if {_gforce} is true:
+		wpTeamPut({_v}, wpColTeam({_col}), {_entry}, "add")
+	set {_gl} to false
+	if {_col} is "green":
+		set {_gl} to true
+	if {_col} is "red":
+		set {_gl} to true
+	if {_gl} is true:
+		set {_key} to "%wpFlags({_t})%"
+		set {_do} to false
+		if {_changed} is true:
+			set {_do} to true
+		else if {_gforce} is true:
+			set {_do} to true
+		else if {-wpgf::%{_vid}%::%{_tid}%} is not {_key}:
+			set {_do} to true
+		if {_do} is true:
+			wpGlowSend({_v}, {_t}, true)
+			set {-wpgf::%{_vid}%::%{_tid}%} to {_key}
+	else if {_changed} is true:
+		# 초록/빨강에서 주황으로 바뀌면 플래그를 실제 발광 상태로 돌린다
+		set {_real} to {_t}.isGlowing()
+		wpGlowSend({_v}, {_t}, {_real})
+		delete {-wpgf::%{_vid}%::%{_tid}%}
+
+# v 에게 보내 둔 대상 tid 의 발광 색을 걷는다(가짜 팀에서 빼고, 발광 플래그는 실제 상태로 되돌림)
+function wpColorClear(v: player, tid: text):
+	set {_vid} to "%uuid of {_v}%"
+	set {_c} to {-wpvm::%{_vid}%::%{_tid}%}
+	set {_entry} to {-wpvme::%{_vid}%::%{_tid}%}
+	if {_c} is set:
+		wpTeamPut({_v}, wpColTeam({_c}), {_entry}, "remove")
+		set {_gl} to false
+		if {_c} is "green":
+			set {_gl} to true
+		if {_c} is "red":
+			set {_gl} to true
+		if {_gl} is true:
+			set {_t} to wpFind({_tid})
+			if {_t} is set:
+				set {_real} to {_t}.isGlowing()
+				wpGlowSend({_v}, {_t}, {_real})
+	delete {-wpvm::%{_vid}%::%{_tid}%}
+	delete {-wpvme::%{_vid}%::%{_tid}%}
+	delete {-wpgf::%{_vid}%::%{_tid}%}
 
 # uuid 문자열로 플레이어 또는 더미(마네킹) 엔티티를 찾는다
 function wpFind(id: text) :: entity:
@@ -218,29 +345,34 @@ function wpFind(id: text) :: entity:
 			return loop-entity
 	return {_none}
 
-# 핑 하나를 완전히 지운다(빨간 핑이면 발광도 끈다)
+# 핑 하나를 지운다(발광은 다음 동기화(0.1초 안)에서 걷힌다)
 function wpPingClear(pid: text):
-	if {-wping_c::%{_pid}%} is "red":
-		set {_t} to wpFind({-wping_e::%{_pid}%})
-		if {_t} is set:
-			loop {-wping_gv::%{_pid}%::*}:
-				set {_vv} to wpFind(loop-index)
-				if {_vv} is set:
-					wpGlowSend({_vv}, {_t}, false)
-			wpGlowTeam({_t}, false)
-	delete {-wping_gv::%{_pid}%::*}
 	delete {-wping_c::%{_pid}%}
+	delete {-wping_ent::%{_pid}%}
 
 # ===== 핑 시스템(Q 키) =====
 # Q(아이템 버리기)를 누르면 바라보는 자리에 파란 핑, 그 근처(또는 조준선 위)에 적이 있으면 대신 그 적에게 빨간 핑(적이 움직이면 따라감)이 찍힌다.
-# 핑은 찍은 사람과 같은 팀(개인전은 본인)에게만 locate bar 로 보이고 소리(mck:pingblue / mck:pingred)가 난다. 한 사람당 핑은 하나(새로 찍으면 교체). 
+# 핑은 찍은 사람과 같은 팀(개인전은 본인)에게만 locate bar 로 보이고 소리(mck:pingblue / mck:pingred)가 난다. 한 사람당 핑은 하나(새로 찍으면 교체).
+# 빨간 핑 대상은 "화면에 보이는" 적만: 시야각 안(약 37도) + 눈/몸통에서 시선이 블록에 안 막혀야 하고(벽 뒤 제외), 후보 중 가장 가까운 적 하나만. 시험 핑은 이 검사를 건너뛴다.
+# 입력: Q(버리기) 또는 휠 클릭(블록/엔티티를 바라볼 때만 서버로 신호가 온다: PlayerPickBlockEvent/PlayerPickEntityEvent, 허공은 안 옴). 스팸 방지: 3초 안에 5번 찍으면 5초 동안 제한(액션바 알림).
+# 변수 추가: {-wping_ent::pid}(빨간 핑 대상 엔티티), {-wping_hist::pid::*}(최근 핑 시각), {-wping_lock::pid}(제한 끝 틱).
 # 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운) {-wping_test::pid}(시험 핑: 게임 밖에서도 본인에게만)
 # 시간 단위 {-wptick} = wpTeamSync 실행 횟수(0.1초). 숫자는 아래 함수에서 바꾼다.
 function wpPingSec() :: number:
 	return 5
 
 function wpPingCoolSec() :: number:
-	return 1
+	return 0.3
+
+# 스팸 방지: 이 시간(초) 안에 wpPingSpamCount() 번 찍으면 wpPingLockSec() 초 동안 못 찍는다
+function wpPingSpamSec() :: number:
+	return 3
+
+function wpPingSpamCount() :: number:
+	return 5
+
+function wpPingLockSec() :: number:
+	return 5
 
 # 적 감지: 조준선에서 이 거리(칸) 안에 있는 적, 또는 조준한 자리에서 이 거리(칸) 안에 있는 적
 function wpPingRay() :: number:
@@ -328,8 +460,23 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 							set {_cand} to true
 						if {_kind} is "red":
 							set {_cand} to true
+							if {_cand} is true:
+							if {_test} is not true:
+								# 화면에 보이는 적만(벽 뒤는 제외): 시야각 안 + 눈/몸통에서 시선이 안 막힘
+								set {_vis} to false
+								set {_rlen} to vector length of {_rel}
+								if {_rlen} > 0.1:
+									if {_tt} / {_rlen} >= 0.8:
+										if {_p}.hasLineOfSight({_t}) is true:
+											set {_vis} to true
+										else if {_p}.hasLineOfSight({_ec}) is true:
+											set {_vis} to true
+								if {_vis} is not true:
+									set {_cand} to false
 						if {_cand} is true:
 							set {_sc} to {_perp} + distance between {_ec} and {_hit} / 10
+							if {_test} is not true:
+								set {_sc} to distance between {_eye} and {_ec}
 							if {_sc} < {_bestd}:
 								set {_bestd} to {_sc}
 								set {_best} to {_tid}
@@ -345,7 +492,7 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 		set {-wping_c::%{_pid}%} to "red"
 		set {-wping_e::%{_pid}%} to {_best}
 		set {_l} to {_bestp}'s location
-		wpGlowTeam({_bestp}, true)
+		set {-wping_ent::%{_pid}%} to {_bestp}
 	set {-wping_x::%{_pid}%} to x-coordinate of {_l}
 	set {-wping_y::%{_pid}%} to y-coordinate of {_l}
 	set {-wping_z::%{_pid}%} to z-coordinate of {_l}
@@ -367,24 +514,108 @@ function wpPingCreate(p: player, test: boolean, kind: text):
 				if isAlly({_pid}, "%uuid of loop-value%") is true:
 					if wpActive(loop-value) is true:
 						play sound {_snd} to loop-value
+	# 표식(pingmark.sk)과 locate bar 점, 발광을 같은 순간에 맞춘다(다음 2틱 갱신을 기다리지 않고 바로)
+	pmSync()
+	wpSyncViewers(false, true)
 
-on drop:
+# 입력 하나를 핑으로 처리한다. 처리했으면(이벤트를 취소해야 하면) true.
+function wpPingInput(p: player) :: boolean:
 	if {-ingame} is not true:
-		# 게임 밖 시험: /pingtest on 을 켠 op 는 Q 로 본인에게만 보이는 시험 핑을 찍는다
-		if {-wping_qtest::%uuid of player%} is true:
-			cancel event
-			wpPingCreate(player, true, "auto")
+		# 게임 밖 시험: /pingtest on 을 켠 op 는 본인에게만 보이는 시험 핑을 찍는다
+		if {-wping_qtest::%uuid of {_p}%} is true:
+			wpPingTry({_p}, true)
+			return true
+		return false
+	if wpActive({_p}) is not true:
+		return false
+	if {-beemode::%uuid of {_p}%} is "drive":
+		return false
+	wpPingTry({_p}, false)
+	return true
+
+# 쿨다운 + 스팸 방지를 거쳐 핑을 찍는다
+function wpPingTry(p: player, test: boolean):
+	set {_pid} to "%uuid of {_p}%"
+	if {-wping_lock::%{_pid}%} > {-wptick}:
+		send action bar colored "&c핑을 너무 자주 사용해 잠시 제한됩니다." to {_p}
 		stop
-	if wpActive(player) is not true:
-		stop
-	if {-beemode::%uuid of player%} is "drive":
-		stop
-	cancel event
-	set {_pid} to "%uuid of player%"
 	if {-wping_cd::%{_pid}%} > {-wptick}:
 		stop
 	set {-wping_cd::%{_pid}%} to {-wptick} + wpPingCoolSec() * 10
-	wpPingCreate(player, false, "auto")
+	# 최근 핑 시각 기록(오래된 건 지움). 기준 횟수에 닿으면 제한을 건다(이번 핑은 찍힌다).
+	set {-wping_hist::%{_pid}%::%{-wptick}%} to {-wptick}
+	loop {-wping_hist::%{_pid}%::*}:
+		set {_hk} to loop-index
+		set {_hv} to loop-value-2
+		if {_hv} < {-wptick} - wpPingSpamSec() * 10:
+			delete {-wping_hist::%{_pid}%::%{_hk}%}
+	if size of {-wping_hist::%{_pid}%::*} >= wpPingSpamCount():
+		set {-wping_lock::%{_pid}%} to {-wptick} + wpPingLockSec() * 10
+		delete {-wping_hist::%{_pid}%::*}
+	wpPingCreate({_p}, {_test}, "auto")
+
+# 공격 쿨타임(attackStrengthTicker) 접근: Q 로 버리기를 취소하면 손 아이템이 잠깐 바뀐 걸로 처리되어 공격 쿨타임이 돌 수 있어, 전후로 값을 저장/복원한다(서버 쪽 값, 미검증).
+function wpAtkField(h: object) :: object:
+	if {-wpatkf} is set:
+		return {-wpatkf}
+	set {_c} to {_h}.getClass()
+	set {_n} to 0
+	while {_c} is set:
+		set {_F::*} to {_c}.getDeclaredFields()
+		loop {_F::*}:
+			set {_fd} to loop-value
+			set {_fn} to {_fd}.getName()
+			if {_fn} is "attackStrengthTicker":
+				{_fd}.setAccessible(true)
+				set {-wpatkf} to {_fd}
+				return {_fd}
+		set {_c} to {_c}.getSuperclass()
+		add 1 to {_n}
+		if {_n} > 12:
+			return {_none}
+	return {_none}
+
+function wpAtkGet(p: player) :: number:
+	set {_h} to {_p}.getHandle()
+	set {_fd} to wpAtkField({_h})
+	if {_fd} is not set:
+		return -1
+	set {_v} to {_fd}.getInt({_h})
+	return {_v}
+
+function wpAtkSet(p: player, n: number):
+	set {_h} to {_p}.getHandle()
+	set {_fd} to wpAtkField({_h})
+	if {_fd} is not set:
+		stop
+	set {_iv} to Math.toIntExact(Math.round({_n}))
+	if {_iv} is not set:
+		stop
+	{_fd}.setInt({_h}, {_iv})
+
+on drop:
+	set {_p} to player
+	set {_a} to wpAtkGet({_p})
+	if wpPingInput({_p}) is not true:
+		stop
+	cancel event
+	# 공격 쿨타임이 돌지 않게 복원(틱마다 1씩 오르므로 지난 틱 수만큼 더한다)
+	if {_a} >= 0:
+		wait 1 tick
+		if {_p} is online:
+			wpAtkSet({_p}, {_a} + 1)
+		wait 1 tick
+		if {_p} is online:
+			wpAtkSet({_p}, {_a} + 2)
+
+# 휠 클릭(블록/엔티티 집기)도 핑이 된다: 핑으로 처리한 입력이면 집기(핫바 바꿈)는 취소한다. 이 경우 공격 쿨타임은 건드리지 않는다.
+on PlayerPickBlockEvent:
+	if wpPingInput(event.getPlayer()) is true:
+		event.setCancelled(true)
+
+on PlayerPickEntityEvent:
+	if wpPingInput(event.getPlayer()) is true:
+		event.setCancelled(true)
 
 # 시험(op): /pingtest blue = 바라보는 자리에 파란 핑, /pingtest red = 가장 가까운 다른 플레이어에게 빨간 핑(혼자면 파란 핑), /pingtest clear = 지우기. 게임 밖에서도 되고 본인에게만 보인다.
 command /pingtest [<text>]:
@@ -429,42 +660,24 @@ function wpPingUpdate():
 		if {_keep} is true:
 			if {-wping_c::%{_pid}%} is "red":
 				set {_found} to false
-				set {_te} to wpFind({-wping_e::%{_pid}%})
+				set {_te} to {-wping_ent::%{_pid}%}
 				if {_te} is set:
-					set {_okp} to true
-					if {_te} is a player:
-						set {_okp} to false
-						if {-wping_test::%{_pid}%} is set:
-							set {_okp} to true
-						else if wpActive({_te}) is true:
-							set {_okp} to true
-					if {_okp} is true:
-						set {_found} to true
-						set {-wping_x::%{_pid}%} to x-coordinate of {_te}
-						set {-wping_y::%{_pid}%} to y-coordinate of {_te}
-						set {-wping_z::%{_pid}%} to z-coordinate of {_te}
+					set {_valid} to {_te}.isValid()
+					if {_valid} is true:
+						set {_okp} to true
+						if {_te} is a player:
+							set {_okp} to false
+							if {-wping_test::%{_pid}%} is set:
+								set {_okp} to true
+							else if wpActive({_te}) is true:
+								set {_okp} to true
+						if {_okp} is true:
+							set {_found} to true
+							set {-wping_x::%{_pid}%} to x-coordinate of {_te}
+							set {-wping_y::%{_pid}%} to y-coordinate of {_te}
+							set {-wping_z::%{_pid}%} to z-coordinate of {_te}
 				if {_found} is false:
 					set {_keep} to false
-		if {_keep} is true:
-			if {-wping_c::%{_pid}%} is "red":
-				set {_m5} to {-wptick} - floor({-wptick} / 5) * 5
-				if {_m5} is 0:
-					set {_t} to wpFind({-wping_e::%{_pid}%})
-					if {_t} is set:
-						wpGlowTeam({_t}, true)
-						loop all players:
-							set {_vv} to loop-player
-							set {_vvid} to "%uuid of {_vv}%"
-							set {_gs} to false
-							if {_vvid} is {_pid}:
-								set {_gs} to true
-							else if {-wping_test::%{_pid}%} is not set:
-								if wpActive({_vv}) is true:
-									if isAlly({_pid}, {_vvid}) is true:
-										set {_gs} to true
-							if {_gs} is true:
-								wpGlowSend({_vv}, {_t}, true)
-								set {-wping_gv::%{_pid}%::%{_vvid}%} to true
 		if {_keep} is false:
 			wpPingClear({_pid})
 
@@ -474,7 +687,18 @@ every 2 ticks:
 
 on quit:
 	delete {-wpset::%uuid of player%::*}
+	delete {-wpvt::%uuid of player%}
+	delete {-wpvm::%uuid of player%::*}
+	delete {-wpvme::%uuid of player%::*}
+	delete {-wpgf::%uuid of player%::*}
 
 on load:
 	delete {-wpset::*}
 	delete {-wpcnt}
+	delete {-wpgcnt}
+	delete {-wpvt::*}
+	delete {-wpvm::*}
+	delete {-wpvme::*}
+	delete {-wpgf::*}
+	delete {-wpvto::*}
+	delete {-wpatkf}
