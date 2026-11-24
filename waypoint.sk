@@ -174,6 +174,14 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 								if {_inv} is false:
 									set {_dc::%{_pet}%} to "red"
 									set {_de::%{_pet}%} to {_pe}
+		# /glowtest 시험 발광(본인에게만): 동기화가 지우지 않도록 같은 목록에 넣는다
+		if {-wpgt_e::%{_vid}%} is set:
+			set {_gte} to {-wpgt_e::%{_vid}%}
+			set {_gtv} to {_gte}.isValid()
+			if {_gtv} is true:
+				set {_gtid} to "%uuid of {_gte}%"
+				set {_dc::%{_gtid}%} to {-wpgt_c::%{_vid}%}
+				set {_de::%{_gtid}%} to {_gte}
 		# 새로 생기거나 좌표가 바뀐 점만 보낸다
 		loop {_want::*}:
 			set {_k} to loop-index
@@ -681,18 +689,13 @@ command /glowtest [<text>]:
 			send "&c[glowtest] 30칸 안에 더미/다른 플레이어가 없습니다." to player
 			stop
 		set {_pl} to player
-		set {_tid} to "%uuid of {_te}%"
 		send "&a[glowtest] %{_col}% 발광을 10초 동안 본인에게만 보여 줍니다." to {_pl}
-		set {_n} to 0
-		while {_n} < 33:
-			if {_pl} is not online:
-				stop
-			if {_te}.isValid() is not true:
-				stop
-			wpColorApply({_pl}, {_te}, {_tid}, {_col}, false)
-			wait 3 ticks
-			add 1 to {_n}
-		wpColorClear({_pl}, {_tid})
+		set {_vk} to "%uuid of {_pl}%"
+		set {-wpgt_e::%{_vk}%} to {_te}
+		set {-wpgt_c::%{_vk}%} to {_col}
+		wait 10 seconds
+		delete {-wpgt_e::%{_vk}%}
+		delete {-wpgt_c::%{_vk}%}
 		send "&a[glowtest] 끝." to {_pl}
 
 # 핑 상태 갱신: 만료/무효 핑 삭제, 빨간 핑은 대상 위치를 따라간다
