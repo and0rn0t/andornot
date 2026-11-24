@@ -67,6 +67,7 @@ on flight toggle:
 			soundAround("entity.player.attack.sweep", location of player, 1, 1.2)
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
+			tutHook({_pl}, "leap")
 			loop 5 times:
 				remove 3 from {-st::%player's uuid%}
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100

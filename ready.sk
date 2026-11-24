@@ -31,6 +31,9 @@ function readyActive() :: boolean:
 
 # 게임 중이 아닐 때 액션바: 게임 참여/관전 + 준비 상태(관전을 고른 사람은 준비 상태가 필요 없다)
 function readyBar(p: player) :: text:
+	# 튜토리얼 진행 중이면 현재 단계 안내(tutorial.sk)
+	if {-tut::%uuid of {_p}%} is "run":
+		return tutBar({_p})
 	if specOn({_p}) is true:
 		return "&7게임 관전"
 	if readyOn({_p}) is true:

@@ -734,11 +734,13 @@ function gameStart(by: text):
 	delete {-gplist::*}
 	delete {-gwatch::*}
 	loop all players:
-		# 게임 관전을 고른 사람은 참가하지 않고 {-gwatch} 에 올린다(spectate.sk). 시작되면 관전 상태로 구경하고, 이 게임에는 중간 참가도 못 한다.
-		if specOn(loop-player) is true:
-			set {-gwatch::%uuid of loop-player%} to true
-		else:
-			add loop-player to {-gplist::*}
+		# 튜토리얼 중인 사람(tutorial.sk)은 참가도 관전도 아니다
+		if {-tut::%uuid of loop-player%} is not set:
+			# 게임 관전을 고른 사람은 참가하지 않고 {-gwatch} 에 올린다(spectate.sk). 시작되면 관전 상태로 구경하고, 이 게임에는 중간 참가도 못 한다.
+			if specOn(loop-player) is true:
+				set {-gwatch::%uuid of loop-player%} to true
+			else:
+				add loop-player to {-gplist::*}
 	if size of {-gplist::*} < 1:
 		delete {-gwatch::*}
 		stop

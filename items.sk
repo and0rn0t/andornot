@@ -840,6 +840,9 @@ function armoryFill(p: player, inv: inventory):
 	# 즉시 사용 토글(칸 17, 아랫줄 맨 오른쪽): 우클릭 <-> 칸 바꾸면 즉시 사용(quickuse.sk)
 	set slot 17 of {_inv} to quickUseItem({_p})
 	set {-itemguimap::%{_uid}%::17} to "__quick"
+	# 도움말(칸 8, 윗줄 맨 오른쪽): 기초 조작/튜토리얼 내용(tutorial.sk 의 helpOpen)
+	set slot 8 of {_inv} to helpItem()
+	set {-itemguimap::%{_uid}%::8} to "__help"
 
 # 즉시 사용 토글 메뉴 아이템(대상: 무기류 제외 버프/디버프/포션류, TNT 포함)
 function quickUseItem(p: player) :: itemtype:
@@ -1030,8 +1033,12 @@ on inventory click:
 				loadoutClearAll({_p})
 				loadoutGive({_p})
 				tabUpdate({_p})
+				tutHook({_p}, "loadout")
 				play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
 			itemGuiOpen({_p}, "armory")
+			stop
+		if {_idt} is "__help":
+			helpOpen({_p})
 			stop
 		if {_idt} is "__quick":
 			quickUseToggle({_p})
@@ -1056,6 +1063,7 @@ on inventory click:
 						set {loadout::%{_uid}%::%{_ra}%} to {_id}
 						set {loadout::%{_uid}%::%{_rb}%} to {_oa}
 						tabUpdate({_p})
+						tutHook({_p}, "loadout")
 						play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
 						itemGuiOpen({_p}, "armory")
 						stop
@@ -1068,6 +1076,7 @@ on inventory click:
 				set slot {_os} of {_p}'s inventory to itemBuild({_id})
 			tabUpdate({_p})
 			loadoutGive({_p})
+			tutHook({_p}, "loadout")
 		itemGuiOpen({_p}, "armory")
 	else if {_m} is "order":
 		set {_pick} to {-itemguipick::%{_uid}%}

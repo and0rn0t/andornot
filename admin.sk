@@ -39,7 +39,7 @@ function adminItem() :: itemtype:
 	return {_i}
 
 function adminButtonIds() :: texts:
-	return "gamesetup", "map", "vote", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "setlineup", "setvotedummy", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
+	return "gamesetup", "map", "vote", "gamestart", "gamestop", "itemorder", "setlobby", "setstage", "setrespawn", "setstartcam", "setlineup", "setvotedummy", "clearstage", "settraining", "trainingnpc", "cleartrainingnpc", "lobbynpc", "settutorial", "settutorialcam", "clearlobbynpc", "shelfadd", "shelfdel" and "lock"
 
 function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "gamesetup":
@@ -98,6 +98,18 @@ function adminButtonItem(id: text) :: itemtype:
 	if {_id} is "setlineup":
 		set {_i} to armor stand named "&f팀 라인업 위치 지정"
 		set lore of {_i} to "&7게임 시작 연출에서 팀 더미가 일렬로 서는 자리를 저장해요", "&7지금 서 있는 자리 = 줄 가운데 더미가 서는 곳", "&7바라보는 방향 = 더미가 바라볼 쪽(카메라가 서는 쪽)", "&7(동서남북 4방향으로 맞춰지고, 앞쪽 7칸쯤 비워 두세요)", "&7(서 있는 월드마다 따로 저장돼요)", "", "&e▶ 클릭해서 저장"
+		return {_i}
+	if {_id} is "settutorial":
+		set {_i} to ender chest named "&f튜토리얼 월드 지정"
+		set lore of {_i} to "&7지금 서 있는 자리를 튜토리얼 스폰으로 저장해요", "&7처음 접속한 플레이어가 이 월드로 가서 기초 조작을 익혀요", "&7이 월드는 맵 추첨/선택에서 제외돼요"
+		if {gamecfg::loc::tutorial::world} is set:
+			add "&7현재: &f%{gamecfg::loc::tutorial::world}%" to lore of {_i}
+		else:
+			add "&7현재: &c지정 안 함" to lore of {_i}
+		return {_i}
+	if {_id} is "settutorialcam":
+		set {_i} to spyglass named "&f튜토리얼 카메라 지정"
+		set lore of {_i} to "&7지금 서 있는 자리와 바라보는 방향을", "&7튜토리얼 시작 연출의 카메라로 저장해요", "&7(없으면 카메라 연출 없이 바로 스폰으로 가요)"
 		return {_i}
 	if {_id} is "clearstage":
 		set {_i} to barrier named "&c결과 무대 치우기"
@@ -236,6 +248,23 @@ function adminAction(p: player, id: text):
 				stop
 		gcSaveLoc(gcLineupKey({_lw}), location of {_p})
 		send "&a'%{_lw}%' 월드의 팀 라인업 위치를 저장했습니다. 게임 시작 연출에서 지금 서 있는 자리가 줄 가운데 더미 자리이고, 바라보는 방향(동서남북으로 맞춰짐)이 더미가 바라볼 방향입니다." to {_p}
+	else if {_id} is "settutorial":
+		close {_p}'s inventory
+		if adminLockOn() is true:
+			if gcLocSet("tutorial") is true:
+				adminLockDeny({_p}, "튜토리얼 월드(스폰)")
+				stop
+		gcSaveLoc("tutorial", location of {_p})
+		set {_tw} to {_p}.getWorld().getName()
+		send "&a튜토리얼 스폰을 '%{_tw}%' 월드의 지금 자리로 저장했습니다. 처음 접속한 플레이어는 여기서 튜토리얼을 하고, 이 월드는 맵 추첨/선택에서 제외됩니다." to {_p}
+	else if {_id} is "settutorialcam":
+		close {_p}'s inventory
+		if adminLockOn() is true:
+			if gcLocSet("tutorialcam") is true:
+				adminLockDeny({_p}, "튜토리얼 시작 카메라 위치")
+				stop
+		gcSaveLoc("tutorialcam", location of {_p})
+		send "&a튜토리얼 시작 카메라를 저장했습니다. 첫 접속자가 월드 로딩이 끝난 뒤 이 시점을 잠깐 보고 스폰으로 이동합니다." to {_p}
 	else if {_id} is "clearstage":
 		close {_p}'s inventory
 		gfClearStage()
@@ -330,6 +359,10 @@ function mapExcluded(wn: text) :: boolean:
 	if {gamecfg::loc::lobby::world} is set:
 		if "%{gamecfg::loc::lobby::world}%" is {_wn}:
 			return true
+	# 튜토리얼 월드(관리자 메뉴 "튜토리얼 월드 지정", tutorial.sk)는 맵 추첨/선택 대상이 아니다
+	if {gamecfg::loc::tutorial::world} is set:
+		if "%{gamecfg::loc::tutorial::world}%" is {_wn}:
+			return true
 	return false
 
 function mapCandidates() :: texts:
@@ -349,7 +382,7 @@ function mapCandidates() :: texts:
 # 맵 선택(클릭/랜덤 공통): 월드를 불러오고 {gamecfg::map} 에 저장한다. 바꾸기 전까지 유지된다.
 function mapSelect(p: player, wn: text):
 	if mapExcluded({_wn}) is true:
-		send "&c로비/훈련장으로 설정된 월드는 게임 맵으로 쓸 수 없습니다: %{_wn}%" to {_p}
+		send "&c로비/훈련장/튜토리얼로 설정된 월드는 게임 맵으로 쓸 수 없습니다: %{_wn}%" to {_p}
 		stop
 	set {_w} to gcWorld({_wn})
 	if {_w} is not set:

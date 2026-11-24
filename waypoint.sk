@@ -156,6 +156,10 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 					set {_show} to true
 				else if isAlly({_vid}, {_pp}) is true:
 					set {_show} to true
+			else if {-tut::%{_vid}%} is "run":
+				# 튜토리얼 중에는 본인 핑만 보인다
+				if {_pp} is {_vid}:
+					set {_show} to true
 			if {_show} is true:
 				set {_pcol} to 3447003
 				if {_pt} is "red":
@@ -502,6 +506,7 @@ function wpPingCreate(p: player):
 	if {-wping_c::%{_pid}%} is "red":
 		set {_snd} to "mck:pingred"
 	play sound {_snd} to {_p}
+	tutHook({_p}, "ping")
 	loop {-gplist::*}:
 		if loop-value is not {_p}:
 			if isAlly({_pid}, "%uuid of loop-value%") is true:
@@ -526,6 +531,10 @@ function wpPingInput(p: player) :: boolean:
 	# 시작 연출 중에는 핑 불가(조작은 점프/앉기뿐)
 	if {-gstarting} is true:
 		return false
+	# 튜토리얼 진행 중(tutorial.sk)에는 본인에게만 보이는 핑을 찍는다
+	if {-tut::%uuid of {_p}%} is "run":
+		wpPingTry({_p})
+		return true
 	if {-ingame} is not true:
 		return false
 	if wpActive({_p}) is not true:
@@ -629,7 +638,8 @@ function wpPingUpdate():
 		if {-wping_until::%{_pid}%} < {-wptick}:
 			set {_keep} to false
 		if {-ingame} is not true:
-			set {_keep} to false
+			if {-tut::%{_pid}%} is not "run":
+				set {_keep} to false
 		if {_keep} is true:
 			if {-wping_c::%{_pid}%} is "red":
 				set {_found} to false

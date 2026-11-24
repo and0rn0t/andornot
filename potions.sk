@@ -99,6 +99,7 @@ function potionUse(p: player, kind: text):
 		{_p}.setArrowsInBody(0, false)
 		play sound "entity.generic.drink" with volume 1 and pitch 0.7 to {_p}
 		potionVisual({_p}, "invis", 18)
+	tutHook({_p}, "potion")
 
 on rightclick:
 	# 꿀벌 조종 중/직후에는 포션을 쓰지 못한다(bee.sk)

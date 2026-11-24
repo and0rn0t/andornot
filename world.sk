@@ -63,7 +63,7 @@ function wtRenameRefs(o: text, n: text):
 	if {gamecfg::map} is set:
 		if "%{gamecfg::map}%" is {_o}:
 			set {gamecfg::map} to {_n}
-	loop "lobby", "training" and "stage":
+	loop "lobby", "training", "stage", "tutorial" and "tutorialcam":
 		set {_k} to loop-value
 		if {gamecfg::loc::%{_k}%::world} is set:
 			if "%{gamecfg::loc::%{_k}%::world}%" is {_o}:

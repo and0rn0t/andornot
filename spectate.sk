@@ -11,6 +11,9 @@
 # 미검증: 콘크리트 블록 우클릭 설치 막기, 7번 칸 고정 복구, 탭 닉네임 회색, 게임 중 관전자 이동/종료 때 로비 복귀.
 
 function specOn(p: player) :: boolean:
+	# 튜토리얼 중인 사람은 게임 참가/준비/투표 대상이 아니다(tutorial.sk)
+	if {-tut::%uuid of {_p}%} is set:
+		return true
 	if {-wspec::%uuid of {_p}%} is true:
 		return true
 	return false
