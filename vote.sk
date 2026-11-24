@@ -9,7 +9,7 @@
 #   2) 룰렛: 득표에 비례한 확률로 하나를 먼저 정하고(표가 하나도 없으면 셋 모두 같은 확률), 더미를 차례로 빛나게(점점 느리게) 돌리다가 그 더미에서 멈춘다.
 #   3) 로드아웃 변경(voteLoadoutSec() 초): 액션바로 남은 시간 표시. 이 동안은 게임 중이 아니라서 무기고(9번 칸)로 구성을 바꿀 수 있다.
 #   4) {-gvmap}/{-gvmode}(결과)를 두고 gameStart 호출. gameStart 가 읽고 바로 지운다. 이후 팀 매칭 + 시작 연출은 기존 그대로다.
-# 랜덤 아이템 모드 끼워넣기: voteChoose 가 10% 확률로 후보 하나를 {-gv::rand} 로 표시(그 더미엔 분홍 "랜덤 아이템 모드!" 셋째 줄), 그 후보가 뽑히면 {-gvrand}=true -> game.sk 가 gRandomNow() 로 읽는다.
+# 랜덤 아이템 모드 끼워넣기: voteChoose 가 10% 확률로 후보 하나를 {-gv::rand} 로 표시(그 더미의 이름 아래 줄이 분홍 "랜덤 아이템 모드!"). 득표는 이름 위쪽 별 {-gvs::i}(글자 디스플레이), 그 후보가 뽑히면 {-gvrand}=true -> game.sk 가 gRandomNow() 로 읽는다.
 # 변수(RAM): {-gvoting}(투표 진행 중 전체: 투표/룰렛/로드아웃, ready.sk readyActive 가 이 동안 준비를 막는다), {-gvphase}("vote"/"roulette"/"loadout"), {-gvgen}(세대, 취소하면 올려서 진행 중인 함수를 멈춘다),
 #   {-gv::n}(후보 수), {-gv::map::i}/{-gv::mode::i}(후보 i 의 월드 이름/모드 id), {-gvd::i}(더미 엔티티), {-gvote::uuid}(그 사람이 고른 후보 번호), {-gvmap}/{-gvmode}(룰렛 결과)
 # 취소: 관리자 /gamestop 또는 관리자 메뉴 "게임 강제 종료" -> voteCancel().
@@ -157,20 +157,18 @@ function voteDummySpawn(loc: location, yaw: number) :: object:
 	{_m}.setCustomNameVisible(true)
 	return {_m}
 
-# 랜덤 아이템 모드 후보 더미의 셋째 줄(이름/설명 아래): 분홍색 글자 디스플레이. 태그 votedummy 라 voteClearDummies 가 같이 지운다.
-# 높이는 voteRandY() 한 값으로 조절한다(마네킹 이름표 줄 바로 아래에 오게). 미검증.
-function voteRandY() :: number:
-	return 1.85
+# 득표 표시: 더미 이름(맵 · 모드) 위쪽에 득표수만큼 별(★)을 글자 디스플레이로 띄운다. 높이는 voteStarY() 한 값으로 조절. 태그 votedummy 라 voteClearDummies 가 같이 지운다. 미검증.
+function voteStarY() :: number:
+	return 2.65
 
-function voteRandLabel(loc: location):
-	set {_l} to {_loc} ~ vector(0, voteRandY(), 0)
+function voteStarSpawn(loc: location) :: object:
+	set {_l} to {_loc} ~ vector(0, voteStarY(), 0)
 	set {_t} to {_loc}.getWorld().spawnEntity({_l}, EntityType.TEXT_DISPLAY)
-	set {_rj} to "{""text"":""랜덤 아이템 모드!"",""color"":""light_purple"",""bold"":true}"
-	{_t}.text(GsonComponentSerializer.gson().deserialize({_rj}))
 	{_t}.setBillboard(DispBillboard.CENTER)
 	{_t}.setBackgroundColor(Color.fromARGB(0, 0, 0, 0))
 	{_t}.setPersistent(false)
 	{_t}.addScoreboardTag("votedummy")
+	return {_t}
 
 # 이번 게임이 랜덤 아이템 모드인지: 게임 설정(gcRandom) 또는 투표에서 랜덤 아이템 후보가 뽑힘({-gvrand}, 게임이 끝나면 game.sk 가 지움)
 function gRandomNow() :: boolean:
@@ -187,9 +185,20 @@ function voteDummyUpdate(i: number):
 	set {_c} to voteCount({_i})
 	set {_lab} to voteLabel({_i})
 	set {_nj} to "{""text"":""%{_lab}%"",""color"":""yellow"",""bold"":true}"
-	set {_dj} to "{""text"":""우클릭해서 투표 · %{_c}%표"",""color"":""gray""}"
+	# 이름 아래 줄: 랜덤 아이템 모드 후보면 분홍색 "랜덤 아이템 모드!", 아니면 안내 문구
+	set {_dj} to "{""text"":""우클릭해서 투표"",""color"":""gray""}"
+	if {-gv::rand} is {_i}:
+		set {_dj} to "{""text"":""랜덤 아이템 모드!"",""color"":""light_purple"",""bold"":true}"
 	{_d}.customName(GsonComponentSerializer.gson().deserialize({_nj}))
 	{_d}.setDescription(GsonComponentSerializer.gson().deserialize({_dj}))
+	# 이름 위쪽 별: 한 표에 ★ 하나
+	set {_st} to {-gvs::%{_i}%}
+	if {_st} is set:
+		set {_stars} to ""
+		loop {_c} times:
+			set {_stars} to "%{_stars}%★"
+		set {_sj} to "{""text"":""%{_stars}%"",""color"":""gold"",""bold"":true}"
+		{_st}.text(GsonComponentSerializer.gson().deserialize({_sj}))
 
 function voteDummiesUpdate():
 	loop integers from 1 to {-gv::n}:
@@ -203,6 +212,7 @@ function voteClearDummies():
 		if {_has} is true:
 			{_e}.remove()
 	delete {-gvd::*}
+	delete {-gvs::*}
 
 function voteHighlight(pos: number):
 	loop integers from 1 to {-gv::n}:
@@ -260,8 +270,7 @@ function voteStart(by: text):
 		set {_i} to loop-value
 		set {_dl} to voteDummyLoc({_i})
 		set {-gvd::%{_i}%} to voteDummySpawn({_dl}, {_y})
-		if {-gv::rand} is {_i}:
-			voteRandLabel({_dl})
+		set {-gvs::%{_i}%} to voteStarSpawn({_dl})
 	voteDummiesUpdate()
 	# 게임에 참가하는 사람(관전 선택자 제외)은 전원 로비로 소환한다
 	set {_lobby} to gameLobbyLoc()
