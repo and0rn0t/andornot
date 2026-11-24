@@ -13,6 +13,8 @@
 # 미검증: PlayerResourcePackStatusEvent(서버 리소스 팩이 설정 단계에서 로드되면 상태 이벤트가 안 올 수 있음 -> 유예 시간 후 진행), hasPlayedBefore, 로딩 중 실명(PotionEffect), 카메라 관전, 단계 훅 전부.
 
 import:
+	org.bukkit.Bukkit
+	org.bukkit.GameRule
 	org.bukkit.entity.EntityType
 	org.bukkit.potion.PotionEffect
 	org.bukkit.potion.PotionEffectType
@@ -525,7 +527,18 @@ function helpDialog(p: player, topic: number):
 		set {_hd} to helpPlain(helpTopicTitle({_topic}))
 	set {_snbt} to "{type:'minecraft:multi_action',title:'%helpWindowTitle()% - %{_hd}%',can_close_with_escape:true,columns:2,body:[%{_body}%],actions:[%{_acts}%],exit_action:{label:'닫기',width:150}}"
 	set {_pn} to {_p}.getName()
-	execute console command "dialog show %{_pn}% %{_snbt}%"
+	helpConsole("dialog show %{_pn}% %{_snbt}%")
+
+# 콘솔 명령을 실행하되, 관리자(OP)/콘솔에 "[Server: ...대화 상자를 표시했습니다]" 알림이 안 뜨게 한다.
+# 그 알림은 게임 규칙 logAdminCommands 가 켜져 있을 때 나가므로, 메인 월드(콘솔 명령의 기준 월드)의 규칙을 잠깐 끄고 실행한 뒤 원래 값으로 되돌린다(같은 틱 안이라 다른 명령에는 영향 없음).
+# 미검증: GameRule.LOG_ADMIN_COMMANDS(1.21.11 게임 규칙 이름 변경 후에도 API 상수가 유지되는지).
+function helpConsole(cmd: text):
+	set {_ws} to Bukkit.getWorlds()
+	set {_w} to {_ws}.get(0)
+	set {_old} to {_w}.getGameRuleValue(GameRule.LOG_ADMIN_COMMANDS)
+	{_w}.setGameRule(GameRule.LOG_ADMIN_COMMANDS, false)
+	execute console command {_cmd}
+	{_w}.setGameRule(GameRule.LOG_ADMIN_COMMANDS, {_old})
 
 command /도움말항목 <number>:
 	description: 도움말 항목을 열어요 (도움말 창의 버튼이 쓰는 명령)
