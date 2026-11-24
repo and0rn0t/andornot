@@ -1,4 +1,4 @@
-# [waypoint.sk] locate bar 에 서버가 직접 웨이포인트(점)를 보낸다. 같은 파일에 핑(Q/휠 클릭), 시청자별 발광(동료 초록/빨간 핑/크라운 주황)도 있다. 미검증: 가짜 팀 패킷(PlayerTeam/ClientboundSetPlayerTeamPacket 시그니처), hasLineOfSight, PlayerPickBlockEvent/PlayerPickEntityEvent 수신, attackStrengthTicker 리플렉션. 추가 기획 3~5단계의 바탕. 서버에서 /wptest 로 동작 확인됨(파란 점이 locate bar 에 뜸).
+# [waypoint.sk] locate bar 에 서버가 직접 웨이포인트(점)를 보낸다. 같은 파일에 핑(F키), 시청자별 발광(동료 초록/빨간 핑/크라운 주황)도 있다. 미검증: 가짜 팀 패킷(PlayerTeam/ClientboundSetPlayerTeamPacket 시그니처), hasLineOfSight, PlayerPickBlockEvent/PlayerPickEntityEvent 수신, attackStrengthTicker 리플렉션. 추가 기획 3~5단계의 바탕. 서버에서 /wptest 로 동작 확인됨(파란 점이 locate bar 에 뜸).
 # 바닐라 플레이어 점은 main.sk locatorHide 로 전원 위치 전송 범위 0 이라 안 보인다. 여기서 보내는 점만 보인다(시청자별로 따로 보낼 수 있음).
 # 패킷: ClientboundTrackedWaypointPacket.addWaypointPosition(uuid, icon, Vec3i) / removeWaypoint(uuid). 색은 Icon.color(Optional<Integer> RGB).
 # 서버로 보내기: ((CraftPlayer)p).getHandle().connection.send(packet).
@@ -24,8 +24,6 @@ import:
 	net.minecraft.world.scores.Scoreboard as WpSB
 	net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket as WpTP
 	net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Action as WpTAct
-	io.papermc.paper.event.player.PlayerPickBlockEvent
-	io.papermc.paper.event.player.PlayerPickEntityEvent
 
 # 점 하나를 시청자에게 보낸다(처음엔 추가, 이미 있으면 위치 갱신). color 는 0xRRGGBB 를 10진수로(파랑 3447003 등).
 function wpSend(v: player, id: text, x: number, y: number, z: number, color: number):
@@ -109,30 +107,14 @@ function wpTeamSync():
 		set {_gforce} to true
 	wpSyncViewers({_force}, {_gforce})
 
-# 휠 클릭 핑 사거리: 클라이언트는 블록 상호작용 사거리(block_interaction_range, 기본 4.5칸) 안의 블록을 볼 때만 휠 클릭(집기) 신호를 보낸다.
-# 그래서 게임 중 활성 참가자는 이 속성을 wpReachBlocks() 칸으로 늘리고, 그 밖에는 기본 4.5 로 돌린다(블록 설치/파괴 사거리도 같이 늘어남. 공격 사거리는 entity_interaction_range 라서 그대로). 미검증.
-function wpReachBlocks() :: number:
-	return 64
-
-function wpReachSync(v: player):
-	set {_want} to 4.5
-	if {-ingame} is true:
-		if wpActive({_v}) is true:
-			set {_want} to wpReachBlocks()
-	# 게임 밖 시험(/pingtest on)을 켠 op 도 늘린다
-	if {-wping_qtest::%uuid of {_v}%} is true:
-		set {_want} to wpReachBlocks()
+# 예전 휠 클릭 핑용으로 늘려 두었던 블록 상호작용 사거리(block_interaction_range)를 기본 4.5칸으로 되돌린다(접속/로드 때 한 번. 속성은 저장되므로 남아 있을 수 있음).
+function wpReachReset(v: player):
 	set {_at} to {_v}.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)
 	if {_at} is not set:
 		stop
 	set {_cur} to {_at}.getBaseValue()
-	if abs({_cur} - {_want}) > 0.01:
-		{_at}.setBaseValue({_want})
-
-# 현재 블록 상호작용 사거리 확인: /pingtest range
-function wpReachNow(p: player) :: number:
-	set {_at} to {_p}.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)
-	return {_at}.getValue()
+	if abs({_cur} - 4.5) > 0.01:
+		{_at}.setBaseValue(4.5)
 
 # 모든 시청자에게 점(locate bar)과 발광 색을 맞춘다. force = 점을 전부 다시 보냄, gforce = 발광/팀 색을 전부 다시 보냄.
 function wpSyncViewers(force: boolean, gforce: boolean):
@@ -142,7 +124,6 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 		delete {_want::*}
 		delete {_dc::*}
 		delete {_de::*}
-		wpReachSync({_v})
 		if {-ingame} is true:
 			if wpActive({_v}) is true:
 				loop {-gplist::*}:
@@ -385,11 +366,11 @@ function wpPingClear(pid: text):
 	delete {-wping_c::%{_pid}%}
 	delete {-wping_ent::%{_pid}%}
 
-# ===== 핑 시스템(Q 키) =====
-# Q(아이템 버리기)를 누르면 바라보는 자리에 파란 핑, 그 근처(또는 조준선 위)에 적이 있으면 대신 그 적에게 빨간 핑(적이 움직이면 따라감)이 찍힌다.
+# ===== 핑 시스템(F 키) =====
+# F(손 바꾸기)를 누르면 바라보는 자리에 파란 핑, 그 근처(또는 조준선 위)에 적이 있으면 대신 그 적에게 빨간 핑(적이 움직이면 따라감)이 찍힌다.
 # 핑은 찍은 사람과 같은 팀(개인전은 본인)에게만 locate bar 로 보이고 소리(mck:pingblue / mck:pingred)가 난다. 한 사람당 핑은 하나(새로 찍으면 교체).
 # 빨간 핑 대상은 "화면에 보이는" 적만: 시야각 안(약 37도) + 눈/몸통에서 시선이 블록에 안 막혀야 하고(벽 뒤 제외), 후보 중 가장 가까운 적 하나만. 시험 핑도 이 검사를 한다(단 /pingtest red 는 강제라 건너뜀).
-# 입력: Q(버리기) 또는 휠 클릭(블록/엔티티를 바라볼 때만 서버로 신호가 온다: PlayerPickBlockEvent/PlayerPickEntityEvent, 허공은 안 옴). 스팸 방지: 3초 안에 5번 찍으면 5초 동안 제한(액션바 알림).
+# 입력: F키(손 바꾸기, on swap hand items). 허공이면 파란 핑은 안 찍힌다. 스팸 방지: 3초 안에 5번 찍으면 5초 동안 제한(액션바 알림).
 # 변수 추가: {-wping_ent::pid}(빨간 핑 대상 엔티티), {-wping_hist::pid::*}(최근 핑 시각), {-wping_lock::pid}(제한 끝 틱).
 # 변수(RAM, 찍은 사람 uuid 기준): {-wping_c::pid}(blue/red) {-wping_x/y/z::pid} {-wping_e::pid}(빨간 핑 대상 uuid) {-wping_id::pid}(점 id) {-wping_until::pid}(만료 틱) {-wping_cd::pid}(쿨다운) {-wping_test::pid}(시험 핑: 게임 밖에서도 본인에게만)
 # 시간 단위 {-wptick} = wpTeamSync 실행 횟수(0.1초). 숫자는 아래 함수에서 바꾼다.
@@ -594,7 +575,7 @@ function wpPingTry(p: player, test: boolean):
 		delete {-wping_hist::%{_pid}%::*}
 	wpPingCreate({_p}, {_test}, "auto")
 
-# 공격 쿨타임(attackStrengthTicker) 접근: Q 로 버리기를 취소하면 손 아이템이 잠깐 바뀐 걸로 처리되어 공격 쿨타임이 돌 수 있어, 전후로 값을 저장/복원한다(서버 쪽 값, 미검증).
+# 공격 쿨타임(attackStrengthTicker) 접근: F 로 손 바꾸기를 취소하면 손 아이템이 잠깐 바뀐 걸로 처리되어 공격 쿨타임이 돌 수 있어, 전후로 값을 저장/복원한다(서버 쪽 값, 미검증).
 function wpAtkField(h: object) :: object:
 	if {-wpatkf} is set:
 		return {-wpatkf}
@@ -637,13 +618,14 @@ function wpAtkSet(p: player, n: number):
 		stop
 	{_fd}.setInt({_h}, {_iv})
 
-on drop:
+# F키(손 바꾸기)가 핑 키다. 손 바꾸기는 항상 취소한다(오프핸드로 안 넘어가게). Q(버리기)와 휠 클릭은 더 이상 핑이 아니다.
+# 공격 쿨타임이 돌지 않게 복원(틱마다 1씩 오르므로 지난 틱 수만큼 더한다).
+on swap hand items:
+	cancel event
 	set {_p} to player
 	set {_a} to wpAtkGet({_p})
 	if wpPingInput({_p}) is not true:
 		stop
-	cancel event
-	# 공격 쿨타임이 돌지 않게 복원(틱마다 1씩 오르므로 지난 틱 수만큼 더한다)
 	if {_a} >= 0:
 		wait 1 tick
 		if {_p} is online:
@@ -652,14 +634,11 @@ on drop:
 		if {_p} is online:
 			wpAtkSet({_p}, {_a} + 2)
 
-# 휠 클릭(블록/엔티티 집기)도 핑이 된다: 핑으로 처리한 입력이면 집기(핫바 바꿈)는 취소한다. 이 경우 공격 쿨타임은 건드리지 않는다.
-on PlayerPickBlockEvent:
-	if wpPingInput(event.getPlayer()) is true:
-		event.setCancelled(true)
-
-on PlayerPickEntityEvent:
-	if wpPingInput(event.getPlayer()) is true:
-		event.setCancelled(true)
+# 게임 중 활성 참가자는 예전처럼 아이템을 못 버린다(Q 가 핑이던 때의 동작 유지)
+on drop:
+	if {-ingame} is true:
+		if wpActive(player) is true:
+			cancel event
 
 # 시험(op): /pingtest blue = 바라보는 자리에 파란 핑, /pingtest red = 가장 가까운 다른 플레이어에게 빨간 핑(혼자면 파란 핑), /pingtest clear = 지우기. 게임 밖에서도 되고 본인에게만 보인다.
 command /pingtest [<text>]:
@@ -668,15 +647,11 @@ command /pingtest [<text>]:
 		set {_pid} to "%uuid of player%"
 		if arg-1 is "on":
 			set {-wping_qtest::%{_pid}%} to true
-			send "&a[pingtest] 게임 밖에서도 Q 로 시험 핑을 찍습니다(본인에게만 보임, 더미/플레이어에게 빨간 핑)." to player
+			send "&a[pingtest] 게임 밖에서도 F 로 시험 핑을 찍습니다(본인에게만 보임, 더미/플레이어에게 빨간 핑)." to player
 			stop
 		if arg-1 is "off":
 			delete {-wping_qtest::%{_pid}%}
-			send "&a[pingtest] Q 시험 핑을 껐습니다." to player
-			stop
-		if arg-1 is "range":
-			set {_rn} to wpReachNow(player)
-			send "&a[pingtest] 지금 블록 상호작용 사거리: %{_rn}%" to player
+			send "&a[pingtest] F 시험 핑을 껐습니다." to player
 			stop
 		if arg-1 is "clear":
 			wpPingClear({_pid})
@@ -780,7 +755,12 @@ on quit:
 	delete {-wpvme::%uuid of player%::*}
 	delete {-wpgf::%uuid of player%::*}
 
+on join:
+	wpReachReset(player)
+
 on load:
+	loop all players:
+		wpReachReset(loop-player)
 	delete {-wpset::*}
 	delete {-wpcnt}
 	delete {-wpgcnt}

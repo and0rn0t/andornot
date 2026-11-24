@@ -840,22 +840,9 @@ function armoryFill(p: player, inv: inventory):
 		set {_s} to {_k} + 10
 		set slot {_s} of {_inv} to itemBuild(loadoutGet({_p}, {_k}), "&e▶ 클릭해서 변경")
 		set {-itemguimap::%{_uid}%::%{_s}%} to {_k}
-	# 도약 발동 키 토글(칸 8, 윗줄 맨 오른쪽): 더블 점프 <-> F키
-	set slot 8 of {_inv} to jumpModeItem({_p})
-	set {-itemguimap::%{_uid}%::8} to "__leap"
 	# 즉시 사용 토글(칸 17, 아랫줄 맨 오른쪽): 우클릭 <-> 칸 바꾸면 즉시 사용(quickuse.sk)
 	set slot 17 of {_inv} to quickUseItem({_p})
 	set {-itemguimap::%{_uid}%::17} to "__quick"
-
-# 도약 발동 키 메뉴 아이템
-function jumpModeItem(p: player) :: itemtype:
-	if jumpMode({_p}) is "f":
-		set {_i} to feather named colored "&b도약 발동 키: &aF키"
-		set {_i} to {_i} with lore (colored "&7F키(손 바꾸기)로 도약합니다."), (colored "&8더블 점프는 사용하지 않습니다."), (colored "&e숙련자 추천"), "" and (colored "&e▶ 클릭해서 더블 점프로 변경")
-	else:
-		set {_i} to feather named colored "&b도약 발동 키: &a더블 점프"
-		set {_i} to {_i} with lore (colored "&7스페이스를 두 번 눌러 도약합니다."), (colored "&8F키는 사용하지 않습니다."), (colored "&e초심자 추천"), "" and (colored "&e▶ 클릭해서 F키로 변경")
-	return {_i}
 
 # 즉시 사용 토글 메뉴 아이템(대상: 무기류 제외 버프/디버프/포션류, TNT 포함)
 function quickUseItem(p: player) :: itemtype:
@@ -1051,11 +1038,6 @@ on inventory click:
 			stop
 		if {_idt} is "__quick":
 			quickUseToggle({_p})
-			play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
-			itemGuiOpen({_p}, "armory")
-			stop
-		if {_idt} is "__leap":
-			jumpModeToggle({_p})
 			play sound "entity.experience_orb.pickup" with volume 0.5 to {_p}
 			itemGuiOpen({_p}, "armory")
 			stop
