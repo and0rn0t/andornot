@@ -424,8 +424,25 @@ function helpItem() :: itemtype:
 # 다이얼로그는 콘솔 명령 `dialog show <이름> <SNBT>`(바닐라 1.21.6+, 인라인 SNBT)로 연다. 다이얼로그 글자는 색 코드(&)를 못 쓰므로 모두 지운다.
 # 미검증: dialog show 인라인 SNBT(multi_action, plain_message, exit_action), 버튼의 run_command 가 플레이어 권한으로 /도움말항목, /튜토리얼 을 실행하는지.
 
+# ============================================================
+# 도움말 문구 편집 구역: 글만 바꾸려면 아래 helpTopicTitle(항목 5~7 제목), helpTopicLines(본문)의 따옴표 안 글자만 고치면 된다.
+#  - 항목 1~4 는 위 튜토리얼 "문구 편집 구역"(tutTitle/tutLines)의 글을 그대로 쓴다("지금: ..." 줄만 뺌).
+#  - 줄을 늘리거나 줄이려면 'add "..." to {_r::*}' 줄을 복사/삭제한다. 한 줄은 한 문단으로 보인다(긴 글은 자동 줄바꿈).
+#  - 다이얼로그는 색 코드(&)를 못 쓴다. 항목을 새로 추가하려면 helpTopicCount, helpTopicTitle, helpTopicLines 에 같은 번호를 하나 더 만든다.
+#  - 처음 열 때(0번) 보이는 환영 문구와 창 제목은 아래 helpWelcomeLines / helpWindowTitle.
+# ============================================================
 function helpTopicCount() :: number:
 	return 7
+
+# 창 제목 앞부분(뒤에 " - 항목 제목"이 붙는다)
+function helpWindowTitle() :: text:
+	return "MCK 도움말"
+
+# 처음 열었을 때 상자에 보이는 환영 문구
+function helpWelcomeLines() :: texts:
+	add "MCK에 오신 것을 환영합니다!" to {_r::*}
+	add "MCK는 팀 기반 PVP 미니게임 서버입니다." to {_r::*}
+	return {_r::*}
 
 function helpTopicTitle(i: number) :: text:
 	if {_i} <= tutStepCount():
@@ -439,9 +456,7 @@ function helpTopicTitle(i: number) :: text:
 # 항목 본문(한 줄씩). 0 = 환영 문구.
 function helpTopicLines(i: number) :: texts:
 	if {_i} is 0:
-		add "MCK에 오신 것을 환영합니다!" to {_r::*}
-		add "MCK는 팀 기반 PVP 미니게임 서버입니다." to {_r::*}
-		return {_r::*}
+		return helpWelcomeLines()
 	if {_i} <= tutStepCount():
 		# 튜토리얼 안내 줄 중 "지금: ..." (할 일 안내)은 도움말에서 뺀다
 		set {_l::*} to tutLines({_i})
@@ -452,18 +467,12 @@ function helpTopicLines(i: number) :: texts:
 				add {_l::%{_k}%} to {_r::*}
 		return {_r::*}
 	if {_i} is 5:
-		# gamesetup.sk 의 모드 이름/설명/목표를 그대로 보여 준다
-		set {_ids::*} to gcModeIds()
-		set {_k} to 0
-		while {_k} < size of {_ids::*}:
-			add 1 to {_k}
-			set {_m} to {_ids::%{_k}%}
-			add "■ %gcModeName({_m})%  (목표 %gcTarget({_m})%점)" to {_r::*}
-			set {_d::*} to gcModeDesc({_m})
-			set {_j} to 0
-			while {_j} < size of {_d::*}:
-				add 1 to {_j}
-				add "%{_d::%{_j}%}%" to {_r::*}
+		add "■ 바운티  (목표 %gcTarget("bounty")%점)" to {_r::*}
+		add "머리 위에 별이 생겨요(기본 2개). 처치하면 상대의 별만큼 스코어가 오르고 내 별(현상금)이 하나 늘어요. 먼저 목표 스코어를 채운 팀/플레이어가 승리해요." to {_r::*}
+		add "■ 녹아웃  (목표 %gcTarget("annihilation")%점)" to {_r::*}
+		add "모두 목숨이 1개예요. 마지막까지 살아남은 팀이 승점 1점을 얻고 전투가 다시 시작돼요. 먼저 목표 승점을 쌓은 팀/플레이어가 승리해요." to {_r::*}
+		add "■ 크라운  (목표 %gcTarget("crown")%점)" to {_r::*}
+		add "게임이 시작되고 10초 뒤 무작위 플레이어에게 왕관이 씌워져요. 왕관 소지자는 모두에게 위치가 보이고 1초마다 크라운 스코어가 1점씩 올라요. 소지자를 처치하면 왕관을 빼앗고, 먼저 목표 스코어를 채운 팀/플레이어가 승리해요." to {_r::*}
 		return {_r::*}
 	if {_i} is 6:
 		add "경기 결과에 따라 내부 승점이 오르내리고, 승점에 따라 티어가 정해져요." to {_r::*}
@@ -510,7 +519,7 @@ function helpDialog(p: player, topic: number):
 	set {_hd} to "환영합니다"
 	if {_topic} > 0:
 		set {_hd} to helpPlain(helpTopicTitle({_topic}))
-	set {_snbt} to "{type:'minecraft:multi_action',title:'MCK 도움말 - %{_hd}%',can_close_with_escape:true,columns:2,body:[%{_body}%],actions:[%{_acts}%],exit_action:{label:'닫기',width:150}}"
+	set {_snbt} to "{type:'minecraft:multi_action',title:'%helpWindowTitle()% - %{_hd}%',can_close_with_escape:true,columns:2,body:[%{_body}%],actions:[%{_acts}%],exit_action:{label:'닫기',width:150}}"
 	set {_pn} to {_p}.getName()
 	execute console command "dialog show %{_pn}% %{_snbt}%"
 
