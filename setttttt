@@ -1,0 +1,20 @@
+on pickup:
+	cancel event
+
+on level up:
+	set level of player to 0
+
+on item damage:
+	cancel event
+
+
+on block fade:
+	cancel event
+
+on player move:
+	if {-ingame} is not true:
+		if player's y location < -2:
+			teleport player to spawn
+
+
+#게임 기본 세팅 파일
