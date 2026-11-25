@@ -36,8 +36,9 @@ function pmGlyph(kind: text) :: text:
 	return ""
 
 function pmPlayer(pid: text) :: player:
+	set {_ow} to wpOwner({_pid})
 	loop all players:
-		if "%uuid of loop-player%" is {_pid}:
+		if "%uuid of loop-player%" is {_ow}:
 			return loop-player
 	return {_none}
 
@@ -53,10 +54,11 @@ function pmClear(pid: text):
 # v(보는 사람)가 pid 의 핑을 볼 수 있는지: 찍은 사람 본인, 또는 같은 팀이고 게임 중 활성 참가자
 function pmViewer(v: player, pid: text) :: boolean:
 	set {_vid} to "%uuid of {_v}%"
-	if {_vid} is {_pid}:
+	set {_ow} to wpOwner({_pid})
+	if {_vid} is {_ow}:
 		return true
 	if wpActive({_v}) is true:
-		if isAlly({_pid}, {_vid}) is true:
+		if isAlly({_ow}, {_vid}) is true:
 			return true
 	return false
 

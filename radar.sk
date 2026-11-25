@@ -1,0 +1,58 @@
+# [radar.sk] 레이더(만회 나침반) 스킬(우클릭, 쿨 20초): 주변 30칸 안의 적 전원에게 빨간 핑을 찍는다(벽 뒤도 감지). 분류는 꿀벌과 같은 2번(나무 무기/도구류).
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수: {-radcd}(쿨타임 종료 시각), {-skillitems::radar}. 핑 변수는 waypoint.sk 의 {-wping_*} 를 같이 쓴다.
+# 핑 키(pid): 일반 핑은 찍은 사람 uuid 하나뿐이지만, 레이더는 적마다 하나씩 필요해서 "찍은사람uuid#r번호" 키를 쓴다. 핑을 보는 사람/아군 판정은 wpOwner(pid)(waypoint.sk) 로 '#' 앞 uuid 를 뽑아서 한다.
+#   핑은 일반 핑과 같은 시간(wpPingSec) 동안 적을 따라다니고, 찍은 사람과 같은 팀에게 보인다(빨간 마름모 + 빨간 발광 + locate bar). 새로 쓰면 이전 레이더 핑은 지운다.
+# 감지된 적: 액션바에 빨간 "감지됨!". 이펙트는 없고, 사용 사운드(띠-)는 쓴 사람에게만 들린다(주변에 들리면 위치가 드러나서).
+# 미검증: block.note_block.bit 사운드, 적 액션바(send action bar), 여러 핑 키("uuid#r1" 형식)가 waypoint.sk/pingmark.sk 에서 정상 처리되는지.
+
+on load:
+	set {-skillitems::radar} to recovery compass
+
+function radarRange() :: number:
+	return 30
+
+on rightclick:
+	if skillHand(player, recovery compass) is false:
+		stop
+	cancel event
+	set {_p} to player
+	set {_id} to "%uuid of {_p}%"
+	if {-radcd::%{_id}%} is set:
+		if {-radcd::%{_id}%} > now:
+			stop
+	set {-radcd::%{_id}%} to now + 20 seconds
+	set item cooldown of recovery compass for {_p} to 20 seconds
+	play sound "block.note_block.bit" with volume 1 and pitch 1.6 to {_p}
+	# 이전 레이더 핑 정리
+	loop {-wping_c::*}:
+		if wpOwner(loop-index) is {_id}:
+			if loop-index is not {_id}:
+				wpPingClear(loop-index)
+	set {_n} to 0
+	loop {-gplist::*}:
+		set {_t} to loop-value
+		if {_t} is not {_p}:
+			set {_tid} to "%uuid of {_t}%"
+			if wpActive({_t}) is true:
+				if isAlly({_id}, {_tid}) is false:
+					if {_t}.getWorld() is {_p}.getWorld():
+						if distance between {_p} and {_t} <= radarRange():
+							add 1 to {_n}
+							set {_pid} to "%{_id}%#r%{_n}%"
+							set {-wping_c::%{_pid}%} to "red"
+							set {-wping_e::%{_pid}%} to {_tid}
+							set {-wping_ent::%{_pid}%} to {_t}
+							set {-wping_x::%{_pid}%} to x-coordinate of {_t}
+							set {-wping_y::%{_pid}%} to y-coordinate of {_t}
+							set {-wping_z::%{_pid}%} to z-coordinate of {_t}
+							if {-wping_id::%{_pid}%} is not set:
+								set {_u} to UUID.randomUUID()
+								set {-wping_id::%{_pid}%} to "%{_u}%"
+							set {-wping_until::%{_pid}%} to {-wptick} + wpPingSec() * 10
+							send action bar "&c감지됨!" to {_t}
+	pmSync()
+	wpSyncViewers(false, true)
+
+on join:
+	delete {-radcd::%player's uuid%}

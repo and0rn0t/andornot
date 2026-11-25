@@ -96,6 +96,7 @@
 #   {-obcd::uuid}            불길한 병 쿨타임 종료 시각               ominousbottle
 #   {-splcd::uuid}           첨벙첨벙 쿨타임 종료 시각                splash
 #   {-milkcd::uuid}          우유 쿨타임 종료 시각                    milk
+#   {-radcd::uuid}           레이더 쿨타임 종료 시각                  radar(레이더 핑은 {-wping_*} 에 "uuid#r번호" 키로 저장, wpOwner 로 주인 판별)
 #   {-shcd::uuid}            삽 쿨타임 종료 시각(잠복이 끝난 뒤부터 15초)  shovel
 #   {-burrow::uuid}          삽 잠복 종료 시각(잠복 중이면 지금보다 뒤, 무적)  shovel(set), main(on damage 에서 읽기)
 #   {-splash::uuid}          첨벙첨벙 효과 종료 시각(효과 중이면 지금보다 뒤)   splash(읽기: tnt, fishing, projectile 은 splashActive 함수로)
@@ -194,6 +195,7 @@
 #   - netherstar.sk : 네더의 별 스킬
 #   - potions.sk    : 포션 3종(체력/스태미너/투명) 스킬
 #   - ominousbottle.sk : 불길한 병 스킬
+#   - radar.sk      : 레이더(만회 나침반) 스킬. 30칸 안 적 전원에게 핑 + 적에게 "감지됨!" 액션바
 #   - shovel.sk     : 삽 스킬. 3초 잠복(무적+투명), 쿨타임은 끝난 뒤부터
 #   - milk.sk       : 우유 스킬. 걸린 해로운 효과 전부 해제, 기절 중에도 사용 가능. [인수인계] 새 해로운 효과(상태이상)를 만들면 milk.sk 의 milkCleanse 에도 해제 처리를 넣을 것
 #   - splash.sk     : 첨벙첨벙(물 양동이) 스킬. 3초간 투사체 흡수. [인수인계] 투사체 무기를 새로 추가하면 splash.sk 맨 위 주석의 흡수 지점 목록을 보고 첨벙첨벙도 업데이트할 것
@@ -602,6 +604,7 @@ function skillCdReset(p: player):
 	delete {-splash::%{_id}%}
 	delete {-milkcd::%{_id}%}
 	delete {-shcd::%{_id}%}
+	delete {-radcd::%{_id}%}
 	delete {-burrow::%{_id}%}
 	delete {-potcd::%{_id}%::*}
 	delete {-ancd::%{_id}%}

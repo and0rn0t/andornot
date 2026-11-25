@@ -149,16 +149,17 @@ function wpSyncViewers(force: boolean, gforce: boolean):
 		# 핑: 찍은 사람과 같은 팀에게만 보인다. 파랑 0x3498DB, 빨강 0xFF3333
 		loop {-wping_c::*}:
 			set {_pp} to loop-index
+			set {_ow} to wpOwner({_pp})
 			set {_pt} to loop-value-2
 			set {_show} to false
 			if wpActive({_v}) is true:
-				if {_pp} is {_vid}:
+				if {_ow} is {_vid}:
 					set {_show} to true
-				else if isAlly({_vid}, {_pp}) is true:
+				else if isAlly({_vid}, {_ow}) is true:
 					set {_show} to true
 			else if {-tut::%{_vid}%} is "run":
 				# 튜토리얼 중에는 본인 핑만 보인다
-				if {_pp} is {_vid}:
+				if {_ow} is {_vid}:
 					set {_show} to true
 			if {_show} is true:
 				set {_pcol} to 3447003
@@ -353,6 +354,11 @@ function wpFind(id: text) :: entity:
 		if "%uuid of loop-entity%" is {_id}:
 			return loop-entity
 	return {_none}
+
+# 핑 키(pid)에서 찍은 사람 uuid 를 뽑는다. 일반 핑은 pid 가 곧 uuid, 레이더(radar.sk)는 "uuid#r번호" 라서 '#' 앞부분을 돌려준다.
+function wpOwner(pid: text) :: text:
+	set {_parts::*} to split {_pid} at "#"
+	return {_parts::1}
 
 # 핑 하나를 지운다(발광은 다음 동기화(0.1초 안)에서 걷힌다)
 function wpPingClear(pid: text):
