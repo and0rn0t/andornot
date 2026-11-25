@@ -254,7 +254,7 @@ function gJoinMid(p: player):
 	set {-gstar::%{_id}%} to gStarBase()
 	delete {-gdead::%{_id}%}
 	delete {-glastdmg::%{_id}%::*}
-	{_p}.getInventory().clear()
+	hatClear({_p})
 	if {-grandon} is true:
 		gRollLoadout({_p})
 		loadoutClearAll({_p})
@@ -896,13 +896,13 @@ function gStartFinish(sg: number):
 	gStartCamRelease()
 	# 보여주기용 더미 치우기(음악은 게임 시작 즈음 알아서 끝난다)
 	gsClear()
-	# 인벤토리 완전 초기화: 메인 인벤토리, 핫바, 오프핸드, 방어구를 전부 비운다(로비에서 오프핸드 등을 이용해 구성보다 많이 가져온 아이템을 없앤다). 구성 아이템은 아래 gameRespawn -> loadoutGive 가 새로 지급한다.
+	# 인벤토리 완전 초기화(치장 모자 hats.sk 만 남김): 메인 인벤토리, 핫바, 오프핸드, 방어구를 전부 비운다(로비에서 오프핸드 등을 이용해 구성보다 많이 가져온 아이템을 없앤다). 구성 아이템은 아래 gameRespawn -> loadoutGive 가 새로 지급한다.
 	# 비우기 전에 구성 아이템 칸을 기억해 둔다(랜덤 아이템 모드는 새로 뽑으므로 기억하지 않음)
 	if gRandomNow() is not true:
 		loop {-gplist::*}:
 			gSlotRemember(loop-value)
 	loop {-gplist::*}:
-		loop-value.getInventory().clear()
+		hatClear(loop-value)
 	# 게임 설정의 랜덤 아이템 모드(gcRandom): 참가자마다 아이템 4개를 새로 뽑고, 지금 들고 있는 구성 아이템은 치운다(저장된 구성은 그대로, 게임이 끝나면 돌려줌).
 	delete {-grand::*}
 	set {-grandon} to false

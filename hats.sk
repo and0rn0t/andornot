@@ -2,7 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 모델은 리소스팩(resourcepack/mck_pack/assets/mck/items|models|textures/item/hat/)의 mck:hat/<id>. 종이에 item_model 과 머리 칸 equippable 을 붙여 만든다.
 #   id: laurel(월계관), bounty(바운티 모자), mini_crown(미니 왕관), knockout_headgear(녹아웃 헤드기어). 영어 id 로도 받는다.
-# 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에). 새 모자를 추가하면 hatName/hatIds 에 넣고 리소스팩에 모델을 넣을 것.
+# 게임 시작/중간 참가 때 인벤토리를 비워도 모자는 남는다(hatClear). 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에). 새 모자를 추가하면 hatName/hatIds 에 넣고 리소스팩에 모델을 넣을 것.
 # 미검증: Paper 데이터 컴포넌트 ITEM_MODEL/EQUIPPABLE/ITEM_NAME/MAX_STACK_SIZE 설정, Equippable.equippable(EquipmentSlot.HEAD).build().
 
 import:
@@ -52,6 +52,28 @@ function hatItem(id: text) :: itemstack:
 	{_st}.setData(DataComponentTypes.ITEM_NAME, GsonComponentSerializer.gson().deserialize("{""text"":""%hatName({_id})%""}"))
 	{_st}.setData(DataComponentTypes.MAX_STACK_SIZE, Math.toIntExact(Math.round(1)))
 	return {_st}
+
+# 치장 모자 아이템인지(item_model 이 mck:hat/ 로 시작하는지). 칸이 비었으면 false.
+function hatIs(it: itemstack) :: boolean:
+	if {_it} is not set:
+		return false
+	set {_k} to {_it}.getData(DataComponentTypes.ITEM_MODEL)
+	if {_k} is not set:
+		return false
+	set {_ks} to {_k}.asString()
+	if "%{_ks}%" starts with "mck:hat/":
+		return true
+	return false
+
+# 인벤토리를 비우되 치장 모자(메인 인벤토리 0~35, 방어구 36~39, 왼손 40 어디에 있든)는 제자리에 남긴다.
+# 게임 시작/중간 참가 때 getInventory().clear() 대신 쓴다(game.sk). 새로 비우는 코드를 만들면 이걸 쓸 것.
+function hatClear(p: player):
+	set {_inv} to {_p}.getInventory()
+	loop integers from 0 to 40:
+		set {_it} to {_inv}.getItem(loop-value)
+		if {_it} is set:
+			if hatIs({_it}) is false:
+				{_inv}.setItem(loop-value, null)
 
 command /치장 [<text>]:
 	trigger:
