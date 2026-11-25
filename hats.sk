@@ -1,12 +1,17 @@
-# [hats.sk] 치장 모자 지급 명령어(op 전용): /치장 [이름|전체]. 치장 모자 5종.
+# [hats.sk] 치장 모자 5종 + 기본 모자/선택 GUI. /치장 = 선택 GUI(누구나), /치장 <월계관|바운티|왕관|헤드기어|선글라스|전체> = 모자 아이템 지급(op 디버그).
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 모델은 리소스팩(resourcepack/mck_pack/assets/mck/items|models|textures/item/hat/)의 mck:hat/<id>. 종이에 item_model 과 머리 칸 equippable 을 붙여 만든다(방어력 없음, 스택 1).
 #   id: laurel(월계관), bounty(바운티 모자), mini_crown(미니 왕관), knockout_headgear(녹아웃 헤드기어), alien_glasses(외계인 선글라스). 영어 id 로도 받는다.
 # [폐기됨] 남성 정장(suit_male), 멜빵바지(outfit), cosplay 네임스페이스 리소스는 사용자 지시로 삭제했다. 모자 모델은 사용자가 보낸 수정본(hat_models_fixed, alien_glasses_fixed)이다.
 #   다시 몸 칸(가슴/다리/발) 치장을 올리면 hatSlot 과 hatItem 에 칸별 equippable(assetId 포함)을 추가하고 hatIs 에 새 네임스페이스 경로를 넣을 것.
+# [기본 모자 + 선택 UI] 머리 칸에는 항상 "기본 모자"(hatCap)가 들어 있다: 아이콘은 가죽 모자(item_model mck:hat/cap)지만 장비 에셋 mck:invisible(투명 텍스처)이라 실제로는 안 보인다.
+#   머리 칸(인벤토리 방어구 칸, 슬롯 39)을 클릭하면 이벤트를 취소하고 "치장 선택" GUI(27칸)를 연다(/치장 만 쳐도 열린다). 치장 5종 중 하나를 고르면 머리 칸이 그 모자로 바뀌고(머리 칸 아이템은 장비 에셋이 없는 모델이라 아이템 모델 그대로 머리에 얹혀 보인다),
+#   "치장 해제"를 고르면 기본 모자로 돌아온다. 선택은 저장 변수 {hatsel::uuid}(치장 id, 없으면 기본 모자)에 남고, hatEnsure 가 입장/리스폰/2초마다 머리 칸을 선택값에 맞춘다(게임 시작 인벤토리 초기화 후에도 복구).
+#   GUI 상태 변수: {-hatgui::uuid}(열려 있음), {-hatguimap::uuid::칸}(칸 -> 치장 id 또는 "cap"). 치장 해금/소유 개념은 아직 없어서 5종 전부 고를 수 있다(나중에 해금 시스템이 생기면 hatGuiFill 에서 걸러낼 것).
+#   /치장 <이름> (op) 은 모자 아이템을 인벤토리에 지급하는 디버그용이다(버릴 수 없고, 머리 칸은 hatEnsure 가 선택값으로 덮어쓴다).
 # 게임 시작/중간 참가 때 인벤토리를 비워도 치장은 남는다(hatClear, 판별은 hatIs: item_model 이 mck:hat/ 로 시작). 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에).
 # 새 모자를 추가하면: 리소스팩에 모델 넣기 -> hatIds/hatName/hatParse 에 넣기.
-# 미검증: Paper 데이터 컴포넌트 ITEM_MODEL/EQUIPPABLE/ITEM_NAME/MAX_STACK_SIZE 설정.
+# 미검증: Paper 데이터 컴포넌트 ITEM_MODEL/EQUIPPABLE(assetId)/ITEM_NAME/MAX_STACK_SIZE/LORE/ENCHANTMENT_GLINT_OVERRIDE 설정, 투명 장비 에셋(mck:invisible)으로 안 보이는지, 머리 칸 클릭 취소 + GUI.
 
 import:
 	io.papermc.paper.datacomponent.DataComponentTypes
@@ -17,6 +22,7 @@ import:
 	org.bukkit.inventory.EquipmentSlot
 	org.bukkit.inventory.ItemStack
 	java.lang.Math
+	io.papermc.paper.datacomponent.item.ItemLore
 
 function hatIds() :: texts:
 	return "laurel", "bounty", "mini_crown", "knockout_headgear" and "alien_glasses"
@@ -61,6 +67,170 @@ function hatItem(id: text) :: itemstack:
 	{_st}.setData(DataComponentTypes.MAX_STACK_SIZE, Math.toIntExact(Math.round(1)))
 	return {_st}
 
+# 설명(lore) 한두 줄(짙은 회색, 기울임 없음)을 단다. 두 번째 줄이 빈 문자열이면 한 줄만.
+function hatLore(st: itemstack, l1: text, l2: text = ""):
+	set {_lb} to ItemLore.lore()
+	{_lb}.addLine(GsonComponentSerializer.gson().deserialize("{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_l1}%"",""color"":""gray""}]}"))
+	if {_l2} is not "":
+		{_lb}.addLine(GsonComponentSerializer.gson().deserialize("{""text"":"""",""italic"":false,""extra"":[{""text"":""%{_l2}%"",""color"":""yellow""}]}"))
+	{_st}.setData(DataComponentTypes.LORE, {_lb}.build())
+
+# 기본 모자: 아이콘은 가죽 모자, 착용하면 투명 장비 에셋이라 안 보인다. 머리 칸 기본값.
+function hatCap() :: itemstack:
+	set {_st} to new ItemStack(Material.PAPER)
+	{_st}.setData(DataComponentTypes.ITEM_MODEL, Key.key("mck", "hat/cap"))
+	{_st}.setData(DataComponentTypes.EQUIPPABLE, Equippable.equippable(EquipmentSlot.HEAD).assetId(Key.key("mck", "invisible")).swappable(false).build())
+	{_st}.setData(DataComponentTypes.ITEM_NAME, GsonComponentSerializer.gson().deserialize("{""text"":""기본 모자""}"))
+	{_st}.setData(DataComponentTypes.MAX_STACK_SIZE, Math.toIntExact(Math.round(1)))
+	hatLore({_st}, "착용 중인 치장이 없습니다.", "▶ 클릭하면 치장을 선택합니다.")
+	return {_st}
+
+# 저장된 치장 선택(없으면 "")
+function hatSel(p: player) :: text:
+	set {_s} to {hatsel::%{_p}'s uuid%}
+	if {_s} is not set:
+		return ""
+	set {_n} to hatName("%{_s}%")
+	if {_n} is "":
+		return ""
+	return "%{_s}%"
+
+# 머리 칸 아이템(치장 모자 아이템 또는 기본 모자)의 item_model 키. 칸이 비었거나 모델이 없으면 "".
+function hatKey(it: itemstack) :: text:
+	if {_it} is not set:
+		return ""
+	set {_k} to {_it}.getData(DataComponentTypes.ITEM_MODEL)
+	if {_k} is not set:
+		return ""
+	return {_k}.asString()
+
+# 머리 칸을 선택값에 맞춘다(비었거나 치장/기본 모자일 때만 바꾸고, 다른 진짜 헬멧은 건드리지 않는다).
+function hatEnsure(p: player):
+	set {_h} to {_p}.getInventory().getHelmet()
+	set {_cur} to hatKey({_h})
+	if {_h} is set:
+		if hatIs({_h}) is false:
+			stop
+	set {_sel} to hatSel({_p})
+	if {_sel} is "":
+		if {_cur} is "mck:hat/cap":
+			stop
+		{_p}.getInventory().setHelmet(hatCap())
+		stop
+	if {_cur} is "mck:hat/%{_sel}%":
+		stop
+	{_p}.getInventory().setHelmet(hatItem({_sel}))
+
+# 선택 GUI 칸 채우기: 10~14 = 치장 5종, 16 = 치장 해제(기본 모자), 나머지는 회색 유리판
+function hatGuiFill(p: player, inv: inventory):
+	set {_uid} to "%{_p}'s uuid%"
+	delete {-hatguimap::%{_uid}%::*}
+	set {_sel} to hatSel({_p})
+	set {_gi} to gray stained glass pane named " "
+	set {_gl} to {_gi}.getRandom()
+	loop integers from 0 to 26:
+		{_inv}.setItem(loop-value, {_gl})
+	set {_ids::*} to hatIds()
+	set {_i} to 0
+	loop 10, 11, 12, 13 and 14:
+		add 1 to {_i}
+		set {_id} to {_ids::%{_i}%}
+		set {_st} to hatItem({_id})
+		if {_sel} is {_id}:
+			hatLore({_st}, "착용 중입니다.")
+			{_st}.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true)
+		else:
+			hatLore({_st}, "치장 모자입니다.", "▶ 클릭하면 착용합니다.")
+		{_inv}.setItem(loop-value, {_st})
+		set {-hatguimap::%{_uid}%::%loop-value%} to {_id}
+	set {_cap} to hatCap()
+	{_cap}.setData(DataComponentTypes.ITEM_NAME, GsonComponentSerializer.gson().deserialize("{""text"":""치장 해제""}"))
+	if {_sel} is "":
+		hatLore({_cap}, "기본 모자(보이지 않음)를 착용 중입니다.")
+		{_cap}.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true)
+	else:
+		hatLore({_cap}, "기본 모자(보이지 않음)로 되돌립니다.", "▶ 클릭하면 치장을 벗습니다.")
+	{_inv}.setItem(16, {_cap})
+	set {-hatguimap::%{_uid}%::16} to "cap"
+
+function hatGuiOpen(p: player):
+	set {_inv} to chest inventory with 3 rows named "치장 선택"
+	open {_inv} to {_p}
+	set {-hatgui::%{_p}'s uuid%} to true
+	hatGuiFill({_p}, {_inv})
+
+# 머리 칸(방어구 칸 39)을 클릭하면 이벤트를 취소하고 선택 GUI 를 연다. 선택 GUI 가 열려 있을 땐 모든 클릭을 막고 칸에 맞는 동작을 한다.
+on inventory click:
+	set {_uid} to "%player's uuid%"
+	set {_ev} to event
+	if {-hatgui::%{_uid}%} is set:
+		cancel the event
+		set {_raw} to {_ev}.getRawSlot()
+		set {_raw} to "%{_raw}%" parsed as number
+		if {_raw} is not set:
+			stop
+		if {_raw} < 0:
+			stop
+		if {_raw} >= 27:
+			stop
+		set {_id} to {-hatguimap::%{_uid}%::%{_raw}%}
+		if {_id} is not set:
+			stop
+		set {_p} to player
+		if {_id} is "cap":
+			delete {hatsel::%{_uid}%}
+		else:
+			set {hatsel::%{_uid}%} to {_id}
+		hatEnsure({_p})
+		play sound "item.armor.equip_leather" with volume 0.7 to {_p}
+		hatGuiFill({_p}, {_p}'s current inventory)
+		stop
+	if {-itemgui::%{_uid}%} is set:
+		stop
+	set {_ci} to {_ev}.getClickedInventory()
+	if {_ci} is not set:
+		stop
+	set {_ct} to {_ci}.getType().name()
+	if {_ct} is not "PLAYER":
+		stop
+	set {_sl} to {_ev}.getSlot()
+	set {_sl} to "%{_sl}%" parsed as number
+	if {_sl} is 39:
+		cancel the event
+		set {_p} to player
+		wait 1 tick
+		hatGuiOpen({_p})
+
+on inventory drag:
+	if {-hatgui::%player's uuid%} is set:
+		cancel the event
+
+on inventory close:
+	delete {-hatgui::%player's uuid%}
+	delete {-hatguimap::%player's uuid%::*}
+
+on quit:
+	delete {-hatgui::%player's uuid%}
+	delete {-hatguimap::%player's uuid%::*}
+
+# 치장 아이템은 버릴 수 없다
+on drop:
+	set {_st} to event.getItemDrop().getItemStack()
+	if hatIs({_st}) is true:
+		cancel the event
+
+on join:
+	hatEnsure(player)
+
+on respawn:
+	wait 1 tick
+	hatEnsure(player)
+
+# 입장/리스폰/인벤토리 초기화 등 어떤 경우든 머리 칸을 선택값으로 복구한다
+every 2 seconds:
+	loop all players:
+		hatEnsure(loop-player)
+
 # 치장 모자인지(item_model 이 mck:hat/ 로 시작하는지). 칸이 비었으면 false.
 function hatIs(it: itemstack) :: boolean:
 	if {_it} is not set:
@@ -85,11 +255,11 @@ function hatClear(p: player):
 
 command /치장 [<text>]:
 	trigger:
+		if arg-1 is not set:
+			hatGuiOpen(player)
+			stop
 		if player is not op:
 			send "&c권한이 없습니다."
-			stop
-		if arg-1 is not set:
-			send "&e사용법: /치장 <월계관|바운티|왕관|헤드기어|선글라스|전체>"
 			stop
 		set {_all} to false
 		if arg-1 is "전체":
