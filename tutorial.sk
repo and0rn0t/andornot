@@ -14,7 +14,7 @@
 
 import:
 	org.bukkit.Bukkit
-	org.bukkit.GameRule
+	java.util.function.Consumer
 	org.bukkit.entity.EntityType
 	org.bukkit.potion.PotionEffect
 	org.bukkit.potion.PotionEffectType
@@ -527,16 +527,16 @@ function helpDialog(p: player, topic: number):
 	set {_pn} to {_p}.getName()
 	helpConsole("dialog show %{_pn}% %{_snbt}%")
 
-# 콘솔 명령을 실행하되, 관리자(OP)/콘솔에 "[Server: ...대화 상자를 표시했습니다]" 알림이 안 뜨게 한다.
-# 그 알림은 게임 규칙 logAdminCommands 가 켜져 있을 때 나가므로, 메인 월드(콘솔 명령의 기준 월드)의 규칙을 잠깐 끄고 실행한 뒤 원래 값으로 되돌린다(같은 틱 안이라 다른 명령에는 영향 없음).
-# 미검증: GameRule.LOG_ADMIN_COMMANDS(1.21.11 게임 규칙 이름 변경 후에도 API 상수가 유지되는지).
+# 콘솔 명령을 실행하되, 관리자(OP)/콘솔에 "[Server: ...대화 상자를 표시했습니다]" 알림이 안 뜨게 한다(게임 규칙을 끄는 방식은 효과가 없었다).
+# Paper 의 Bukkit.createCommandSender(결과 메시지를 받는 Consumer) 로 만든 전용 발신자로 명령을 실행하면 결과 메시지가 그 Consumer 로만 가고 아무 데도 안 찍힌다(Consumer 는 아무것도 안 함).
+# skript-reflect 의 프록시(new proxy instance of Consumer, accept 메서드 = section)로 Consumer 를 만든다.
+# 미검증: 프록시 문법(create section ... stored in {_f::accept}), 전용 발신자가 OP 알림도 안 보내는지.
 function helpConsole(cmd: text):
-	set {_ws} to Bukkit.getWorlds()
-	set {_w} to {_ws}.get(0)
-	set {_old} to {_w}.getGameRuleValue(GameRule.LOG_ADMIN_COMMANDS)
-	{_w}.setGameRule(GameRule.LOG_ADMIN_COMMANDS, false)
-	execute console command {_cmd}
-	{_w}.setGameRule(GameRule.LOG_ADMIN_COMMANDS, {_old})
+	create section with {_msg} stored in {_f::accept}:
+		set {_ignored} to 0
+	set {_px} to new proxy instance of Consumer using {_f::*}
+	set {_snd} to Bukkit.createCommandSender({_px})
+	Bukkit.dispatchCommand({_snd}, {_cmd})
 
 command /도움말항목 <number>:
 	description: 도움말 항목을 열어요 (도움말 창의 버튼이 쓰는 명령)
