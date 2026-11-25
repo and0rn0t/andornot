@@ -4,7 +4,7 @@
 #   {matchlog::번호::mode|winner|map|rand|time|potm}(목록 설명용), {matchlog::번호::rv::uuid}/{matchlog::번호::rvn::uuid}(한 줄 리뷰/작성자 이름, 사람당 1개),
 #   {matchshelf::월드_x_y_z}(등록된 독서대 블록, true)
 # 이 파일이 쓰는 변수(RAM): {-mhgui::uuid}(GUI 열림), {-mhmap::uuid::칸}(칸 -> 매치 번호), {-mhpage::uuid}(현재 쪽, 0부터)
-# 기록 시점: gameFinale 마지막 단계(gmRecord). 번호는 1부터, 100 미만은 MATCH 001 처럼 3자리로 표기(matchLabel).
+# 기록 시점: gameFinale 마지막 단계(gmRecord, 팀 2개 미만 테스트 게임은 기록 안 하고 결과창 이름은 MATCH TEST). 번호는 1부터, 100 미만은 MATCH 001 처럼 3자리로 표기(matchLabel).
 # GUI: 독서대 우클릭 -> 4줄. 1~3줄 27칸 = 매치(최신이 먼저, 작성된 책), 4줄 1/9번 칸 = 이전/다음 쪽 종이(매치 28개 이상일 때만), 4줄 5번 칸 = 나가기(방벽).
 # 책을 누르면 vanilla dialog(/dialog show)로 결과창을 띄우고, 한 줄 리뷰(40자)를 남길 수 있다(입력은 채팅: dialog 입력칸은 한글이 안 들어가서). 리뷰는 결과 아래에 표시된다.
 # 관리자 메뉴 버튼: 독서대 등록/해제(바라보는 독서대 블록).
@@ -37,6 +37,9 @@ function mhCount() :: number:
 
 # 매치 끝에 결과를 저장한다. 결과창에 POTM 이 반영된 뒤에 부를 것.
 function gmRecord():
+	# 팀이 2개 미만인 혼자 하는 테스트 게임은 저장하지 않는다(번호도 안 올라간다). 통계/승점(statRecord, ratingApply)과 같은 조건.
+	if size of {-gteamlist::*} < 2:
+		stop
 	set {-gfinline} to true
 	add 1 to {matchcount}
 	set {_n} to floor({matchcount})

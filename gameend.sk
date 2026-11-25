@@ -1093,7 +1093,10 @@ function gameFinale():
 		stop
 	set {-gfinale} to true
 	# 이번 매치 번호(결과창 맨 윗줄에 표시). 저장은 gmRecord
+	# 팀이 2개 미만인 혼자 하는 테스트 게임은 번호를 쓰지 않고 "MATCH TEST"로 표시한다(매치 기록에도 저장하지 않는다: gmRecord)
 	set {-gmatchlbl} to matchLabel(mhCount() + 1)
+	if size of {-gteamlist::*} < 2:
+		set {-gmatchlbl} to "MATCH TEST"
 	# 내부 승점 갱신
 	ratingApply()
 	# 아이템 통계/랭킹용 참가자 기록(stats.sk)
