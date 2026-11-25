@@ -370,9 +370,6 @@ function gsClear():
 	delete {-gsdummy::*}
 	delete {-gsjump::*}
 	delete {-gsin::*}
-	delete {-hin::*}
-	delete {-hoff::*}
-	delete {-hbase::*}
 	delete {-gsl::*}
 
 # ===== 시작 연출 본체 =====
@@ -799,74 +796,6 @@ on PlayerItemHeldEvent:
 		set {_hp} to event.getPlayer()
 		if {-gplist::*} contains {_hp}:
 			event.setCancelled(true)
-
-# ===== 연출 중 더미 고개 돌리기(시작 연출 + 종료 연출 공통) =====
-# 관전 카메라에 붙어 있으면 클라이언트가 시선(yaw/pitch)을 서버에 안 보내서, 시선 대신 이동키로 고개를 돌린다: A = 시청자 기준 왼쪽, D = 오른쪽, W = 위, S = 아래(누르고 있는 동안 계속 돌고, 떼면 그 자세 유지).
-# 몸은 그대로 두고 고개만 돈다: 마네킹 기준 방향({-hbase::uuid}, 처음 돌릴 때의 yaw)에 좌우 최대 75도/상하 최대 45도까지. 틱당 좌우 6도, 상하 4도.
-# 변수(RAM): {-hin::yaw/pitch::uuid}(눌림 방향 -1/0/1), {-hoff::yaw/pitch::uuid}(현재 고개 각도), {-hbase::uuid}(몸 방향). gsClear/gfClearDummies 가 지운다.
-# 미검증: LivingEntity#setBodyYaw(float)/Entity#setRotation 으로 마네킹 고개만 도는지, 입력 이벤트의 isLeft/isRight/isForward/isBackward, 점프 중(teleport 로 yaw 가 덮임)에도 고개가 유지되는지.
-on PlayerInputEvent:
-	if {-gstarting} is not true:
-		if {-gfinale} is not true:
-			stop
-	set {_p} to event.getPlayer()
-	set {_id} to "%uuid of {_p}%"
-	set {_in} to event.getInput()
-	set {_dy} to 0
-	if {_in}.isLeft() is true:
-		add 1 to {_dy}
-	if {_in}.isRight() is true:
-		subtract 1 from {_dy}
-	set {_dp} to 0
-	if {_in}.isForward() is true:
-		subtract 1 from {_dp}
-	if {_in}.isBackward() is true:
-		add 1 to {_dp}
-	set {-hin::yaw::%{_id}%} to {_dy}
-	set {-hin::pitch::%{_id}%} to {_dp}
-
-function dummyHeadStep(p: player, phase: text):
-	set {_id} to "%uuid of {_p}%"
-	set {_dy} to {-hin::yaw::%{_id}%}
-	set {_dp} to {-hin::pitch::%{_id}%}
-	if {_dy} is not set:
-		set {_dy} to 0
-	if {_dp} is not set:
-		set {_dp} to 0
-	if {_dy} is 0:
-		if {_dp} is 0:
-			stop
-	if {_phase} is "start":
-		set {_m} to {-gsdummy::%{_id}%}
-	else:
-		set {_m} to gfDummyOf({_p})
-	if {_m} is not set:
-		stop
-	if {_m}.isValid() is not true:
-		stop
-	if {-hbase::%{_id}%} is not set:
-		set {-hbase::%{_id}%} to {_m}.getYaw()
-	set {_oy} to {-hoff::yaw::%{_id}%}
-	if {_oy} is not set:
-		set {_oy} to 0
-	set {_op} to {-hoff::pitch::%{_id}%}
-	if {_op} is not set:
-		set {_op} to 0
-	set {_oy} to max(-75, min(75, {_oy} + {_dy} * 6))
-	set {_op} to max(-45, min(45, {_op} + {_dp} * 4))
-	set {-hoff::yaw::%{_id}%} to {_oy}
-	set {-hoff::pitch::%{_id}%} to {_op}
-	set {_b} to {-hbase::%{_id}%}
-	{_m}.setRotation({_b} + {_oy}, {_op})
-	{_m}.setBodyYaw({_b})
-
-every 1 tick:
-	if {-gstarting} is true:
-		loop {-gplist::*}:
-			dummyHeadStep(loop-value, "start")
-	if {-gfinale} is true:
-		loop {-gfv::*}:
-			dummyHeadStep(loop-value, "end")
 
 # 스크립트를 다시 불러올 때 남은 카운트다운 카메라를 지운다
 on load:
