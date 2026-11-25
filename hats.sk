@@ -1,0 +1,79 @@
+# [hats.sk] 치장 모자 4종 지급 명령어(op 전용): /치장 [월계관|바운티|왕관|헤드기어|전체]
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 모델은 리소스팩(resourcepack/mck_pack/assets/mck/items|models|textures/item/hat/)의 mck:hat/<id>. 종이에 item_model 과 머리 칸 equippable 을 붙여 만든다.
+#   id: laurel(월계관), bounty(바운티 모자), mini_crown(미니 왕관), knockout_headgear(녹아웃 헤드기어). 영어 id 로도 받는다.
+# 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에). 새 모자를 추가하면 hatName/hatIds 에 넣고 리소스팩에 모델을 넣을 것.
+# 미검증: Paper 데이터 컴포넌트 ITEM_MODEL/EQUIPPABLE/ITEM_NAME/MAX_STACK_SIZE 설정, Equippable.equippable(EquipmentSlot.HEAD).build().
+
+import:
+	io.papermc.paper.datacomponent.DataComponentTypes
+	io.papermc.paper.datacomponent.item.Equippable
+	net.kyori.adventure.key.Key
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+	org.bukkit.Material
+	org.bukkit.inventory.EquipmentSlot
+	org.bukkit.inventory.ItemStack
+	java.lang.Math
+
+function hatIds() :: texts:
+	return "laurel", "bounty", "mini_crown" and "knockout_headgear"
+
+function hatName(id: text) :: text:
+	if {_id} is "laurel":
+		return "월계관"
+	if {_id} is "bounty":
+		return "바운티 모자"
+	if {_id} is "mini_crown":
+		return "미니 왕관"
+	if {_id} is "knockout_headgear":
+		return "녹아웃 헤드기어"
+	return ""
+
+# 입력(한글 이름/영어 id/줄임말)을 id 로. 모르면 "".
+function hatParse(s: text) :: text:
+	loop "월계관", "laurel":
+		if {_s} is loop-value:
+			return "laurel"
+	loop "바운티", "바운티모자", "bounty":
+		if {_s} is loop-value:
+			return "bounty"
+	loop "왕관", "미니왕관", "mini_crown":
+		if {_s} is loop-value:
+			return "mini_crown"
+	loop "헤드기어", "녹아웃", "녹아웃헤드기어", "knockout_headgear":
+		if {_s} is loop-value:
+			return "knockout_headgear"
+	return ""
+
+function hatItem(id: text) :: itemstack:
+	set {_st} to new ItemStack(Material.PAPER)
+	{_st}.setData(DataComponentTypes.ITEM_MODEL, Key.key("mck", "hat/%{_id}%"))
+	{_st}.setData(DataComponentTypes.EQUIPPABLE, Equippable.equippable(EquipmentSlot.HEAD).build())
+	{_st}.setData(DataComponentTypes.ITEM_NAME, GsonComponentSerializer.gson().deserialize("{""text"":""%hatName({_id})%""}"))
+	{_st}.setData(DataComponentTypes.MAX_STACK_SIZE, Math.toIntExact(Math.round(1)))
+	return {_st}
+
+command /치장 [<text>]:
+	trigger:
+		if player is not op:
+			send "&c권한이 없습니다."
+			stop
+		if arg-1 is not set:
+			send "&e사용법: /치장 <월계관|바운티|왕관|헤드기어|전체>"
+			stop
+		set {_all} to false
+		if arg-1 is "전체":
+			set {_all} to true
+		if arg-1 is "all":
+			set {_all} to true
+		if {_all} is true:
+			loop hatIds():
+				player.getInventory().addItem(hatItem(loop-value))
+			send "&a치장 모자 4종을 지급했습니다."
+			stop
+		set {_id} to hatParse(arg-1)
+		if {_id} is "":
+			send "&c알 수 없는 모자입니다. 월계관, 바운티, 왕관, 헤드기어, 전체 중에서 골라 주세요."
+			stop
+		player.getInventory().addItem(hatItem({_id}))
+		send "&a%hatName({_id})%을(를) 지급했습니다."
