@@ -729,7 +729,7 @@ on damage:
 # id 는 이 더미가 뜻하는 참가자 id(uuid). 이름표(팀 색)와 설명(POTM 이면 ★)을 단다.
 function gfDummy(p: player, loc: location, id: text, yaw: number):
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
-	set {_pf} to {_p}.getPlayerProfile()
+	set {_pf} to nickProfile({_p})
 	{_m}.setProfile(ResolvableProfile.resolvableProfile({_pf}))
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)
@@ -752,7 +752,7 @@ function gfDummy(p: player, loc: location, id: text, yaw: number):
 # 라운드 승리자 더미: p 와 똑같이 생긴(스킨/방어구) 더미를 loc 에 yaw 방향으로 세우고 돌려준다. 녹아웃 라운드 종료 연출(killcine.sk)이 쓴다. gfClearDummies() 로 지워진다.
 function gfDummyAt(p: player, loc: location, yaw: number) :: object:
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
-	set {_pf} to {_p}.getPlayerProfile()
+	set {_pf} to nickProfile({_p})
 	{_m}.setProfile(ResolvableProfile.resolvableProfile({_pf}))
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)

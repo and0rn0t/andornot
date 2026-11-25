@@ -170,7 +170,7 @@ function tridentBlink(p: player, f: number, dest: location):
 function tridentPrevSpawn(p: player, loc: location) :: object:
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
 	{_m}.setVisibleByDefault(false)
-	set {_pf} to {_p}.getPlayerProfile()
+	set {_pf} to nickProfile({_p})
 	{_m}.setProfile(ResolvableProfile.resolvableProfile({_pf}))
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)

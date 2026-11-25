@@ -122,7 +122,7 @@ function beeMakeBody(p: player):
 	{_st}.setSilent(true)
 	{_st}.addScoreboardTag("beeseat")
 	set {_m} to {_w}.spawnEntity({_l}, EntityType.MANNEQUIN)
-	set {_pf} to {_p}.getPlayerProfile()
+	set {_pf} to nickProfile({_p})
 	{_m}.setProfile(ResolvableProfile.resolvableProfile({_pf}))
 	{_m}.setImmovable(true)
 	{_m}.setSilent(true)
