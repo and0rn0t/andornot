@@ -1,5 +1,5 @@
 # [cmdhide.sk] op 가 아닌 사람은 게임 명령어(cmdAllowed 목록)만 쓸 수 있고, 나머지 모든 명령어(바닐라/플러그인/관리자 명령 포함)는 막히고 목록/자동완성에서도 사라집니다(허용 목록 방식).
-#   허용: 참가(joingame), lobby, 치장, 랭킹, 아이템통계, 튜토리얼, 도움말, 도움말항목, matchreview(대화 상자 버튼이 쓰는 명령). 게임 명령어를 새로 만들면 cmdAllowed 에 넣을 것(안 넣으면 일반 유저는 못 씀).
+#   허용: 참가(joingame), lobby, 랭킹, 아이템통계, 튜토리얼, 도움말, 도움말항목, matchreview(대화 상자 버튼이 쓰는 명령). 게임 명령어를 새로 만들면 cmdAllowed 에 넣을 것(안 넣으면 일반 유저는 못 씀).
 #   op 는 영향 없음. 아래 "숨기는 명령" 설명은 예전 방식(차단 목록)이라 지금은 전부 허용 목록에 없어서 같이 막힘.
 # 숨기는 두 가지 방법:
 #   1) 명령어 실행 막기: 해당 명령을 치면 없는 명령어인 것처럼 "알 수 없는 명령" 메시지만 보냅니다("권한이 없습니다" 라고 하면 명령이 있다는 걸 알려주므로).
@@ -20,7 +20,7 @@ function cmdAllowed(c: text) :: boolean:
 	set {_i} to {_x}.lastIndexOf(":")
 	add 1 to {_i}
 	set {_x} to {_x}.substring({_i})
-	if {_x} is "참가" or "joingame" or "lobby" or "치장" or "랭킹" or "아이템통계":
+	if {_x} is "참가" or "joingame" or "lobby" or "랭킹" or "아이템통계":
 		return true
 	if {_x} is "튜토리얼" or "도움말" or "도움말항목" or "matchreview":
 		return true
