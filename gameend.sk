@@ -1,5 +1,6 @@
 # [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 자동 선정 -> 15초 뒤 정리하고 로비로.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
+# [고개 돌리기] 시작/종료 연출 공통: A/D/W/S 로 자기 더미 고개 돌리기(startcine.sk 의 "연출 중 더미 고개 돌리기" 절, 종료 연출은 gfDummyOf 로 더미를 찾는다).
 # [종료 연출 중 더미 조작] 시작 연출과 같은 조작: 승리 팀 시청자가 점프/앉기로 자기 더미를 움직인다(gfJump/gfSneak/gfSneakPulse, 입력 이벤트 핸들러는 "종료 연출 중 더미 조작" 절). 더미 소유 판별은 gfDummyOf.
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
 #   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(POTM 이름), {-gpotmid}(POTM 참가자 id, 승리 기여도로 자동 선정 gfPotmPick), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
@@ -774,6 +775,9 @@ function gfClearDummies():
 	delete {-gdummyid::*}
 	delete {-gfjump::*}
 	delete {-gfin::*}
+	delete {-hin::*}
+	delete {-hoff::*}
+	delete {-hbase::*}
 	delete {-gdisp}
 	delete {-gdisp2::*}
 
