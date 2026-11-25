@@ -1,5 +1,6 @@
 # [gameend.sk] 게임 종료 연출: 마지막 킬 연출 감상 -> 종료/승리 팀 알림 -> 승리 팀 더미 일렬 세우기 + 채팅 결과 발표 + Player Of The Match 자동 선정 -> 15초 뒤 정리하고 로비로.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것. 게임 상태 변수는 game.sk 맨 위 참고.
+# [종료 연출 중 더미 조작] 시작 연출과 같은 조작: 승리 팀 시청자가 점프/앉기로 자기 더미를 움직인다(gfJump/gfSneak/gfSneakPulse, 입력 이벤트 핸들러는 "종료 연출 중 더미 조작" 절). 더미 소유 판별은 gfDummyOf.
 # 이 파일이 쓰는 변수(RAM): {-gfinale}(종료 연출 중), {-gdisp}(결과 디스플레이), {-gworld}(이번 게임이 진행되는 월드 이름), {-gfwinp::*}/{-gfwinid::*}(무대에 세울 승리 팀 더미의 스킨 원본/참가자 id), {-gdummyid::더미uuid}(더미가 뜻하는 참가자 id),
 #   {-gfmaxk}/{-gfmaxdt}/{-gfmaxa}/{-gfmaxd}(결과 표에서 노란 굵은 글씨로 강조할 항목별 최고값), {-gdummies::*}(세운 더미 엔티티), {-gpotmres}(POTM 이름), {-gpotmid}(POTM 참가자 id, 승리 기여도로 자동 선정 gfPotmPick), {-gfgen}(연출 세대, 강제 종료 때 올림), {-gfnw}(결과 표 이름 칸 너비, 결과를 그릴 때 계산)
 # 매치 기록(결과 저장/책장 GUI/리뷰)은 matchhistory.sk. {-gmatchlbl}(이번 매치 이름, 결과 맨 윗줄)
@@ -771,8 +772,100 @@ function gfClearDummies():
 		loop-value.remove()
 	delete {-gdummies::*}
 	delete {-gdummyid::*}
+	delete {-gfjump::*}
+	delete {-gfin::*}
 	delete {-gdisp}
 	delete {-gdisp2::*}
+
+# ===== 종료 연출 중 더미 조작(점프/앉기, 시작 연출 startcine.sk 와 같은 조작) =====
+# 종료 연출 시청자({-gfv::*}) 중 승리 팀이라 자기 더미가 있는 사람은 점프(스페이스)로 자기 더미를 점프시키고, 앉기(Shift)를 누르는 동안 자기 더미를 앉힌다.
+# 자기 더미 = {-gdummies::*} 중 {-gdummyid::더미uuid} 가 그 사람 id 인 것(승리 팀이 아니면 더미가 없어서 아무 일도 안 일어남). 변수(RAM): {-gfjump::uuid}(점프 중), {-gfin::sneak/jump/pulse::uuid}(눌림 상태). 연출이 끝나면 gfClearDummies 가 지운다.
+# 입력은 PlayerInputEvent, 대체 경로는 카메라에서 내려오려는 시도(PlayerStopSpectatingEntityEvent)로 6틱 앉힘(시작 연출과 같다). 미검증: 종료 연출 중 관전 카메라 상태에서도 입력 이벤트가 오는지.
+function gfDummyOf(p: player) :: entity:
+	set {_id} to "%uuid of {_p}%"
+	loop {-gdummies::*}:
+		if {-gdummyid::%loop-value's uuid%} is {_id}:
+			return loop-value
+	return {_none}
+
+function gfJump(p: player):
+	set {_id} to "%uuid of {_p}%"
+	set {_m} to gfDummyOf({_p})
+	if {_m} is not set:
+		stop
+	if {-gfjump::%{_id}%} is true:
+		stop
+	set {-gfjump::%{_id}%} to true
+	set {_base} to {_m}.getLocation()
+	set {_bx} to {_base}.getY()
+	set {_v} to 0.42
+	set {_y} to 0
+	set {_i} to 0
+	while {_i} < 40:
+		wait 1 tick
+		if {-gfinale} is not true:
+			delete {-gfjump::%{_id}%}
+			stop
+		if {_m}.isValid() is not true:
+			delete {-gfjump::%{_id}%}
+			stop
+		add {_v} to {_y}
+		set {_v} to ({_v} - 0.08) * 0.98
+		set {_l} to {_base}.clone()
+		if {_y} <= 0:
+			{_m}.teleport({_l})
+			set {_i} to 99
+		else:
+			{_l}.setY({_bx} + {_y})
+			{_m}.teleport({_l})
+			add 1 to {_i}
+	delete {-gfjump::%{_id}%}
+
+function gfSneak(p: player, down: boolean):
+	set {_m} to gfDummyOf({_p})
+	if {_m} is not set:
+		stop
+	if {_m}.isValid() is not true:
+		stop
+	if {_down} is true:
+		{_m}.setPose(Pose.SNEAKING, true)
+	else:
+		{_m}.setPose(Pose.STANDING, true)
+
+function gfSneakPulse(p: player):
+	set {_id} to "%uuid of {_p}%"
+	if {-gfin::pulse::%{_id}%} is true:
+		stop
+	set {-gfin::pulse::%{_id}%} to true
+	gfSneak({_p}, true)
+	wait 6 ticks
+	delete {-gfin::pulse::%{_id}%}
+	if {-gfin::sneak::%{_id}%} is not true:
+		gfSneak({_p}, false)
+
+on PlayerInputEvent:
+	if {-gfinale} is not true:
+		stop
+	set {_p} to event.getPlayer()
+	if {-gfv::*} does not contain {_p}:
+		stop
+	set {_id} to "%uuid of {_p}%"
+	set {_in} to event.getInput()
+	set {_sn} to {_in}.isSneak()
+	set {_jp} to {_in}.isJump()
+	if {_sn} is true:
+		if {-gfin::sneak::%{_id}%} is not true:
+			set {-gfin::sneak::%{_id}%} to true
+			gfSneak({_p}, true)
+	else if {-gfin::sneak::%{_id}%} is true:
+		delete {-gfin::sneak::%{_id}%}
+		gfSneak({_p}, false)
+	if {_jp} is true:
+		if {-gfin::jump::%{_id}%} is not true:
+			set {-gfin::jump::%{_id}%} to true
+			gfJump({_p})
+	else:
+		delete {-gfin::jump::%{_id}%}
 
 # ===== 종료 연출 카메라/연출 효과(시상대는 없앴음, 승리 팀 더미만 보여 줌) =====
 # 카메라는 gameFinale 이 매 틱 카메라 엔티티({-gfcam})를 gfShotA(0~10초, 줄 왼쪽 끝 비스듬한 근접 -> 오른쪽 끝) -> gfShotB(10초~, 정면에서 뒤로 빠짐) 위치로 옮기고, 시청자({-gfv::*})가 그 엔티티를 관전한다.
@@ -945,6 +1038,10 @@ on PlayerStopSpectatingEntityEvent:
 	if {-gfcam} is not set:
 		stop
 	event.setCancelled(true)
+	# 앉기 입력 이벤트가 안 올 때의 대체: 카메라에서 내려오려는 시도마다 자기 더미를 6틱 앉힌다(종료 연출 더미 조작, 위 gfSneakPulse)
+	set {_sp} to event.getPlayer()
+	if {-gfv::*} contains {_sp}:
+		gfSneakPulse({_sp})
 
 # 풀려도 매 틱 다시 카메라에 붙인다(시작 연출의 every 1 tick 과 같다)
 every 1 tick:
