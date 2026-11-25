@@ -524,13 +524,32 @@ function helpTopicLines(i: number) :: texts:
 		return {_r::*}
 	if {_i} is 6:
 		add "경기 결과에 따라 내부 레이팅이 변동, 레이팅에 따라 티어가 정해집니다." to {_r::*}
-		add "티어 순서: 브론즈 → 실버 → 골드 → 에메랄드 → 다이아몬드 → 마스터" to {_r::*}
-		add "마스터 이상에서 서버 순위 1위는 챌린저, 2~5위는 그랜드마스터입니다." to {_r::*}
+		add "티어 순서: @T0브론즈 → @T1실버 → @T2골드 → @T3에메랄드 → @T4다이아몬드 → @T5마스터" to {_r::*}
+		add "마스터 이상에서 서버 순위 1위는 @T7챌린저, 2~5위는 @T6그랜드마스터입니다." to {_r::*}
 		add "2팀 경기는 승리 +5점 / 패배 -5점이고, 팀이 더 많으면 순위에 따라 달라집니다." to {_r::*}
 		add "처음 10경기는 승점 변동이 2배입니다." to {_r::*}
 		return {_r::*}
 	add "전투에서 벗어난 지 8초가 지나면 자동 회복이 시작됩니다." to {_r::*}
 	return {_r::*}
+
+# 도움말 줄 안의 "@T0"~"@T7"(티어 묶음 번호: 브론즈 0 ~ 챌린저 7)을 티어 아이콘(아이콘 스프라이트, tier.sk 의 tierIconJ 와 같은 스프라이트/색)으로 바꾼 다이얼로그 contents(SNBT)를 만든다.
+# 토큰이 없으면 글자 하나짜리 contents 를 그대로 돌려준다. 토큰이 있으면 [{text:'앞글자'},{object:'atlas',...아이콘},{text:' 뒤글자'},...] 형태(모두 컴포넌트라 리스트 항목 종류가 같다).
+# 새 줄에서 티어 아이콘이 필요하면 티어 이름 앞에 @T번호 를 붙이면 된다. 미검증: 다이얼로그 plain_message 의 contents 에 object(atlas) 컴포넌트가 표시되는지.
+function helpContents(t: text) :: text:
+	if {_t} does not contain "@T":
+		return "'%{_t}%'"
+	set {_sp::*} to "minecraft:item/copper_ingot", "minecraft:item/iron_ingot", "minecraft:item/gold_ingot", "mck:item/tier_emerald", "mck:item/tier_diamond", "minecraft:item/nether_star", "minecraft:item/nether_star", "minecraft:item/nether_star"
+	set {_co::*} to "", "", "", "", "", ",color:'#b05cff'", ",color:'#ff3b3b'", ""
+	set {_parts::*} to split {_t} at "@T"
+	set {_out} to "{text:'%{_parts::1}%'}"
+	set {_n} to 1
+	while {_n} < size of {_parts::*}:
+		add 1 to {_n}
+		set {_seg} to {_parts::%{_n}%}
+		set {_g} to first 1 characters of {_seg} parsed as number
+		set {_rest} to subtext of {_seg} from characters 2 to length of {_seg}
+		set {_out} to "%{_out}%,{object:'atlas',atlas:'minecraft:items',sprite:'%{_sp::%{_g} + 1%}%'%{_co::%{_g} + 1%}%},{text:' %{_rest}%'}"
+	return "[%{_out}%]"
 
 # 다이얼로그에 넣을 글자 정리: 색 코드(&x) 삭제, SNBT 작은따옴표 이스케이프
 function helpPlain(t: text) :: text:
@@ -550,7 +569,7 @@ function helpDialog(p: player, topic: number):
 		if {_k} > 1:
 			set {_body} to "%{_body}%,"
 		set {_ln} to helpPlain({_l::%{_k}%})
-		set {_body} to "%{_body}%{type:'minecraft:plain_message',width:320,contents:'%{_ln}%'}"
+		set {_body} to "%{_body}%{type:'minecraft:plain_message',width:320,contents:%helpContents({_ln})%}"
 	set {_acts} to ""
 	set {_k} to 0
 	while {_k} < helpTopicCount():
