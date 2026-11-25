@@ -44,7 +44,7 @@ import:
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
 function itemIds() :: texts:
-	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident", "bee", "splash" and "milk"
+	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "iron_shovel", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident", "bee", "splash" and "milk"
 
 # 아이템 이름
 function itemName(id: text) :: text:
@@ -58,6 +58,8 @@ function itemName(id: text) :: text:
 		return "&f곡괭이"
 	if {_id} is "iron_hoe":
 		return "&f괭이"
+	if {_id} is "iron_shovel":
+		return "&f삽"
 	if {_id} is "mace":
 		return "&f철퇴"
 	if {_id} is "iron_spear":
@@ -116,6 +118,8 @@ function itemBase(id: text) :: itemtype:
 		return netherite pickaxe
 	if {_id} is "iron_hoe":
 		return netherite hoe
+	if {_id} is "iron_shovel":
+		return netherite shovel
 	if {_id} is "mace":
 		return mace
 	if {_id} is "iron_spear":
@@ -174,6 +178,8 @@ function itemLoreLines(id: text) :: texts:
 		return "타격할 때마다 '채굴' 중첩이 쌓입니다.", "'채굴' 중첩 하나당 2의 피해를 추가로 입힙니다."
 	if {_id} is "iron_hoe":
 		return "체력이 50%% 이하인 적에게 2배의 피해를 입힙니다."
+	if {_id} is "iron_shovel":
+		return "3초간 땅을 파고 들어가 잠복합니다.", "잠복 중에는 무적 상태가 되고 투명해집니다.", "쿨타임은 잠복이 끝난 뒤부터 돌아갑니다."
 	if {_id} is "iron_sword":
 		return "들고 있으면 받는 피해를 한 번 막습니다."
 	if {_id} is "tnt":
@@ -267,6 +273,8 @@ function itemCooldownText(id: text) :: text:
 	if {_id} is "ominous_bottle":
 		return "30"
 	if {_id} is "splash":
+		return "15"
+	if {_id} is "iron_shovel":
 		return "15"
 	if {_id} is "milk":
 		return "15"
@@ -411,6 +419,8 @@ function itemCategory(id: text) :: number:
 		return 1
 	if {_id} is "iron_hoe":
 		return 1
+	if {_id} is "iron_shovel":
+		return 1
 	if {_id} is "iron_spear":
 		return 1
 	if {_id} is "mace":
@@ -505,6 +515,8 @@ function itemSprite(id: text) :: text:
 		return "iron_pickaxe"
 	if {_id} is "iron_hoe":
 		return "iron_hoe"
+	if {_id} is "iron_shovel":
+		return "iron_shovel"
 	if {_id} is "mace":
 		return "mace"
 	if {_id} is "iron_spear":

@@ -86,6 +86,8 @@ function killWeaponSprite(a: entity) :: text:
 		return "iron_pickaxe"
 	if {_n} is "NETHERITE_HOE":
 		return "iron_hoe"
+	if {_n} is "NETHERITE_SHOVEL":
+		return "iron_shovel"
 	if {_n} is "NETHERITE_SWORD":
 		return "iron_sword"
 	if {_n} is "NETHERITE_SPEAR":

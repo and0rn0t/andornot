@@ -217,6 +217,12 @@ on damage:
 			if {-totemend::%victim's uuid%} > now:
 				cancel event
 				stop
+	# 삽(shovel.sk) 잠복 중에도 모든 피해를 취소한다
+	if victim is player:
+		if {-burrow::%victim's uuid%} is set:
+			if {-burrow::%victim's uuid%} > now:
+				cancel event
+				stop
 	# 검(sword.sk): 검을 들고 있고 쿨타임이 끝났으면 피해를 한 번 막고 쿨타임(30초)에 들어간다
 	if victim is player:
 		if damage > 0:
