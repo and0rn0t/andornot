@@ -16,11 +16,19 @@ using damage sources
 import:
 	org.bukkit.Particle
 	org.bukkit.Bukkit
+	org.bukkit.entity.EntityType
+	io.papermc.paper.datacomponent.item.ResolvableProfile
+	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 	org.bukkit.boss.BarColor
 	org.bukkit.boss.BarStyle
 
 on load:
 	set {-skillitems::trident} to trident
+	# 다시 불러올 때 남은 도착 미리보기 마네킹을 치운다
+	loop {-tdprev::*}:
+		if loop-value is set:
+			loop-value.remove()
+	delete {-tdprev::*}
 
 # 충전도(0~1)에 따른 순간이동 거리
 function tridentDist(f: number) :: number:
@@ -51,15 +59,14 @@ function tridentClear(q: location) :: boolean:
 		return false
 	return true
 
-function tridentBlink(p: player, f: number):
-	set {_w} to {_p}.getWorld()
+# 충전도 f 로 놓았을 때 도착할 위치(순간이동과 충전 중 미리보기가 같은 함수를 쓴다)
+function tridentDest(p: player, f: number) :: location:
 	set {_o} to {_p}.getLocation()
 	set {_dir} to {_o}.getDirection()
 	set {_max} to tridentDist({_f})
-	# 0.5칸씩 나아가며 지나간 자리를 {_pts::*} 에 모은다. 막히면 같은 높이로 옆으로만 한 번 더 시도한다(바닥을 보고 쏘거나 천장 아래에서 쏠 때
+	# 0.5칸씩 나아간다. 막히면 같은 높이로 옆으로만 한 번 더 시도한다(바닥을 보고 쏘거나 천장 아래에서 쏠 때
 	# 첫 걸음부터 바닥/천장에 걸려 제자리에서 나가던 문제 수정: 위아래 성분 때문에 막힌 경우에도 수평으로는 계속 간다).
 	set {_cur} to {_o}
-	add {_o} to {_pts::*}
 	set {_n} to 0
 	set {_go} to true
 	while {_go} is true:
@@ -70,13 +77,11 @@ function tridentBlink(p: player, f: number):
 			set {_q} to {_cur} ~ ({_dir} * 0.5)
 			if tridentClear({_q}) is true:
 				set {_cur} to {_q}
-				add {_cur} to {_pts::*}
 			else:
 				set {_q2} to {_q}
 				set y-coordinate of {_q2} to y-coordinate of {_cur}
 				if tridentClear({_q2}) is true:
 					set {_cur} to {_q2}
-					add {_cur} to {_pts::*}
 				else:
 					set {_go} to false
 	set {_dest} to {_cur}
@@ -84,6 +89,11 @@ function tridentBlink(p: player, f: number):
 	set {_lh} to tridentLow({_dest})
 	if {_lh} > 0:
 		set y-coordinate of {_dest} to (floor(y-coordinate of {_dest})) + {_lh}
+	return {_dest}
+
+function tridentBlink(p: player, f: number):
+	set {_w} to {_p}.getWorld()
+	set {_dest} to tridentDest({_p}, {_f})
 	# 피해: 순간이동한 자리 반경 6칸의 적에게 한 번씩 실 체력 4
 	set {_pid} to "%uuid of {_p}%"
 	set {_src} to a custom damage source:
@@ -115,6 +125,26 @@ function tridentBlink(p: player, f: number):
 	{_w}.strikeLightningEffect({_dest})
 	{_w}.spawnParticle(Particle.ELECTRIC_SPARK, {_ctr}, 40, 1.5, 0.8, 1.5, 0.1, null, true)
 	soundAround("entity.lightning_bolt.impact", {_dest}, 0.8, 1.6)
+
+# 충전 중 도착 미리보기: 투명 + 발광 마네킹(윤곽선만 보임). 시전자에게만 보이게 한다(기본 가시성을 끄고 시전자에게만 showEntity).
+function tridentPrevSpawn(p: player, loc: location) :: object:
+	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
+	{_m}.setVisibleByDefault(false)
+	set {_pf} to {_p}.getPlayerProfile()
+	{_m}.setProfile(ResolvableProfile.resolvableProfile({_pf}))
+	{_m}.setImmovable(true)
+	{_m}.setInvulnerable(true)
+	{_m}.setSilent(true)
+	{_m}.setGravity(false)
+	{_m}.setCollidable(false)
+	{_m}.setDescription(GsonComponentSerializer.gson().deserialize("{""text"":""""}"))
+	{_m}.addScoreboardTag("tdprev")
+	{_m}.setInvisible(true)
+	{_m}.setGlowing(true)
+	set {_pg} to Bukkit.getPluginManager().getPlugin("Skript")
+	{_p}.showEntity({_pg}, {_m})
+	add {_m} to {-tdprev::*}
+	return {_m}
 
 on rightclick:
 	if skillHand(player, trident) is false:
@@ -152,6 +182,13 @@ on rightclick:
 			if {_cf} > 1:
 				set {_cf} to 1
 			{_b}.setProgress({_cf})
+			# 도착 미리보기(충전도에 맞춰 매 틱 옮긴다)
+			set {_pd} to tridentDest({_p}, {_cf})
+			{_pd}.setPitch(0)
+			if {_pm} is not set:
+				set {_pm} to tridentPrevSpawn({_p}, {_pd})
+			else:
+				{_pm}.teleport({_pd})
 			if {_cf} >= 1:
 				if {_full} is false:
 					set {_full} to true
@@ -165,6 +202,9 @@ on rightclick:
 					set {_fire} to true
 				exit loop
 	{_b}.removeAll()
+	if {_pm} is set:
+		{_pm}.remove()
+		remove {_pm} from {-tdprev::*}
 	if {-tdstart::%{_id}%} is {_start}:
 		delete {-tdstart::%{_id}%}
 	else:
