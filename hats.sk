@@ -1,16 +1,15 @@
-# [hats.sk] 치장 모자 5종 + 기본 모자/선택 GUI. /치장 = 선택 GUI(누구나), /치장 <월계관|바운티|왕관|헤드기어|선글라스|전체> = 모자 아이템 지급(op 디버그).
+# [hats.sk] 치장 모자 5종 + 기본 모자/선택 GUI. 머리 칸 클릭으로 선택 GUI 를 연다(/치장 명령은 폐기됨).
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 모델은 리소스팩(resourcepack/mck_pack/assets/mck/items|models|textures/item/hat/)의 mck:hat/<id>. 종이에 item_model 과 머리 칸 equippable 을 붙여 만든다(방어력 없음, 스택 1).
 #   id: laurel(월계관), bounty(바운티 모자), mini_crown(미니 왕관), knockout_headgear(녹아웃 헤드기어), alien_glasses(외계인 선글라스). 영어 id 로도 받는다.
 # [폐기됨] 남성 정장(suit_male), 멜빵바지(outfit), cosplay 네임스페이스 리소스는 사용자 지시로 삭제했다. 모자 모델은 사용자가 보낸 수정본(hat_models_fixed, alien_glasses_fixed)이다.
 #   다시 몸 칸(가슴/다리/발) 치장을 올리면 hatSlot 과 hatItem 에 칸별 equippable(assetId 포함)을 추가하고 hatIs 에 새 네임스페이스 경로를 넣을 것.
 # [기본 모자 + 선택 UI] 머리 칸에는 항상 "기본 모자"(hatCap)가 들어 있다: 아이콘은 가죽 모자(item_model mck:hat/cap)지만 장비 에셋 mck:invisible(투명 텍스처)이라 실제로는 안 보인다.
-#   머리 칸(인벤토리 방어구 칸, 슬롯 39)을 클릭하면 이벤트를 취소하고 "치장 선택" GUI(27칸)를 연다(/치장 만 쳐도 열린다). 치장 5종 중 하나를 고르면 머리 칸이 그 모자로 바뀌고(머리 칸 아이템은 장비 에셋이 없는 모델이라 아이템 모델 그대로 머리에 얹혀 보인다),
+#   머리 칸(인벤토리 방어구 칸, 슬롯 39)을 클릭하면 이벤트를 취소하고 "치장 선택" GUI(27칸)를 연다. 치장 5종 중 하나를 고르면 머리 칸이 그 모자로 바뀌고(머리 칸 아이템은 장비 에셋이 없는 모델이라 아이템 모델 그대로 머리에 얹혀 보인다),
 #   "치장 해제"를 고르면 기본 모자로 돌아온다. 선택은 저장 변수 {hatsel::uuid}(치장 id, 없으면 기본 모자)에 남고, hatEnsure 가 입장/리스폰/2초마다 머리 칸을 선택값에 맞춘다(게임 시작 인벤토리 초기화 후에도 복구).
 #   GUI 상태 변수: {-hatgui::uuid}(열려 있음), {-hatguimap::uuid::칸}(칸 -> 치장 id 또는 "cap"). 치장 해금/소유 개념은 아직 없어서 5종 전부 고를 수 있다(나중에 해금 시스템이 생기면 hatGuiFill 에서 걸러낼 것).
-#   /치장 <이름> (op) 은 모자 아이템을 인벤토리에 지급하는 디버그용이다(버릴 수 없고, 머리 칸은 hatEnsure 가 선택값으로 덮어쓴다).
 # 게임 시작/중간 참가 때 인벤토리를 비워도 치장은 남는다(hatClear, 판별은 hatIs: item_model 이 mck:hat/ 로 시작). 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에).
-# 새 모자를 추가하면: 리소스팩에 모델 넣기 -> hatIds/hatName/hatParse 에 넣기.
+# 새 모자를 추가하면: 리소스팩에 모델 넣기 -> hatIds/hatName 에 넣기.
 # 미검증: Paper 데이터 컴포넌트 ITEM_MODEL/EQUIPPABLE(assetId)/ITEM_NAME/MAX_STACK_SIZE/LORE/ENCHANTMENT_GLINT_OVERRIDE 설정, 투명 장비 에셋(mck:invisible)으로 안 보이는지, 머리 칸 클릭 취소 + GUI.
 
 import:
@@ -38,25 +37,6 @@ function hatName(id: text) :: text:
 		return "녹아웃 헤드기어"
 	if {_id} is "alien_glasses":
 		return "외계인 선글라스"
-	return ""
-
-# 입력(한글 이름/영어 id/줄임말)을 id 로. 모르면 "".
-function hatParse(s: text) :: text:
-	loop "월계관", "laurel":
-		if {_s} is loop-value:
-			return "laurel"
-	loop "바운티", "바운티모자", "bounty":
-		if {_s} is loop-value:
-			return "bounty"
-	loop "왕관", "미니왕관", "mini_crown":
-		if {_s} is loop-value:
-			return "mini_crown"
-	loop "헤드기어", "녹아웃", "녹아웃헤드기어", "knockout_headgear":
-		if {_s} is loop-value:
-			return "knockout_headgear"
-	loop "선글라스", "외계인", "외계인선글라스", "alien_glasses":
-		if {_s} is loop-value:
-			return "alien_glasses"
 	return ""
 
 function hatItem(id: text) :: itemstack:
@@ -252,28 +232,3 @@ function hatClear(p: player):
 		if {_it} is set:
 			if hatIs({_it}) is false:
 				{_inv}.setItem(loop-value, null)
-
-command /치장 [<text>]:
-	trigger:
-		if arg-1 is not set:
-			hatGuiOpen(player)
-			stop
-		if player is not op:
-			send "&c권한이 없습니다."
-			stop
-		set {_all} to false
-		if arg-1 is "전체":
-			set {_all} to true
-		if arg-1 is "all":
-			set {_all} to true
-		if {_all} is true:
-			loop hatIds():
-				player.getInventory().addItem(hatItem(loop-value))
-			send "&a치장 모자 5종을 지급했습니다."
-			stop
-		set {_id} to hatParse(arg-1)
-		if {_id} is "":
-			send "&c알 수 없는 모자입니다. 월계관, 바운티, 왕관, 헤드기어, 선글라스, 전체 중에서 골라 주세요."
-			stop
-		player.getInventory().addItem(hatItem({_id}))
-		send "&a%hatName({_id})%을(를) 지급했습니다."
