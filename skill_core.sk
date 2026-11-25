@@ -451,9 +451,20 @@ function ccDeny(p: player):
 		play sound "ui.button.click" with volume 1 and pitch 1.5 to {_p}
 
 # 기절 여부. 기절 종료 시각 {-stunend} 가 지금보다 뒤면 기절 중.
+# 삽 잠복(shovel.sk) 중에도 true 를 돌려준다: 잠복 중에는 스킬/공격/클릭 등 모든 행동이 막혀야 해서, 기절을 확인하는 모든 곳(스킬, 근접 공격, 낚싯대, 포션, stun.sk 의 클릭/설치/부수기/버리기 차단)이 그대로 막힌다.
 function isStunned(e: entity) :: boolean:
 	if {-stunend::%{_e}'s uuid%} is set:
 		if {-stunend::%{_e}'s uuid%} > now:
+			return true
+	if {-burrow::%{_e}'s uuid%} is set:
+		if {-burrow::%{_e}'s uuid%} > now:
+			return true
+	return false
+
+# 삽 잠복 중인지(기절은 제외). 우유(milk.sk)는 기절 중에는 쓸 수 있지만 잠복 중에는 못 쓴다.
+function isBurrowed(e: entity) :: boolean:
+	if {-burrow::%{_e}'s uuid%} is set:
+		if {-burrow::%{_e}'s uuid%} > now:
 			return true
 	return false
 
@@ -523,6 +534,8 @@ function armoryHeld(p: player) :: boolean:
 
 function skillHand(p: player, t: itemtype) :: boolean:
 	# 기절 중에는 스킬이 안 나가지만 우유(milk.sk)만 예외다(기절을 푸는 스킬)
+	if isBurrowed({_p}) is true:
+		return false
 	set {_stun} to isStunned({_p})
 	if {_stun} is true:
 		if {_t} is not milk bucket:

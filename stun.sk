@@ -10,7 +10,8 @@ on click:
 		set {_it} to event.getItem()
 		if {_it} is set:
 			if {_it} is milk bucket:
-				stop
+				if isBurrowed(player) is false:
+					stop
 		cancel event
 
 on break:

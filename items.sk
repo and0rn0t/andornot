@@ -546,7 +546,7 @@ function itemSprite(id: text) :: text:
 	if {_id} is "milk":
 		return "milk_bucket"
 	if {_id} is "radar":
-		return "recovery_compass"
+		return "mck:recovery_compass"
 	if {_id} is "potion_heal":
 		return "mck:potion_heal"
 	if {_id} is "potion_stamina":
