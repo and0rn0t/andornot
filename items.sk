@@ -195,7 +195,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "bow":
 		return "차징할수록 데미지가 강해집니다."
 	if {_id} is "blaze_rod":
-		return "화염구를 발사해 범위 피해를 입힙니다.", "3번째로 사용하면 대상 지역에 화염구 폭격을 가합니다."
+		return "화염구를 발사해 범위 피해를 입힙니다.", "3번째 시전마다 화염구 폭격을 가합니다."
 	if {_id} is "wind_charge":
 		return "10초간 연막을 생성합니다."
 	if {_id} is "flint_steel":
