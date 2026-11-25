@@ -92,9 +92,12 @@ function tridentDest(p: player, f: number) :: location:
 		set y-coordinate of {_dest} to (floor(y-coordinate of {_dest})) + {_lh}
 	return {_dest}
 
-function tridentBlink(p: player, f: number):
+# dest: 충전 중 마지막으로 미리보기에 보여준 도착 위치(보인 자리와 실제 도착이 어긋나지 않게 그대로 쓴다). 시점은 지금 시점을 유지.
+function tridentBlink(p: player, f: number, dest: location):
 	set {_w} to {_p}.getWorld()
-	set {_dest} to tridentDest({_p}, {_f})
+	set {_dest} to {_dest}.clone()
+	set yaw of {_dest} to yaw of {_p}
+	set pitch of {_dest} to pitch of {_p}
 	# 피해: 순간이동한 자리 반경 6칸의 적에게 한 번씩 실 체력 4
 	set {_pid} to "%uuid of {_p}%"
 	set {_src} to a custom damage source:
@@ -200,6 +203,7 @@ on rightclick:
 			{_b}.setProgress({_cf})
 			# 도착 미리보기(충전도에 맞춰 매 틱 옮긴다)
 			set {_pd} to tridentDest({_p}, {_cf})
+			set {_lastd} to {_pd}.clone()
 			{_pd}.setPitch(0)
 			if {_pm} is not set:
 				set {_pm} to tridentPrevSpawn({_p}, {_pd})
@@ -237,7 +241,9 @@ on rightclick:
 			stop
 	set {-tdcd::%{_id}%} to now + 18 seconds
 	set item cooldown of trident for {_p} to 18 seconds
-	tridentBlink({_p}, {_cf})
+	if {_lastd} is not set:
+		set {_lastd} to tridentDest({_p}, {_cf})
+	tridentBlink({_p}, {_cf}, {_lastd})
 
 # 바닐라 삼지창 투척은 막는다(삼지창이 던져지지 않는다). 우리 삼지창을 든 플레이어의 투척만 취소.
 on shoot:
