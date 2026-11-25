@@ -1,21 +1,12 @@
-# [hats.sk] 치장 아이템 지급 명령어(op 전용): /치장 [이름|정장|전체]. 치장 = 모자 5종 + 정장 3벌 + 멜빵바지 4부분(베레/상의/하의/신발).
+# [hats.sk] 치장 모자 지급 명령어(op 전용): /치장 [이름|전체]. 치장 모자 5종.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 모델은 리소스팩(resourcepack/mck_pack/assets/mck/)의 에셋. 종이에 item_model 과 equippable 을 붙여 만든다(방어력 없음, 스택 1).
-#   id                 이름              모델(item_model)              칸      비고
-#   laurel             월계관            mck:hat/laurel                머리
-#   bounty             바운티 모자       mck:hat/bounty                머리
-#   mini_crown         미니 왕관         mck:hat/mini_crown            머리
-#   knockout_headgear  녹아웃 헤드기어   mck:hat/knockout_headgear     머리
-#   alien_glasses      외계인 선글라스   mck:hat/alien_glasses         머리
-#   suit_jacket        남성 정장 상의    mck:suit_male/jacket          가슴    착용 모습 = 장비 에셋 mck:suit_male(assets/mck/equipment/suit_male.json)
-#   suit_trousers      남성 정장 하의    mck:suit_male/trousers        다리    〃
-#   suit_shoes         남성 정장 구두    mck:suit_male/shoes           발      〃
-#   overalls_hat/top/bottom/shoes  멜빵바지 베레/상의/하의/신발  mck:outfit/overalls_hat|top|bottom|shoes  머리  블록벤치(.bbmodel) 변환 모델(원래 요소 34개 한 덩어리)을 4부분으로 나눈 것(베레 0~3, 상의 몸통/소매/어깨/장갑, 하의 허리/다리/가슴받이/멜빵/단추, 신발). 모두 원래 좌표 그대로라 합치면 원본과 같다. 머리에 씌우면 어떻게 보일지 미검증.
-# 리소스팩에 cosplay 네임스페이스(bowl_cut, tshirt, pants, shoes: 아이템 모델/장비 에셋)도 올려 두었지만 아직 이 파일에 연결하지 않았다.
-# 정장 상의는 가슴 칸이라 진짜 겉날개와 같이 못 입는다. 원본 README 의 glider(겉날개 없이 활강)는 넣지 않았다(게임의 낙하용 겉날개 규칙과 겹치지 않게). 필요하면 hatItem 에서 GLIDER 컴포넌트를 추가.
-# 게임 시작/중간 참가 때 인벤토리를 비워도 치장은 남는다(hatClear, 판별은 hatIs: item_model 이 mck:hat/, mck:suit_male/, mck:outfit/ 로 시작). 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에).
-# 새 치장을 추가하면: 리소스팩에 모델 넣기 -> hatIds/hatName/hatModel/hatSlot/hatParse 에 넣기 -> 새 네임스페이스 경로면 hatIs 에도 추가.
-# 미검증: Paper 데이터 컴포넌트 ITEM_MODEL/EQUIPPABLE(assetId)/ITEM_NAME/MAX_STACK_SIZE 설정, 장비 에셋 착용 모습, 베레 멜빵바지 모델 표시.
+# 모델은 리소스팩(resourcepack/mck_pack/assets/mck/items|models|textures/item/hat/)의 mck:hat/<id>. 종이에 item_model 과 머리 칸 equippable 을 붙여 만든다(방어력 없음, 스택 1).
+#   id: laurel(월계관), bounty(바운티 모자), mini_crown(미니 왕관), knockout_headgear(녹아웃 헤드기어), alien_glasses(외계인 선글라스). 영어 id 로도 받는다.
+# [폐기됨] 남성 정장(suit_male), 멜빵바지(outfit), cosplay 네임스페이스 리소스는 사용자 지시로 삭제했다. 모자 모델은 사용자가 보낸 수정본(hat_models_fixed, alien_glasses_fixed)이다.
+#   다시 몸 칸(가슴/다리/발) 치장을 올리면 hatSlot 과 hatItem 에 칸별 equippable(assetId 포함)을 추가하고 hatIs 에 새 네임스페이스 경로를 넣을 것.
+# 게임 시작/중간 참가 때 인벤토리를 비워도 치장은 남는다(hatClear, 판별은 hatIs: item_model 이 mck:hat/ 로 시작). 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에).
+# 새 모자를 추가하면: 리소스팩에 모델 넣기 -> hatIds/hatName/hatParse 에 넣기.
+# 미검증: Paper 데이터 컴포넌트 ITEM_MODEL/EQUIPPABLE/ITEM_NAME/MAX_STACK_SIZE 설정.
 
 import:
 	io.papermc.paper.datacomponent.DataComponentTypes
@@ -28,7 +19,7 @@ import:
 	java.lang.Math
 
 function hatIds() :: texts:
-	return "laurel", "bounty", "mini_crown", "knockout_headgear", "alien_glasses", "suit_jacket", "suit_trousers", "suit_shoes", "overalls_hat", "overalls_top", "overalls_bottom" and "overalls_shoes"
+	return "laurel", "bounty", "mini_crown", "knockout_headgear" and "alien_glasses"
 
 function hatName(id: text) :: text:
 	if {_id} is "laurel":
@@ -41,49 +32,7 @@ function hatName(id: text) :: text:
 		return "녹아웃 헤드기어"
 	if {_id} is "alien_glasses":
 		return "외계인 선글라스"
-	if {_id} is "suit_jacket":
-		return "남성 정장 상의"
-	if {_id} is "suit_trousers":
-		return "남성 정장 하의"
-	if {_id} is "suit_shoes":
-		return "남성 정장 구두"
-	if {_id} is "overalls_hat":
-		return "멜빵바지 베레"
-	if {_id} is "overalls_top":
-		return "멜빵바지 상의"
-	if {_id} is "overalls_bottom":
-		return "멜빵바지 하의"
-	if {_id} is "overalls_shoes":
-		return "멜빵바지 신발"
 	return ""
-
-# item_model 의 값(네임스페이스 mck)
-function hatModel(id: text) :: text:
-	if {_id} is "suit_jacket":
-		return "suit_male/jacket"
-	if {_id} is "suit_trousers":
-		return "suit_male/trousers"
-	if {_id} is "suit_shoes":
-		return "suit_male/shoes"
-	if {_id} is "overalls_hat":
-		return "outfit/overalls_hat"
-	if {_id} is "overalls_top":
-		return "outfit/overalls_top"
-	if {_id} is "overalls_bottom":
-		return "outfit/overalls_bottom"
-	if {_id} is "overalls_shoes":
-		return "outfit/overalls_shoes"
-	return "hat/%{_id}%"
-
-# 착용 칸: head/chest/legs/feet
-function hatSlot(id: text) :: text:
-	if {_id} is "suit_jacket":
-		return "chest"
-	if {_id} is "suit_trousers":
-		return "legs"
-	if {_id} is "suit_shoes":
-		return "feet"
-	return "head"
 
 # 입력(한글 이름/영어 id/줄임말)을 id 로. 모르면 "".
 function hatParse(s: text) :: text:
@@ -102,46 +51,17 @@ function hatParse(s: text) :: text:
 	loop "선글라스", "외계인", "외계인선글라스", "alien_glasses":
 		if {_s} is loop-value:
 			return "alien_glasses"
-	loop "상의", "재킷", "정장상의", "suit_jacket":
-		if {_s} is loop-value:
-			return "suit_jacket"
-	loop "하의", "바지", "정장하의", "suit_trousers":
-		if {_s} is loop-value:
-			return "suit_trousers"
-	loop "구두", "정장구두", "suit_shoes":
-		if {_s} is loop-value:
-			return "suit_shoes"
-	loop "베레", "멜빵바지베레", "overalls_hat":
-		if {_s} is loop-value:
-			return "overalls_hat"
-	loop "멜빵상의", "멜빵바지상의", "overalls_top":
-		if {_s} is loop-value:
-			return "overalls_top"
-	loop "멜빵하의", "멜빵바지하의", "overalls_bottom":
-		if {_s} is loop-value:
-			return "overalls_bottom"
-	loop "멜빵신발", "멜빵바지신발", "overalls_shoes":
-		if {_s} is loop-value:
-			return "overalls_shoes"
 	return ""
 
 function hatItem(id: text) :: itemstack:
 	set {_st} to new ItemStack(Material.PAPER)
-	{_st}.setData(DataComponentTypes.ITEM_MODEL, Key.key("mck", hatModel({_id})))
-	set {_sl} to hatSlot({_id})
-	if {_sl} is "chest":
-		{_st}.setData(DataComponentTypes.EQUIPPABLE, Equippable.equippable(EquipmentSlot.CHEST).assetId(Key.key("mck", "suit_male")).build())
-	else if {_sl} is "legs":
-		{_st}.setData(DataComponentTypes.EQUIPPABLE, Equippable.equippable(EquipmentSlot.LEGS).assetId(Key.key("mck", "suit_male")).build())
-	else if {_sl} is "feet":
-		{_st}.setData(DataComponentTypes.EQUIPPABLE, Equippable.equippable(EquipmentSlot.FEET).assetId(Key.key("mck", "suit_male")).build())
-	else:
-		{_st}.setData(DataComponentTypes.EQUIPPABLE, Equippable.equippable(EquipmentSlot.HEAD).build())
+	{_st}.setData(DataComponentTypes.ITEM_MODEL, Key.key("mck", "hat/%{_id}%"))
+	{_st}.setData(DataComponentTypes.EQUIPPABLE, Equippable.equippable(EquipmentSlot.HEAD).build())
 	{_st}.setData(DataComponentTypes.ITEM_NAME, GsonComponentSerializer.gson().deserialize("{""text"":""%hatName({_id})%""}"))
 	{_st}.setData(DataComponentTypes.MAX_STACK_SIZE, Math.toIntExact(Math.round(1)))
 	return {_st}
 
-# 치장 아이템인지(item_model 이 mck:hat/, mck:suit_male/, mck:outfit/ 로 시작하는지). 칸이 비었으면 false.
+# 치장 모자인지(item_model 이 mck:hat/ 로 시작하는지). 칸이 비었으면 false.
 function hatIs(it: itemstack) :: boolean:
 	if {_it} is not set:
 		return false
@@ -150,10 +70,6 @@ function hatIs(it: itemstack) :: boolean:
 		return false
 	set {_ks} to {_k}.asString()
 	if {_ks} starts with "mck:hat/":
-		return true
-	if {_ks} starts with "mck:suit_male/":
-		return true
-	if {_ks} starts with "mck:outfit/":
 		return true
 	return false
 
@@ -173,9 +89,8 @@ command /치장 [<text>]:
 			send "&c권한이 없습니다."
 			stop
 		if arg-1 is not set:
-			send "&e사용법: /치장 <월계관|바운티|왕관|헤드기어|선글라스|상의|하의|구두|베레|멜빵상의|멜빵하의|멜빵신발|정장|전체>"
+			send "&e사용법: /치장 <월계관|바운티|왕관|헤드기어|선글라스|전체>"
 			stop
-		set {_n} to 0
 		set {_all} to false
 		if arg-1 is "전체":
 			set {_all} to true
@@ -184,17 +99,11 @@ command /치장 [<text>]:
 		if {_all} is true:
 			loop hatIds():
 				player.getInventory().addItem(hatItem(loop-value))
-				add 1 to {_n}
-			send "&a치장 %{_n}%종을 지급했습니다."
-			stop
-		if arg-1 is "정장":
-			loop "suit_jacket", "suit_trousers" and "suit_shoes":
-				player.getInventory().addItem(hatItem(loop-value))
-			send "&a남성 정장 3벌을 지급했습니다."
+			send "&a치장 모자 5종을 지급했습니다."
 			stop
 		set {_id} to hatParse(arg-1)
 		if {_id} is "":
-			send "&c알 수 없는 치장입니다. 월계관, 바운티, 왕관, 헤드기어, 선글라스, 상의, 하의, 구두, 베레, 멜빵상의, 멜빵하의, 멜빵신발, 정장, 전체 중에서 골라 주세요."
+			send "&c알 수 없는 모자입니다. 월계관, 바운티, 왕관, 헤드기어, 선글라스, 전체 중에서 골라 주세요."
 			stop
 		player.getInventory().addItem(hatItem({_id}))
 		send "&a%hatName({_id})%을(를) 지급했습니다."
