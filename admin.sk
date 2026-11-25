@@ -101,7 +101,7 @@ function adminButtonItem(id: text) :: itemtype:
 		return {_i}
 	if {_id} is "settutorial":
 		set {_i} to ender chest named "&f튜토리얼 월드 지정"
-		set lore of {_i} to "&7지금 서 있는 자리를 튜토리얼 스폰으로 저장해요", "&7처음 접속한 플레이어가 이 월드로 가서 기초 조작을 익혀요", "&7이 월드는 맵 추첨/선택에서 제외돼요"
+		set lore of {_i} to "&7지금 서 있는 월드를 튜토리얼 월드로 지정해요", "&7처음 접속한 플레이어가 이 월드의 월드 스폰에서 기초 조작을 익혀요", "&7이 월드는 맵 추첨/선택에서 제외돼요"
 		if {gamecfg::loc::tutorial::world} is set:
 			add "&7현재: &f%{gamecfg::loc::tutorial::world}%" to lore of {_i}
 		else:
@@ -256,7 +256,7 @@ function adminAction(p: player, id: text):
 				stop
 		gcSaveLoc("tutorial", location of {_p})
 		set {_tw} to {_p}.getWorld().getName()
-		send "&a튜토리얼 스폰을 '%{_tw}%' 월드의 지금 자리로 저장했습니다. 처음 접속한 플레이어는 여기서 튜토리얼을 하고, 이 월드는 맵 추첨/선택에서 제외됩니다." to {_p}
+		send "&a튜토리얼 월드를 '%{_tw}%' 월드로 지정했습니다. 처음 접속한 플레이어는 이 월드의 월드 스폰에서 튜토리얼을 하고(로딩 중에는 리스폰 지점을 보여 줍니다), 이 월드는 맵 추첨/선택에서 제외됩니다." to {_p}
 	else if {_id} is "settutorialcam":
 		close {_p}'s inventory
 		if adminLockOn() is true:
@@ -264,7 +264,7 @@ function adminAction(p: player, id: text):
 				adminLockDeny({_p}, "튜토리얼 시작 카메라 위치")
 				stop
 		gcSaveLoc("tutorialcam", location of {_p})
-		send "&a튜토리얼 시작 카메라를 저장했습니다. 첫 접속자가 월드 로딩이 끝난 뒤 이 시점을 잠깐 보고 스폰으로 이동합니다." to {_p}
+		send "&a튜토리얼 시작 카메라를 저장했습니다. 첫 접속자가 월드 로딩이 끝난 뒤 이 시점을 잠깐 보고 월드 스폰으로 이동합니다." to {_p}
 	else if {_id} is "clearstage":
 		close {_p}'s inventory
 		gfClearStage()
