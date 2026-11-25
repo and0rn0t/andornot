@@ -1,0 +1,14 @@
+{
+ "layers": {
+  "humanoid": [
+   {
+    "texture": "mck:suit_male"
+   }
+  ],
+  "humanoid_leggings": [
+   {
+    "texture": "mck:suit_male"
+   }
+  ]
+ }
+}
