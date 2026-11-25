@@ -288,7 +288,7 @@ function stRankDialog(p: player):
 			set {_body} to "%{_body}%,"
 		set {_body} to "%{_body}%%{_row}%"
 	if {_i} is 0:
-		set {_none} to stMsg(gfT("아직 랭킹이 없어요", "gray", false), 560)
+		set {_none} to stMsg(gfT("랭킹이 존재하지 않습니다.", "gray", false), 560)
 		set {_body} to {_none}
 	set {_id} to "%{_p}'s uuid%"
 	set {_mr} to stRankOf({_id})
@@ -297,13 +297,13 @@ function stRankDialog(p: player):
 	if {_mr} > 0:
 		set {_me} to stMsg(stRowParts("%{_mr}%위", "yellow", {_id}), 560)
 	else:
-		set {_me} to stMsg(gfT("아직 순위가 없어요 (경기를 치르면 생겨요)", "gray", false), 560)
+		set {_me} to stMsg(gfT("순위가 없습니다.", "gray", false), 560)
 	set {_body} to "%{_body}%,%{_me}%"
 	set {_acts} to stBtn("아이템 통계 보기", "아이템통계 1")
 	stDialog({_p}, "랭킹", {_body}, {_acts})
 
 command /랭킹:
-	description: 랭킹을 열어요 (독서대 메뉴와 같은 창)
+	description: 랭킹을 엽니다. (독서대 메뉴와 같은 창)
 	executable by: players
 	trigger:
 		stRankDialog(player)
@@ -358,7 +358,7 @@ function stItemDialog(p: player, page: number):
 		set {_pg} to {_pages}
 	set {_sp} to gfT(" ", "white", false)
 	set {_nl} to "{""text"":""\n""}"
-	set {_body} to stMsg(gfT("선택률은 전체 선택 중 비중(합 100%%), 승률은 그 아이템을 고른 사람의 승률이에요. 랜덤 아이템 게임은 빠져요.", "gray", false), 520)
+	set {_body} to stMsg(gfT("랜덤 아이템 게임은 통계에서 제외됩니다.", "gray", false), 520)
 	set {_i} to ({_pg} - 1) * {_per}
 	set {_end} to {_i} + {_per}
 	while {_i} < {_end}:
@@ -405,7 +405,7 @@ function stItemDialog(p: player, page: number):
 	stDialog({_p}, "아이템 통계 (%{_pg}%/%{_pages}%)", {_body}, {_acts})
 
 command /아이템통계 [<number>]:
-	description: 아이템 통계를 열어요 (독서대 메뉴와 같은 창)
+	description: 아이템 통계를 엽니다. (독서대 메뉴와 같은 창)
 	executable by: players
 	trigger:
 		set {_pg} to 1
