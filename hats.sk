@@ -88,7 +88,13 @@ function hatKey(it: itemstack) :: text:
 function hatEnsure(p: player):
 	set {_h} to {_p}.getInventory().getHelmet()
 	set {_cur} to hatKey({_h})
+	# 빈 칸은 null 일 수도, 공기(AIR) 아이템일 수도 있다(Paper 가 공기를 돌려주면 "값 있음 + 치장 아님"으로 읽혀 진짜 헬멧으로 오해하고 채우지 않던 문제)
+	set {_empty} to true
 	if {_h} is set:
+		set {_isair} to {_h}.getType().isAir()
+		if {_isair} is not true:
+			set {_empty} to false
+	if {_empty} is false:
 		if hatIs({_h}) is false:
 			stop
 	set {_sel} to hatSel({_p})
