@@ -396,12 +396,24 @@ function wpPingRay() :: number:
 function wpPingNear() :: number:
 	return 4.5
 
-# 조준한 자리(블록이 120칸 안에 없으면 허공이라 값 없음)
+# 블록에 찍은 핑을 닿은 면에서 바깥쪽으로 띄우는 거리(칸)
+function wpPingOut() :: number:
+	return 0.5
+
+# 조준한 자리(블록이 120칸 안에 없으면 허공이라 값 없음). 블록 속(정중앙)이 아니라 시선이 닿은 면에서 바깥쪽으로 wpPingOut() 칸 띄운 공기 쪽 지점.
+# Player#rayTraceBlocks(120) 의 RayTraceResult: getHitPosition(닿은 점), getHitBlockFace(닿은 면). 미검증: 반환 필드, 면 방향 벡터.
 function wpAimLoc(p: player) :: location:
-	set {_b} to {_p}.getTargetBlockExact(120)
-	if {_b} is set:
-		return {_b}.getLocation().add(0.5, 0.5, 0.5)
-	return {_none}
+	set {_r} to {_p}.rayTraceBlocks(120)
+	if {_r} is not set:
+		return {_none}
+	set {_pos} to {_r}.getHitPosition()
+	set {_loc} to {_pos}.toLocation({_p}.getWorld())
+	set {_fc} to {_r}.getHitBlockFace()
+	if {_fc} is set:
+		set {_nv} to {_fc}.getDirection()
+		set {_nv} to {_nv}.multiply(wpPingOut())
+		set {_loc} to {_loc}.add({_nv})
+	return {_loc}
 
 # 핑 하나를 찍는다: 조준/주변에 화면에 보이는 적이 있으면 빨강, 아니면 파랑
 function wpPingCreate(p: player):
