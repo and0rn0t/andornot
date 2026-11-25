@@ -63,7 +63,7 @@ on flight toggle:
 	if {-st::%player's uuid%} >= 30:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
-			push player forwards at speed 1
+			push player forwards at speed 0.9
 			soundAround("entity.player.attack.sweep", location of player, 1, 1.2)
 			add 1 to {-stcap::%player's uuid%}
 			set {-jump::%player's uuid%} to true
