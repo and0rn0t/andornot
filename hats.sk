@@ -1,4 +1,4 @@
-# [hats.sk] 치장 아이템 지급 명령어(op 전용): /치장 [이름|정장|전체]. 치장 = 모자 5종 + 정장 3벌 + 베레 멜빵바지 세트.
+# [hats.sk] 치장 아이템 지급 명령어(op 전용): /치장 [이름|정장|전체]. 치장 = 모자 5종 + 정장 3벌 + 멜빵바지 4부분(베레/상의/하의/신발).
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 모델은 리소스팩(resourcepack/mck_pack/assets/mck/)의 에셋. 종이에 item_model 과 equippable 을 붙여 만든다(방어력 없음, 스택 1).
 #   id                 이름              모델(item_model)              칸      비고
@@ -10,7 +10,8 @@
 #   suit_jacket        남성 정장 상의    mck:suit_male/jacket          가슴    착용 모습 = 장비 에셋 mck:suit_male(assets/mck/equipment/suit_male.json)
 #   suit_trousers      남성 정장 하의    mck:suit_male/trousers        다리    〃
 #   suit_shoes         남성 정장 구두    mck:suit_male/shoes           발      〃
-#   red_beret_overalls 빨간 베레 멜빵바지 mck:outfit/red_beret_overalls 머리  블록벤치(.bbmodel)에서 변환한 모델(요소 34개, 세로 -5~30칸의 전신 인형). 머리에 씌우면 어떻게 보일지 미검증 -> 안 맞으면 모델의 display.head 조정 필요
+#   overalls_hat/top/bottom/shoes  멜빵바지 베레/상의/하의/신발  mck:outfit/overalls_hat|top|bottom|shoes  머리  블록벤치(.bbmodel) 변환 모델(원래 요소 34개 한 덩어리)을 4부분으로 나눈 것(베레 0~3, 상의 몸통/소매/어깨/장갑, 하의 허리/다리/가슴받이/멜빵/단추, 신발). 모두 원래 좌표 그대로라 합치면 원본과 같다. 머리에 씌우면 어떻게 보일지 미검증.
+# 리소스팩에 cosplay 네임스페이스(bowl_cut, tshirt, pants, shoes: 아이템 모델/장비 에셋)도 올려 두었지만 아직 이 파일에 연결하지 않았다.
 # 정장 상의는 가슴 칸이라 진짜 겉날개와 같이 못 입는다. 원본 README 의 glider(겉날개 없이 활강)는 넣지 않았다(게임의 낙하용 겉날개 규칙과 겹치지 않게). 필요하면 hatItem 에서 GLIDER 컴포넌트를 추가.
 # 게임 시작/중간 참가 때 인벤토리를 비워도 치장은 남는다(hatClear, 판별은 hatIs: item_model 이 mck:hat/, mck:suit_male/, mck:outfit/ 로 시작). 아직 게임 시스템과 연결되지 않았다(치장 해금/상점/선택 UI 는 나중에).
 # 새 치장을 추가하면: 리소스팩에 모델 넣기 -> hatIds/hatName/hatModel/hatSlot/hatParse 에 넣기 -> 새 네임스페이스 경로면 hatIs 에도 추가.
@@ -27,7 +28,7 @@ import:
 	java.lang.Math
 
 function hatIds() :: texts:
-	return "laurel", "bounty", "mini_crown", "knockout_headgear", "alien_glasses", "suit_jacket", "suit_trousers", "suit_shoes" and "red_beret_overalls"
+	return "laurel", "bounty", "mini_crown", "knockout_headgear", "alien_glasses", "suit_jacket", "suit_trousers", "suit_shoes", "overalls_hat", "overalls_top", "overalls_bottom" and "overalls_shoes"
 
 function hatName(id: text) :: text:
 	if {_id} is "laurel":
@@ -46,8 +47,14 @@ function hatName(id: text) :: text:
 		return "남성 정장 하의"
 	if {_id} is "suit_shoes":
 		return "남성 정장 구두"
-	if {_id} is "red_beret_overalls":
-		return "빨간 베레 멜빵바지"
+	if {_id} is "overalls_hat":
+		return "멜빵바지 베레"
+	if {_id} is "overalls_top":
+		return "멜빵바지 상의"
+	if {_id} is "overalls_bottom":
+		return "멜빵바지 하의"
+	if {_id} is "overalls_shoes":
+		return "멜빵바지 신발"
 	return ""
 
 # item_model 의 값(네임스페이스 mck)
@@ -58,8 +65,14 @@ function hatModel(id: text) :: text:
 		return "suit_male/trousers"
 	if {_id} is "suit_shoes":
 		return "suit_male/shoes"
-	if {_id} is "red_beret_overalls":
-		return "outfit/red_beret_overalls"
+	if {_id} is "overalls_hat":
+		return "outfit/overalls_hat"
+	if {_id} is "overalls_top":
+		return "outfit/overalls_top"
+	if {_id} is "overalls_bottom":
+		return "outfit/overalls_bottom"
+	if {_id} is "overalls_shoes":
+		return "outfit/overalls_shoes"
 	return "hat/%{_id}%"
 
 # 착용 칸: head/chest/legs/feet
@@ -98,9 +111,18 @@ function hatParse(s: text) :: text:
 	loop "구두", "정장구두", "suit_shoes":
 		if {_s} is loop-value:
 			return "suit_shoes"
-	loop "베레", "멜빵바지", "베레멜빵바지", "red_beret_overalls":
+	loop "베레", "멜빵바지베레", "overalls_hat":
 		if {_s} is loop-value:
-			return "red_beret_overalls"
+			return "overalls_hat"
+	loop "멜빵상의", "멜빵바지상의", "overalls_top":
+		if {_s} is loop-value:
+			return "overalls_top"
+	loop "멜빵하의", "멜빵바지하의", "overalls_bottom":
+		if {_s} is loop-value:
+			return "overalls_bottom"
+	loop "멜빵신발", "멜빵바지신발", "overalls_shoes":
+		if {_s} is loop-value:
+			return "overalls_shoes"
 	return ""
 
 function hatItem(id: text) :: itemstack:
@@ -151,7 +173,7 @@ command /치장 [<text>]:
 			send "&c권한이 없습니다."
 			stop
 		if arg-1 is not set:
-			send "&e사용법: /치장 <월계관|바운티|왕관|헤드기어|선글라스|상의|하의|구두|베레|정장|전체>"
+			send "&e사용법: /치장 <월계관|바운티|왕관|헤드기어|선글라스|상의|하의|구두|베레|멜빵상의|멜빵하의|멜빵신발|정장|전체>"
 			stop
 		set {_n} to 0
 		set {_all} to false
@@ -172,7 +194,7 @@ command /치장 [<text>]:
 			stop
 		set {_id} to hatParse(arg-1)
 		if {_id} is "":
-			send "&c알 수 없는 치장입니다. 월계관, 바운티, 왕관, 헤드기어, 선글라스, 상의, 하의, 구두, 베레, 정장, 전체 중에서 골라 주세요."
+			send "&c알 수 없는 치장입니다. 월계관, 바운티, 왕관, 헤드기어, 선글라스, 상의, 하의, 구두, 베레, 멜빵상의, 멜빵하의, 멜빵신발, 정장, 전체 중에서 골라 주세요."
 			stop
 		player.getInventory().addItem(hatItem({_id}))
 		send "&a%hatName({_id})%을(를) 지급했습니다."
