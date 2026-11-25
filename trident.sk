@@ -4,17 +4,19 @@
 # 동작: 활(bow.sk)과 같은 방식. 우클릭을 취소하지 않아서 바닐라 삼지창 차징 모션이 나오고, 충전 보스바 "충전"(최대 1.5초, 가득 차면 초록 + 소리)을 매 틱 갱신한다.
 #   손을 놓으면(isHandRaised 가 2틱 연속 false) 그 순간의 충전도(0~1)로 순간이동한다. 거리 = 4 + 12 x 충전도 (4~16칸).
 #   바닐라 삼지창 투척(ProjectileLaunchEvent)은 아래 on shoot 에서 취소한다(삼지창은 던져지지 않고 손에 남는다).
+# [변경] 도착 위치는 크로스헤어 레이캐스트 기준(tridentDest 주석 참고). 아래 "0.5칸씩 나아가는" 설명은 이전 방식이라 tridentDest 주석이 우선한다.
 # 순간이동: 바라보는 방향(시선 방향 그대로, 위아래 포함)으로 0.5칸씩 나아가며, 발/허리/머리 위치 중 하나라도 충돌 판정이 있는 블럭(Block#isPassable 이 false)이면 같은 높이로 수평 이동만 한 번 더 시도하고, 그것도 막히면 거기서 멈춘다(바닥을 보고 쏴도 제자리에 안 서게).
 #   충돌 판정 없는 블럭(풀, 카펫, 물 등)과 충돌 높이 0.5 이하의 낮은 블럭(쌓인 눈, 반블럭)은 통과(그 위에 도착하면 윗면 높이로 올려 세움). 경로에 막히면 막히기 직전 자리까지만 이동한다.
 # 피해: 순간이동한 지점 반경 6칸의 생명체(본인/아군/갑옷 거치대/마네킹/관전 모드 플레이어 제외)에게 한 번씩 실 체력 4. 스킬 피해라 main.sk 무기 보정에서 제외({-skilldmg}).
 # 이펙트: 도착 지점에만 번개 이펙트(World#strikeLightningEffect, 불/피해 없음)와 전기 불꽃 파티클, 소리.
 # 오프핸드: 메인핸드/오프핸드 어느 쪽 삼지창이든 쓸 수 있다(skillHand 규칙). 미검증: 오프핸드 삼지창 우클릭 충전 중 isHandRaised 가 true 인지.
-# 미검증: on shoot 에서 삼지창 투척 취소 후 아이템이 손에 남고 클라이언트가 이상해지지 않는지, isHandRaised 가 삼지창 사용 중 true 인지, strikeLightningEffect, Particle.ELECTRIC_SPARK, 순간이동 후 시점 유지.
+# 미검증: World#rayTraceBlocks(Location, Vector, double, FluidCollisionMode, boolean)/RayTraceResult#getHitBlockFace 호출, 크로스헤어 도착 위치 보정, on shoot 에서 삼지창 투척 취소 후 아이템이 손에 남고 클라이언트가 이상해지지 않는지, isHandRaised 가 삼지창 사용 중 true 인지, strikeLightningEffect, Particle.ELECTRIC_SPARK, 순간이동 후 시점 유지.
 
 using damage sources
 
 import:
 	org.bukkit.Particle
+	org.bukkit.FluidCollisionMode
 	org.bukkit.Bukkit
 	org.bukkit.ChatColor
 	org.bukkit.entity.EntityType
@@ -64,35 +66,66 @@ function tridentClear(q: location) :: boolean:
 	return true
 
 # 충전도 f 로 놓았을 때 도착할 위치(순간이동과 충전 중 미리보기가 같은 함수를 쓴다)
+# 크로스헤어 기준: 눈 위치에서 시선 방향으로 최대 거리(tridentDist)까지 블럭 레이캐스트(통과 가능한 블럭/유체는 무시)를 쏜다.
+#   - 맞은 블럭의 윗면이면 그 점에 서고, 아랫면이면 머리가 그 점에 닿게, 옆면이면 면 바깥쪽 0.4칸에 가슴 높이쯤으로 선다.
+#   - 아무것도 안 맞으면 최대 거리 지점에 눈이 오게(발은 1.62칸 아래) 선다.
+#   그 자리에 몸이 들어가지 않으면(tridentClear) 높이를 0, +0.5, +1, -0.5, -1 로 바꿔 보고, 그래도 안 되면 수평으로 0.5칸씩(최대 4칸) 뒤로 물러나며 처음으로 들어가는 자리를 고른다. 전부 안 되면 제자리.
 function tridentDest(p: player, f: number) :: location:
+	set {_w} to {_p}.getWorld()
 	set {_o} to {_p}.getLocation()
-	set {_dir} to {_o}.getDirection()
+	set {_eye} to {_p}.getEyeLocation()
+	set {_dir} to {_eye}.getDirection()
 	set {_max} to tridentDist({_f})
-	# 0.5칸씩 나아간다. 막히면 같은 높이로 옆으로만 한 번 더 시도한다(바닥을 보고 쏘거나 천장 아래에서 쏠 때
-	# 첫 걸음부터 바닥/천장에 걸려 제자리에서 나가던 문제 수정: 위아래 성분 때문에 막힌 경우에도 수평으로는 계속 간다).
-	set {_cur} to {_o}
-	set {_n} to 0
-	set {_go} to true
-	while {_go} is true:
-		set {_n} to {_n} + 0.5
-		if {_n} > {_max}:
-			set {_go} to false
+	set {_dx} to {_dir}.getX()
+	set {_dy} to {_dir}.getY()
+	set {_dz} to {_dir}.getZ()
+	set {_r} to {_w}.rayTraceBlocks({_eye}, {_dir}, {_max}, FluidCollisionMode.NEVER, true)
+	if {_r} is set:
+		set {_hp} to {_r}.getHitPosition()
+		set {_nv} to {_r}.getHitBlockFace().getDirection()
+		set {_px} to {_hp}.getX()
+		set {_py} to {_hp}.getY()
+		set {_pz} to {_hp}.getZ()
+		set {_ny} to {_nv}.getY()
+		if {_ny} > 0.5:
+			set {_fx} to {_px}
+			set {_fy} to {_py}
+			set {_fz} to {_pz}
+		else if {_ny} < -0.5:
+			set {_fx} to {_px}
+			set {_fy} to {_py} - 1.8
+			set {_fz} to {_pz}
 		else:
-			set {_q} to {_cur} ~ ({_dir} * 0.5)
-			if tridentClear({_q}) is true:
-				set {_cur} to {_q}
-			else:
-				set {_q2} to {_q}
-				set y-coordinate of {_q2} to y-coordinate of {_cur}
-				if tridentClear({_q2}) is true:
-					set {_cur} to {_q2}
-				else:
-					set {_go} to false
-	set {_dest} to {_cur}
+			set {_fx} to {_px} + ({_nv}.getX()) * 0.4
+			set {_fy} to {_py} - 1
+			set {_fz} to {_pz} + ({_nv}.getZ()) * 0.4
+	else:
+		set {_fx} to x-coordinate of {_eye} + {_dx} * {_max}
+		set {_fy} to y-coordinate of {_eye} + {_dy} * {_max} - 1.62
+		set {_fz} to z-coordinate of {_eye} + {_dz} * {_max}
+	# 수평 방향(뒤로 물러날 때 사용). 바로 위/아래를 보면 0.
+	set {_hl} to sqrt({_dx} * {_dx} + {_dz} * {_dz})
+	set {_ux} to 0
+	set {_uz} to 0
+	if {_hl} > 0.001:
+		set {_ux} to {_dx} / {_hl}
+		set {_uz} to {_dz} / {_hl}
+	set {_dest} to {_o}
+	set {_found} to false
+	loop integers from 0 to 8:
+		if {_found} is false:
+			set {_k} to loop-value * 0.5
+			loop 0, 0.5, 1, -0.5 and -1:
+				if {_found} is false:
+					set {_q} to location({_fx} - {_ux} * {_k}, {_fy} + loop-value-2, {_fz} - {_uz} * {_k}, {_w})
+					if tridentClear({_q}) is true:
+						set {_dest} to {_q}
+						set {_found} to true
 	# 낮은 블럭(눈/반블럭) 위에 도착하면 그 윗면으로 올려서 블럭 속에 끼지 않게 한다
-	set {_lh} to tridentLow({_dest})
-	if {_lh} > 0:
-		set y-coordinate of {_dest} to (floor(y-coordinate of {_dest})) + {_lh}
+	if {_found} is true:
+		set {_lh} to tridentLow({_dest})
+		if {_lh} > 0:
+			set y-coordinate of {_dest} to (floor(y-coordinate of {_dest})) + {_lh}
 	return {_dest}
 
 # dest: 충전 중 마지막으로 미리보기에 보여준 도착 위치(보인 자리와 실제 도착이 어긋나지 않게 그대로 쓴다). 시점은 지금 시점을 유지.
