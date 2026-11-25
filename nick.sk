@@ -72,7 +72,17 @@ function nickProfile(p: player) :: object:
 	if {_f} is not set:
 		return {_pp}
 	set {_np} to Bukkit.createProfile({_f}, {_p}.getName())
-	{_np}.setProperties({_pp}.getProperties())
+	# [유출 수정] 프로필 속성을 그대로 복사하면 textures JSON 안의 진짜 계정 이름/UUID 가 마네킹 메타데이터로 나간다(프록시(Velocity forwarding)로 들어오면 프록시가 넘긴 진짜 textures 가 프로필에 붙어 있음). 항상 소독해서 넣는다(서명은 빼므로 렌더링은 미검증).
+	set {_fid} to {_f}.toString().replace("-", "")
+	set {_parr} to {_pp}.getProperties().toArray()
+	set {_pn} to Array.getLength({_parr})
+	set {_pi} to 0
+	while {_pi} < {_pn}:
+		set {_pr} to Array.get({_parr}, {_pi})
+		add 1 to {_pi}
+		if {_pr}.getName() is "textures":
+			set {_cv} to nickCleanTex({_pr}.getValue(), {_p}.getName(), {_fid})
+			{_np}.setProperty(new ProfileProperty("textures", {_cv}))
 	return {_np}
 
 # 스킨 속성(textures, base64 JSON)을 가짜 신분용으로 소독한다. 이 JSON 에는 스킨 출처 계정의 "profileName"(계정 이름)과 "profileId"(그 계정 UUID)가 들어 있어서, 마네킹/탭 목록 등으로 클라이언트에
