@@ -1,4 +1,4 @@
-# [blazerod.sk] 블레이즈 지팡이 스킬(우클릭, 쿨 4초): 사용 0.2초 후 화염구 발사, 맞으면 폭발해서 범위 피해 5(블럭 피해 없음), 불꽃 이펙트로 궤적. 3번째 사용은 바라보는 지점 위쪽에서 사선으로 화염구 5개가 떨어진다.
+# [blazerod.sk] 블레이즈 지팡이 스킬(우클릭, 쿨 4초): 사용 0.2초 후 화염구 발사, 맞으면 폭발해서 범위 피해 5(블럭 피해 없음), 불꽃 이펙트로 궤적. 3번째 사용은 플레이어 뒤쪽 5개 지점에서 바라보는 지점으로 화염구 5개가 날아간다.
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # 이 파일이 쓰는 변수: {-brcd}(쿨타임 종료 시각), {-brcount}(연속 사용 횟수), {-brlast}(마지막 사용 시각), {-fb::화염구uuid}(우리 화염구 표시, main.sk 가 읽어서 직접 맞은 피해를 취소), {-fbowner::화염구uuid}(쏜 플레이어),
 #   {-fbhit::uuid}(폭발 피해 순간 표시, 킬로그가 화염구 아이콘을 고르는 데 씀), {-skilldmg}(피해를 주는 동안만), {-skillitems::blaze_rod}
@@ -8,7 +8,7 @@
 #   바닐라 폭발은 on explosion 에서 취소하고, 맞는 순간(on projectile hit) 같은 자리에서 폭발 이펙트와 범위(brRadius) 안 모두에게 고정 피해 실 체력 5 를 우리가 직접 준다(TNT 의 tntBlast 와 같은 방식, 피해 출처는 쏜 사람).
 #   쏜 사람 본인과 아군({-team} isAlly)은 피해를 안 받고 갑옷 거치대는 제외한다. 직접 맞은 바닐라 피해는 main.sk 에서 취소한다(이중 피해 방지).
 # 화염구 속도는 brSpeed()(현재 2칸/틱). 3번째 사용은 낙하 직전마다 폭격 지점 brHomeRange()(8칸) 안 가장 가까운 적을 찾아 그 적 위치 반경 1.5칸 안으로 목표를 옮긴다(적 없으면 기존대로).
-# 3번째 사용: 바라보는 지점(블럭이면 그 블럭 윗면, 아니면 30칸 앞) 반경 3칸 안 무작위 지점이 낙하 목표. 목표 위 10칸, 플레이어 쪽으로 5칸 물러난 곳에서 사선으로 날아간다.
+# 3번째 사용: 바라보는 지점(블럭이면 그 블럭 윗면, 아니면 30칸 앞) 반경 3칸 안 무작위 지점이 낙하 목표. 발사 지점은 플레이어 눈 기준 뒤 4칸, 위 3칸에서 좌우 2칸 간격 5곳(목표/유도는 그대로, 각 화염구는 자기 발사 지점에서 목표로 날아간다).
 # 미검증: brHome(함수 반환 location 비교 `is not`, gamemode/distance 문법), fireball 스폰/setShooter/setDirection/setYield/setIsIncendiary, getTargetBlockExact, 파티클 FLAME, projectile hit 에서 shooter 읽기.
 
 using damage sources
@@ -184,7 +184,10 @@ on rightclick:
 		set {_tp} to {_blk}.getLocation() ~ vector(0.5, 1, 0.5)
 	else:
 		set {_tp} to {_eye} ~ ({_dir} * 30)
-	# 플레이어 쪽으로 물러날 수평 방향(바라보는 방향의 반대). 수직으로 볼 때를 대비해 길이가 너무 짧으면 앞쪽 기본값 사용
+	# 발사 지점 5곳: 플레이어 뒤쪽(바라보는 방향의 반대 {_bk}칸, 위로 {_up}칸)에서 좌우로 {_sp}칸 간격으로 나란히. 수직으로 볼 때를 대비해 수평 길이가 너무 짧으면 앞쪽 기본값 사용
+	set {_bk} to 4
+	set {_up} to 3
+	set {_sp} to 2
 	set {_hx} to x of {_dir}
 	set {_hz} to z of {_dir}
 	set {_hl} to sqrt({_hx} * {_hx} + {_hz} * {_hz})
@@ -192,8 +195,10 @@ on rightclick:
 		set {_hx} to 0
 		set {_hz} to 1
 		set {_hl} to 1
-	set {_bx} to 0 - {_hx} / {_hl} * 5
-	set {_bz} to 0 - {_hz} / {_hl} * 5
+	set {_bx} to 0 - {_hx} / {_hl} * {_bk}
+	set {_bz} to 0 - {_hz} / {_hl} * {_bk}
+	set {_sx} to 0 - {_hz} / {_hl}
+	set {_sz} to {_hx} / {_hl}
 	loop 5 times:
 		if {_p} is not online:
 			stop
@@ -207,7 +212,8 @@ on rightclick:
 		set {_lx} to cos({_ang}) * {_rd}
 		set {_lz} to sin({_ang}) * {_rd}
 		set {_to} to {_hm} ~ vector({_lx}, 0, {_lz})
-		set {_from} to {_to} ~ vector({_bx}, 10, {_bz})
+		set {_sd} to (loop-value - 3) * {_sp}
+		set {_from} to {_eye} ~ vector({_bx} + {_sx} * {_sd}, {_up}, {_bz} + {_sz} * {_sd})
 		brFire({_p}, {_from}, {_to})
 		wait 5 ticks
 
