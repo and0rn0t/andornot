@@ -212,7 +212,9 @@ function stBetter(a: text, b: text) :: boolean:
 		return false
 	set {_sa} to stNum({ratingsince::%{_a}%})
 	set {_sb} to stNum({ratingsince::%{_b}%})
-	return {_sa} < {_sb}
+	if {_sa} < {_sb}:
+		return true
+	return false
 
 # 상위 n 명 id
 function stTop(n: number) :: texts:
