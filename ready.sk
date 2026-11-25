@@ -139,7 +139,11 @@ every second:
 	set {_all} to true
 	loop all players:
 		readyEnsure(loop-player)
-		send action bar colored readyBar(loop-player) to loop-player
+		# 튜토리얼 중인 사람은 준비 상태를 액션바에 띄우지 않는다(진행 중에는 튜토리얼 안내만, 로딩/카메라 연출 중에는 아무것도 안 보냄)
+		if {-tut::%uuid of loop-player%} is not set:
+			send action bar colored readyBar(loop-player) to loop-player
+		else if {-tut::%uuid of loop-player%} is "run":
+			send action bar colored readyBar(loop-player) to loop-player
 		# 게임 관전을 고른 사람은 시작 조건에 포함하지 않는다(spectate.sk)
 		if specOn(loop-player) is not true:
 			add 1 to {_n}
@@ -168,5 +172,6 @@ every second:
 		stop
 	set {_c} to {-readycd}
 	loop all players:
-		send action bar colored "&b게임 시작까지 %{_c}%초 &8| %readyBar(loop-player)%" to loop-player
-		play sound "block.comparator.click" with volume 1 and pitch 1.5 to loop-player
+		if {-tut::%uuid of loop-player%} is not set:
+			send action bar colored "&b게임 시작까지 %{_c}%초 &8| %readyBar(loop-player)%" to loop-player
+			play sound "block.comparator.click" with volume 1 and pitch 1.5 to loop-player
