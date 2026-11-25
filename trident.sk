@@ -46,9 +46,12 @@ function tridentLow(q: location) :: number:
 	return {_h}
 
 function tridentClear(q: location) :: boolean:
-	set {_a} to {_q}.getBlock().isPassable()
+	# 발 높이 판정은 0.1칸 위에서 한다: 흙 길(0.9375)/영혼 모래/농지 같은 낮은 바닥 위에 서 있으면 발 y 가 바닥 블럭 안(예: 63.94)이라
+	# 발 아래 블럭에 걸려 이동이 안 되던 문제 수정(바닥 블럭을 장애물로 취급하지 않는다)
+	set {_f0} to {_q} ~ vector(0, 0.1, 0)
+	set {_a} to {_f0}.getBlock().isPassable()
 	if {_a} is not true:
-		if tridentLow({_q}) > 0.5:
+		if tridentLow({_f0}) > 0.5:
 			return false
 	set {_m} to {_q} ~ vector(0, 1, 0)
 	set {_b} to {_m}.getBlock().isPassable()
