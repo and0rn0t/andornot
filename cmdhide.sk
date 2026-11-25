@@ -14,12 +14,13 @@ import:
 	org.bukkit.event.player.PlayerCommandSendEvent
 	java.lang.reflect.Array
 
-# 일반 유저가 쓸 수 있는 게임 명령어인지(앞의 네임스페이스는 떼고 소문자로 비교). 목록에 없으면 막고 숨긴다.
+# 일반 유저가 쓸 수 있는 게임 명령어인지(소문자로 비교, 네임스페이스 skript:참가 같은 형태는 허용 안 함). 목록에 없으면 막고 숨긴다.
 function cmdAllowed(c: text) :: boolean:
 	set {_x} to {_c}.toLowerCase()
-	set {_i} to {_x}.lastIndexOf(":")
-	add 1 to {_i}
-	set {_x} to {_x}.substring({_i})
+	# 네임스페이스가 붙은 형태(skript:참가, minecraft:msg 등)는 이름과 상관없이 허용하지 않는다
+	set {_ns} to {_x}.contains(":")
+	if {_ns} is true:
+		return false
 	if {_x} is "참가" or "joingame" or "lobby" or "랭킹" or "아이템통계":
 		return true
 	if {_x} is "튜토리얼" or "도움말" or "도움말항목" or "matchreview":
