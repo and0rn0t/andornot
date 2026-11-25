@@ -71,7 +71,7 @@ function itemName(id: text) :: text:
 	if {_id} is "ominous_bottle":
 		return "&5불길한 병"
 	if {_id} is "splash":
-		return "&b첨벙첨벙"
+		return "&1첨벙첨벙"
 	if {_id} is "milk":
 		return "&f우유"
 	if {_id} is "potion_heal":

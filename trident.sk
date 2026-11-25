@@ -16,6 +16,7 @@ using damage sources
 import:
 	org.bukkit.Particle
 	org.bukkit.Bukkit
+	org.bukkit.ChatColor
 	org.bukkit.entity.EntityType
 	io.papermc.paper.datacomponent.item.ResolvableProfile
 	net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
@@ -27,7 +28,7 @@ on load:
 	# 다시 불러올 때 남은 도착 미리보기 마네킹을 치운다
 	loop {-tdprev::*}:
 		if loop-value is set:
-			loop-value.remove()
+			tridentPrevRemove(loop-value)
 	delete {-tdprev::*}
 
 # 충전도(0~1)에 따른 순간이동 거리
@@ -141,10 +142,25 @@ function tridentPrevSpawn(p: player, loc: location) :: object:
 	{_m}.addScoreboardTag("tdprev")
 	{_m}.setInvisible(true)
 	{_m}.setGlowing(true)
+	# 발광 외곽선 색은 팀 색이라 AQUA(하늘색) 팀 tdprev 에 넣는다(마네킹은 엔티티 UUID 문자열이 팀 항목).
+	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+	set {_tm} to {_sb}.getTeam("tdprev")
+	if {_tm} is not set:
+		set {_tm} to {_sb}.registerNewTeam("tdprev")
+	{_tm}.setColor(ChatColor.AQUA)
+	{_tm}.addEntry("%uuid of {_m}%")
 	set {_pg} to Bukkit.getPluginManager().getPlugin("Skript")
 	{_p}.showEntity({_pg}, {_m})
 	add {_m} to {-tdprev::*}
 	return {_m}
+
+# 미리보기 마네킹 제거(팀 항목도 함께 뺀다)
+function tridentPrevRemove(m: object):
+	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+	set {_tm} to {_sb}.getTeam("tdprev")
+	if {_tm} is set:
+		{_tm}.removeEntry("%{_m}.getUniqueId()%")
+	{_m}.remove()
 
 on rightclick:
 	if skillHand(player, trident) is false:
@@ -203,7 +219,7 @@ on rightclick:
 				exit loop
 	{_b}.removeAll()
 	if {_pm} is set:
-		{_pm}.remove()
+		tridentPrevRemove({_pm})
 		remove {_pm} from {-tdprev::*}
 	if {-tdstart::%{_id}%} is {_start}:
 		delete {-tdstart::%{_id}%}
