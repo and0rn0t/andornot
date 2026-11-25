@@ -3,6 +3,7 @@
 # 이 파일이 쓰는 변수: {-radcd}(쿨타임 종료 시각), {-skillitems::radar}. 핑 변수는 waypoint.sk 의 {-wping_*} 를 같이 쓴다.
 # 핑 키(pid): 일반 핑은 찍은 사람 uuid 하나뿐이지만, 레이더는 적마다 하나씩 필요해서 "찍은사람uuid#r번호" 키를 쓴다. 핑을 보는 사람/아군 판정은 wpOwner(pid)(waypoint.sk) 로 '#' 앞 uuid 를 뽑아서 한다.
 #   핑은 일반 핑과 같은 시간(wpPingSec) 동안 적을 따라다니고, 찍은 사람과 같은 팀에게 보인다(빨간 마름모 + 빨간 발광 + locate bar). 새로 쓰면 이전 레이더 핑은 지운다.
+# 감지된 적이 하나도 없으면 실패 사운드(block.note_block.bass 낮은음) + 액션바 "여기에는 아무도 없는 것 같다..."(쿨타임은 그대로 돈다).
 # 감지된 적: 액션바에 빨간 "감지됨!". 이펙트는 없고, 사용 사운드(띠-)는 쓴 사람에게만 들린다(주변에 들리면 위치가 드러나서).
 # 미검증: block.note_block.bit 사운드, 적 액션바(send action bar), 여러 핑 키("uuid#r1" 형식)가 waypoint.sk/pingmark.sk 에서 정상 처리되는지.
 
@@ -23,7 +24,6 @@ on rightclick:
 			stop
 	set {-radcd::%{_id}%} to now + 20 seconds
 	set item cooldown of recovery compass for {_p} to 20 seconds
-	play sound "block.note_block.bit" with volume 1 and pitch 1.6 to {_p}
 	# 이전 레이더 핑 정리
 	loop {-wping_c::*}:
 		if wpOwner(loop-index) is {_id}:
@@ -51,6 +51,12 @@ on rightclick:
 								set {-wping_id::%{_pid}%} to "%{_u}%"
 							set {-wping_until::%{_pid}%} to {-wptick} + wpPingSec() * 10
 							send action bar "&c감지됨!" to {_t}
+	if {_n} is 0:
+		# 감지된 적이 없으면 실패 사운드 + 액션바(쿨타임은 그대로 돈다)
+		play sound "block.note_block.bass" with volume 1 and pitch 0.6 to {_p}
+		send action bar "&7여기에는 아무도 없는 것 같다..." to {_p}
+		stop
+	play sound "block.note_block.bit" with volume 1 and pitch 1.6 to {_p}
 	pmSync()
 	wpSyncViewers(false, true)
 

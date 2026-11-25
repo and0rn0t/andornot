@@ -244,6 +244,8 @@ function itemDamageText(id: text) :: text:
 		return "3"
 	if {_id} is "iron_hoe":
 		return "3"
+	if {_id} is "iron_shovel":
+		return "3"
 	if {_id} is "iron_spear":
 		return "5 / 6"
 	if {_id} is "iron_sword":

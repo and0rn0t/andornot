@@ -403,6 +403,8 @@ function weaponKind(e: entity) :: text:
 		return "axe"
 	if {_main} ends with "_HOE":
 		return "hoe"
+	if {_main} ends with "_SHOVEL":
+		return "shovel"
 	if {_main} ends with "_SWORD":
 		return "sword"
 	if {_main} is "TRIDENT":

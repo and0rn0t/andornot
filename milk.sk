@@ -49,9 +49,16 @@ function milkCleanse(p: player):
 						remove 1 from {-stcap::%{_id}%}
 			clearStatus({_p}, {_k})
 	loop "POISON", "SLOWNESS", "WEAKNESS", "BLINDNESS", "NAUSEA", "HUNGER", "WITHER", "MINING_FATIGUE", "LEVITATION", "DARKNESS", "UNLUCK" and "BAD_OMEN":
+		set {_skip} to false
+		# 삽 잠복(shovel.sk) 중에는 이동 불가용 느림을 풀지 않는다
+		if loop-value is "SLOWNESS":
+			if {-burrow::%{_id}%} is set:
+				if {-burrow::%{_id}%} > now:
+					set {_skip} to true
 		set {_t} to PotionEffectType.getByName(loop-value)
 		if {_t} is set:
-			{_p}.removePotionEffect({_t})
+			if {_skip} is false:
+				{_p}.removePotionEffect({_t})
 
 on rightclick:
 	if skillHand(player, milk bucket) is false:

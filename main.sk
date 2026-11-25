@@ -3,7 +3,7 @@
 # 전체 데미지 배율은 skill_core.sk 의 dmgMul() 한 곳에서 조절(현재 0.8).
 # 철퇴 데미지 x0.3 은 의도된 기능(삭제 금지). 철퇴로 준 근접 데미지에만 적용(스킬/투사체 데미지는 제외).
 # 창 데미지는 최대 6(체력 기준, 스크립트 값 3). 손(메인/오프핸드)과 상관없이 창으로 준 근접 데미지에 적용. 판정은 skill_core.sk 의 weaponKind.
-# 도끼/곡괭이/괭이: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
+# 도끼/곡괭이/괭이/삽: 기획서 수치(실 체력)를 hp() 로 바꿔 근접 데미지를 덮어쓰고 추가 효과를 준다. 기획서는 skill_core.sk 9번.
 # 위 세 무기는 바닐라 공격 쿨다운 규칙(덜 충전하고 때리면 약해짐)과 크리티컬(x1.5, 바닐라 판정)을 따른다: 매 틱 기록한 {-atkcd} 로 cooldownScale() 을 곱한다.
 # 이 파일이 쓰는 변수: {-st}, {-stcap}, {-oc} (접속 시 초기화), {-jump}, {-jumplock}, {-bowcool}, {-status}, {-statusname}, {-statusdur}, {-statustype}, {-statuslabel}, {-sbar}, {-skilldmg}, {-pickstack}, {-pickexp}, {-stunend}, {-ccshown}, {-atkcd} (접속 시 삭제)
 
@@ -299,6 +299,10 @@ on damage:
 					if healthRatio(victim) <= 0.5:
 						set {_d} to {_d} * 2
 					set {_d} to {_d} + {_sb}
+					set damage to {_d} * {_cm}
+				else if {_w} is "shovel":
+					# 삽(shovel.sk): 근접 기본 체력 3(고정). 쿨다운/크리티컬 규칙은 괭이와 같다.
+					set {_d} to hp(3) + {_sb}
 					set damage to {_d} * {_cm}
 				else if {_w} is "trident":
 					# 삼지창(trident.sk): 근접 기본 체력 7(고정)
