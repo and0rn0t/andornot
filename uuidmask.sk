@@ -111,7 +111,7 @@ function umOnSend(px: object, e: object):
 		umUuidFirst({_e}, {_v})
 
 # 유출 검사(/uuidmask audit on): 보내는 모든 패킷의 문자열 표현(NMS 레코드 toString)에 가려야 할 진짜 이름/UUID 가 들어 있는지 찾아서 콘솔에 남긴다.
-# 이름은 가려진 사람의 진짜 UUID 로 서버가 기억하는 계정 이름(usercache)이고, UUID 는 진짜 UUID 문자열이다. 본인에게 가는 진짜 UUID 는 정상이라 이름만 본다(UUID 는 받는 사람이 본인이 아닐 때만).
+# 이름은 가려진 사람의 진짜 이름({nick::real::uuid}, /nick 으로 처음 적용할 때 저장; 없으면 그 사람은 감시 이름에서 빠진다)이고, UUID 는 진짜 UUID 문자열이다. 본인에게 가는 진짜 UUID 는 정상이라 이름만 본다(UUID 는 받는 사람이 본인이 아닐 때만).
 # 느리니 확인할 때만 잠깐 켠다. 패킷 안에 toString 이 값을 안 보여 주는 필드(바이트 배열 등)는 못 찾는다.
 function umAudit(e: object):
 	set {_pk} to {_e}.getPacket()
@@ -349,8 +349,8 @@ command /uuidmask [<text>] [<text>]:
 				while {_ai} < {_an}:
 					set {_ru} to Array.get({_arr}, {_ai})
 					add 1 to {_ai}
-					set {_off} to Bukkit.getOfflinePlayer({_ru})
-					set {_rn} to {_off}.getName()
+					# 진짜 이름은 nick.sk 가 처음 적용할 때 저장해 둔 {nick::real}. (getOfflinePlayer 이름은 접속 중이면 가짜 이름이라 쓰면 오탐이 난다)
+					set {_rn} to {nick::real::%{_ru}%}
 					if {_rn} is set:
 						add {_rn}.toLowerCase() to {-umaudit::name::*}
 						add 1 to {_cnt}
