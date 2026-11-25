@@ -10,6 +10,12 @@
 on load:
 	set {-skillitems::radar} to recovery compass
 
+# 레이더 사운드(쓴 사람에게만). 마인크래프트는 볼륨 1 이 클라이언트 최대치(1 보다 크게 줘도 더 커지지 않고 들리는 거리만 늘어난다)라서,
+# 같은 소리를 3번 겹쳐 틀어 더 크게 들리게 한다(소리를 더 키우거나 줄이려면 아래 겹침 횟수 3 을 바꿀 것).
+function radarSound(p: player, snd: text, pitch: number):
+	loop 3 times:
+		play sound {_snd} with volume 1 and pitch {_pitch} to {_p}
+
 function radarRange() :: number:
 	return 30
 
@@ -53,10 +59,10 @@ on rightclick:
 							send action bar "&c감지됨!" to {_t}
 	if {_n} is 0:
 		# 감지된 적이 없으면 실패 사운드 + 액션바(쿨타임은 그대로 돈다)
-		play sound "block.note_block.bass" with volume 1 and pitch 0.6 to {_p}
+		radarSound({_p}, "block.note_block.bass", 0.6)
 		send action bar "&7여기에는 아무도 없는 것 같다..." to {_p}
 		stop
-	play sound "block.note_block.bit" with volume 1 and pitch 1.6 to {_p}
+	radarSound({_p}, "block.note_block.bit", 1.6)
 	pmSync()
 	wpSyncViewers(false, true)
 
