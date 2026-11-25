@@ -183,7 +183,7 @@ function itemLoreLines(id: text) :: texts:
 	if {_id} is "iron_hoe":
 		return "체력이 50%% 이하인 적에게 2배의 피해를 입힙니다."
 	if {_id} is "iron_shovel":
-		return "3초간 땅을 파고 들어가 잠복합니다.", "잠복 중에는 무적 상태가 되고 투명해집니다.", "쿨타임은 잠복이 끝난 뒤부터 돌아갑니다."
+		return "3초간 땅을 파고 들어가 잠복합니다.", "무적이지만 행동할 수 없습니다."
 	if {_id} is "iron_sword":
 		return "들고 있으면 받는 피해를 한 번 막습니다."
 	if {_id} is "tnt":
