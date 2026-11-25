@@ -1,0 +1,472 @@
+# [stats.sk] 아이템 통계 / 랭킹: 매치가 끝날 때 참가자별 기록을 쌓고, 독서대 메뉴에서 dialog 로 보여준다.
+# 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
+# 이 파일이 쓰는 변수(저장): {ustat::uuid::win|loss|k|a|d|name}(유저 누적 승/패/킬/어시스트/데스/이름), {ustat::uuid::item::아이템id}(그 유저가 고른 횟수),
+#   {istat::pick::아이템id}(아이템 선택 횟수), {istat::win::아이템id}(그 아이템을 고른 사람이 이긴 횟수), {istat::pair::아이템id::아이템id}(같이 선택된 횟수, 양방향으로 둘 다 올림).
+# 이 파일이 쓰는 변수(RAM): {-stgui::uuid}(독서대 메뉴 열림).
+# 기록 시점: gameFinale 에서 ratingApply 바로 뒤(statRecord). ratingApply 와 같은 조건(팀 2개 이상)에서만 기록하고 승리 팀({-gwinner})이 없으면 기록하지 않는다(무승부 처리 안 함).
+#   승/패: 참가자 기록({-gpteam}) 중 승리 팀 소속이고 종료 시점에 접속해 있으면 승, 그 외는 패(종료 시점에 나가 있으면 패, 나갔다가 다시 참가했으면 정상 판정).
+#   아이템: 저장된 구성({loadout}, 사용 중인 세트 기준)의 4개를 참가자마다 센다. 랜덤 아이템 모드({-grandon}) 게임은 아이템 통계에서 제외(승/패/KDA 는 기록).
+#   이 기능을 넣은 시점부터 쌓인다(예전 매치는 복원 불가).
+# 아이템 통계: 선택률 = 그 아이템 선택 수 / 전체 선택 수(모든 아이템의 합이 100%), 승률 = 그 아이템을 고른 사람의 승 / 선택 수, 같이 선택된 아이템 상위 2개.
+# 랭킹: 승점 내림차순(동점은 {ratingsince} 이른 사람 먼저) 1~10위 + 11번째 줄에 본인 순위. 세부 티어만 보여주고 승점 숫자는 숨긴다. 줄마다 승/패/승률/KDA((K+A)/D, D 가 0 이면 K+A)/자주 쓰는 아이템 3개.
+# 독서대(matchhistory.sk 의 독서대 우클릭) -> 3칸 메뉴(stMenu): 아이템 통계 / 랭킹 / 매치 기록(기존 mhOpen). 명령 /랭킹, /아이템통계 [쪽] 은 dialog 버튼이 쓴다.
+# dialog 는 matchhistory.sk 의 gmDialog 와 같은 방식(JSON -> NMS Dialog 파싱 -> ClientboundShowDialogPacket)으로 보낸다.
+# 미검증: dialog multi_action JSON(title/body/actions/exit_action/columns), Bukkit.getOfflinePlayer(UUID), 메뉴/버튼 동작, 줄 폭(width), 아이템 스프라이트 표시.
+
+import:
+	org.bukkit.Bukkit
+	java.util.UUID
+	com.google.gson.JsonParser
+	com.mojang.serialization.JsonOps
+	net.minecraft.server.dialog.Dialog as NmsDialog
+	net.minecraft.core.Holder
+	net.minecraft.resources.RegistryOps
+	net.minecraft.network.protocol.common.ClientboundShowDialogPacket
+
+# ===== 기록 =====
+function stNum(v: object) :: number:
+	if {_v} is a number:
+		return {_v}
+	return 0
+
+# 저장된 구성에서 그 사람(uuid 문자열)이 쓰는 아이템 4개(사용 중인 세트 기준, 없거나 사라진 id 면 기본값)
+function stLoadoutOf(id: text) :: texts:
+	set {_set} to {loadoutset::%{_id}%}
+	set {_base} to 0
+	if {_set} is 2:
+		set {_base} to 5
+	if {_set} is 3:
+		set {_base} to 10
+	if {_set} is 4:
+		set {_base} to 15
+	set {_ids::*} to itemIds()
+	set {_d::*} to itemDefaults()
+	loop integers from 1 to 4:
+		set {_k} to loop-value
+		set {_ri} to {_base} + {_k}
+		set {_v} to {loadout::%{_id}%::%{_ri}%}
+		set {_ok} to false
+		if {_v} is set:
+			if {_ids::*} contains {_v}:
+				set {_ok} to true
+		if {_ok} is true:
+			add {_v} to {_r::*}
+		else:
+			add {_d::%{_k}%} to {_r::*}
+	return {_r::*}
+
+# 아이템 4개 기록: 선택 수, 승, 같이 선택된 쌍
+function stItemsRecord(id: text, won: boolean, its: texts):
+	set {_n} to size of {_its::*}
+	set {_a} to 0
+	while {_a} < {_n}:
+		add 1 to {_a}
+		set {_x} to {_its::%{_a}%}
+		add 1 to {istat::pick::%{_x}%}
+		add 1 to {ustat::%{_id}%::item::%{_x}%}
+		if {_won} is true:
+			add 1 to {istat::win::%{_x}%}
+		set {_b} to 0
+		while {_b} < {_n}:
+			add 1 to {_b}
+			if {_b} is not {_a}:
+				set {_y} to {_its::%{_b}%}
+				add 1 to {istat::pair::%{_x}%::%{_y}%}
+
+function stOne(id: text, won: boolean, rnd: boolean):
+	if {-gpname::%{_id}%} is set:
+		set {ustat::%{_id}%::name} to "%{-gpname::%{_id}%}%"
+	add stNum({-gk::%{_id}%}) to {ustat::%{_id}%::k}
+	add stNum({-ga::%{_id}%}) to {ustat::%{_id}%::a}
+	add stNum({-gd::%{_id}%}) to {ustat::%{_id}%::d}
+	if {_won} is true:
+		add 1 to {ustat::%{_id}%::win}
+	else:
+		add 1 to {ustat::%{_id}%::loss}
+	if {_rnd} is not true:
+		set {_its::*} to stLoadoutOf({_id})
+		stItemsRecord({_id}, {_won}, {_its::*})
+
+# 매치 끝에 참가자 전원 기록(gameFinale 에서 ratingApply 바로 뒤)
+function statRecord():
+	if {-gwinner} is not set:
+		stop
+	if size of {-gteamlist::*} < 2:
+		stop
+	delete {_on::*}
+	loop all players:
+		add "%uuid of loop-player%" to {_on::*}
+	set {_rnd} to false
+	if {-grandon} is true:
+		set {_rnd} to true
+	loop {-gpteam::*}:
+		set {_id} to loop-index
+		set {_won} to false
+		if "%loop-value%" is "%{-gwinner}%":
+			if {_on::*} contains {_id}:
+				set {_won} to true
+		stOne({_id}, {_won}, {_rnd})
+
+on join:
+	set {ustat::%player's uuid%::name} to "%player's name%"
+
+# ===== 표시 공통 =====
+# 색 코드(&x) 제거(JSON 글자용)
+function stClean(t: text) :: text:
+	set {_t} to {_t}
+	loop "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "k", "l", "m", "n", "o" and "r":
+		replace "&%loop-value%" in {_t} with ""
+	return {_t}
+
+# 비율(0~1)을 12.3% 형태로
+function stPct(x: number) :: text:
+	set {_v} to round({_x} * 1000) / 10
+	set {_s} to "%{_v}%"
+	return "%{_s}%%%"
+
+function stRoman(n: number) :: text:
+	if {_n} is 1:
+		return "I"
+	if {_n} is 2:
+		return "II"
+	return "III"
+
+# 세부 티어 글자(브론즈 I ~ 다이아몬드 III, 마스터 이상은 단일)
+function stTierText(idx: number) :: text:
+	if {_idx} >= 15:
+		return tierName({_idx})
+	set {_sub} to mod({_idx}, 3) + 1
+	return "%tierName({_idx})% %stRoman({_sub})%"
+
+# 아이템 이름(색 코드 제거)
+function stItemName(id: text) :: text:
+	return stClean(itemName({_id}))
+
+function stName(id: text) :: text:
+	set {_n} to {ustat::%{_id}%::name}
+	if {_n} is set:
+		return "%{_n}%"
+	set {_op} to Bukkit.getOfflinePlayer(UUID.fromString({_id}))
+	set {_nm} to {_op}.getName()
+	if {_nm} is set:
+		return "%{_nm}%"
+	return "알 수 없음"
+
+function stKda(id: text) :: text:
+	set {_k} to stNum({ustat::%{_id}%::k})
+	set {_a} to stNum({ustat::%{_id}%::a})
+	set {_d} to stNum({ustat::%{_id}%::d})
+	set {_v} to {_k} + {_a}
+	if {_d} > 0:
+		set {_v} to ({_k} + {_a}) / {_d}
+	set {_v} to round({_v} * 100) / 100
+	return "%{_v}%"
+
+# 자주 쓰는 아이템 상위 3개(선택 횟수 순)
+function stFav(id: text) :: texts:
+	set {_n} to 0
+	while {_n} < 3:
+		add 1 to {_n}
+		set {_best} to ""
+		set {_bc} to 0
+		loop {ustat::%{_id}%::item::*}:
+			if {_r::*} does not contain loop-index:
+				if loop-value > {_bc}:
+					set {_bc} to loop-value
+					set {_best} to loop-index
+		if {_best} is "":
+			set {_n} to 3
+		else:
+			add {_best} to {_r::*}
+	return {_r::*}
+
+# dialog 를 띄운다. body = plain_message 들을 쉼표로 이은 것, acts = 버튼들을 쉼표로 이은 것.
+function stDialog(p: player, title: text, body: text, acts: text):
+	set {_d} to "{""type"":""minecraft:multi_action"",""title"":{""text"":""%{_title}%""},""can_close_with_escape"":true,""columns"":1,"
+	set {_d} to "%{_d}%""body"":[%{_body}%],""actions"":[%{_acts}%],"
+	set {_d} to "%{_d}%""exit_action"":{""label"":{""text"":""닫기""}}}"
+	set {_je} to JsonParser.parseString({_d})
+	set {_srv} to Bukkit.getServer().getServer()
+	set {_ops} to RegistryOps.create(JsonOps.INSTANCE, {_srv}.registryAccess())
+	set {_res} to NmsDialog.DIRECT_CODEC.parse({_ops}, {_je})
+	set {_dlg} to {_res}.getOrThrow()
+	set {_pk} to new ClientboundShowDialogPacket(Holder.direct({_dlg}))
+	{_p}.getHandle().connection.send({_pk})
+
+# plain_message 하나(contents 는 JSON 조각들을 쉼표로 이은 것)
+function stMsg(parts: text, w: number) :: text:
+	return "{""type"":""minecraft:plain_message"",""contents"":[%{_parts}%],""width"":%{_w}%}"
+
+# 버튼(명령 실행)
+function stBtn(label: text, cmd: text) :: text:
+	return "{""label"":{""text"":""%{_label}%""},""action"":{""type"":""minecraft:run_command"",""command"":""%{_cmd}%""}}"
+
+# ===== 랭킹 =====
+# a 가 b 보다 위인지(승점 높음, 같으면 먼저 달성한 사람)
+function stBetter(a: text, b: text) :: boolean:
+	set {_ra} to ratingOf({_a})
+	set {_rb} to ratingOf({_b})
+	if {_ra} > {_rb}:
+		return true
+	if {_ra} < {_rb}:
+		return false
+	set {_sa} to stNum({ratingsince::%{_a}%})
+	set {_sb} to stNum({ratingsince::%{_b}%})
+	return {_sa} < {_sb}
+
+# 상위 n 명 id
+function stTop(n: number) :: texts:
+	set {_c} to 0
+	while {_c} < {_n}:
+		add 1 to {_c}
+		set {_best} to ""
+		loop {ratingsince::*}:
+			set {_id} to loop-index
+			if {_r::*} does not contain {_id}:
+				if {_best} is "":
+					set {_best} to {_id}
+				else if stBetter({_id}, {_best}) is true:
+					set {_best} to {_id}
+		if {_best} is "":
+			set {_c} to {_n}
+		else:
+			add {_best} to {_r::*}
+	return {_r::*}
+
+# 순위(기록이 없으면 0)
+function stRankOf(id: text) :: number:
+	if {ratingsince::%{_id}%} is not set:
+		return 0
+	set {_rank} to 1
+	loop {ratingsince::*}:
+		set {_o} to loop-index
+		if {_o} is not {_id}:
+			if stBetter({_o}, {_id}) is true:
+				add 1 to {_rank}
+	return {_rank}
+
+# 한 줄: [순위] 아이콘 이름 | 티어 | 승/패(승률) | KDA | 자주 쓰는 아이템
+function stRowParts(label: text, lc: text, id: text) :: text:
+	set {_idx} to tierIdx({_id})
+	set {_sp} to gfT(" ", "white", false)
+	set {_sep} to gfT("  |  ", "dark_gray", false)
+	set {_w} to stNum({ustat::%{_id}%::win})
+	set {_l} to stNum({ustat::%{_id}%::loss})
+	set {_rec} to "기록 없음"
+	if {_w} + {_l} > 0:
+		set {_rec} to "%{_w}%승 %{_l}%패 (%stPct({_w} / ({_w} + {_l}))%)"
+	set {_j1} to gfT({_label}, {_lc}, true)
+	set {_j2} to gfT(stName({_id}), "white", false)
+	set {_j3} to gfT(stTierText({_idx}), tierColor({_idx}), false)
+	set {_j4} to gfT({_rec}, "gray", false)
+	set {_kd} to "KDA %stKda({_id})%"
+	set {_j5} to gfT({_kd}, "gray", false)
+	set {_ic} to tierIconJ({_idx})
+	set {_out} to "%{_j1}%,%{_sp}%,%{_ic}%,%{_sp}%,%{_j2}%,%{_sep}%,%{_j3}%,%{_sep}%,%{_j4}%,%{_sep}%,%{_j5}%"
+	set {_fav::*} to stFav({_id})
+	if size of {_fav::*} > 0:
+		set {_out} to "%{_out}%,%{_sep}%"
+		loop {_fav::*}:
+			set {_fi} to itemIcon(loop-value)
+			set {_out} to "%{_out}%,%{_fi}%,%{_sp}%"
+	return {_out}
+
+function stRankDialog(p: player):
+	set {_top::*} to stTop(10)
+	set {_body} to ""
+	set {_i} to 0
+	set {_cols::*} to "gold", "white", "#cd7f32"
+	while {_i} < size of {_top::*}:
+		add 1 to {_i}
+		set {_lc} to "gray"
+		if {_i} <= 3:
+			set {_lc} to {_cols::%{_i}%}
+		set {_row} to stMsg(stRowParts("%{_i}%위", {_lc}, {_top::%{_i}%}), 560)
+		if {_body} is not "":
+			set {_body} to "%{_body}%,"
+		set {_body} to "%{_body}%%{_row}%"
+	if {_i} is 0:
+		set {_none} to stMsg(gfT("아직 랭킹이 없어요", "gray", false), 560)
+		set {_body} to {_none}
+	set {_id} to "%{_p}'s uuid%"
+	set {_mr} to stRankOf({_id})
+	set {_hd} to stMsg(gfT("내 순위", "yellow", true), 560)
+	set {_body} to "%{_body}%,%{_hd}%"
+	if {_mr} > 0:
+		set {_me} to stMsg(stRowParts("%{_mr}%위", "yellow", {_id}), 560)
+	else:
+		set {_me} to stMsg(gfT("아직 순위가 없어요 (경기를 치르면 생겨요)", "gray", false), 560)
+	set {_body} to "%{_body}%,%{_me}%"
+	set {_acts} to stBtn("아이템 통계 보기", "아이템통계 1")
+	stDialog({_p}, "랭킹", {_body}, {_acts})
+
+command /랭킹:
+	description: 랭킹을 열어요 (독서대 메뉴와 같은 창)
+	executable by: players
+	trigger:
+		stRankDialog(player)
+
+# ===== 아이템 통계 =====
+# 아이템 id 를 선택 수 많은 순으로
+function stItemsSorted() :: texts:
+	set {_ids::*} to itemOrder()
+	while size of {_ids::*} > 0:
+		set {_best} to ""
+		set {_bc} to -1
+		loop {_ids::*}:
+			set {_c} to stNum({istat::pick::%loop-value%})
+			if {_c} > {_bc}:
+				set {_bc} to {_c}
+				set {_best} to loop-value
+		add {_best} to {_r::*}
+		remove {_best} from {_ids::*}
+	return {_r::*}
+
+# 같이 선택된 아이템 상위 2개
+function stPartners(id: text) :: texts:
+	set {_n} to 0
+	while {_n} < 2:
+		add 1 to {_n}
+		set {_best} to ""
+		set {_bc} to 0
+		loop {istat::pair::%{_id}%::*}:
+			if {_r::*} does not contain loop-index:
+				if loop-value > {_bc}:
+					set {_bc} to loop-value
+					set {_best} to loop-index
+		if {_best} is "":
+			set {_n} to 2
+		else:
+			add {_best} to {_r::*}
+	return {_r::*}
+
+function stItemDialog(p: player, page: number):
+	set {_all::*} to stItemsSorted()
+	set {_total} to 0
+	loop {istat::pick::*}:
+		add loop-value to {_total}
+	set {_per} to 6
+	set {_pages} to ceil(size of {_all::*} / {_per})
+	if {_pages} < 1:
+		set {_pages} to 1
+	set {_pg} to floor({_page})
+	if {_pg} < 1:
+		set {_pg} to 1
+	if {_pg} > {_pages}:
+		set {_pg} to {_pages}
+	set {_sp} to gfT(" ", "white", false)
+	set {_nl} to "{""text"":""\n""}"
+	set {_body} to stMsg(gfT("선택률은 전체 선택 중 비중(합 100%%), 승률은 그 아이템을 고른 사람의 승률이에요. 랜덤 아이템 게임은 빠져요.", "gray", false), 520)
+	set {_i} to ({_pg} - 1) * {_per}
+	set {_end} to {_i} + {_per}
+	while {_i} < {_end}:
+		add 1 to {_i}
+		if {_i} <= size of {_all::*}:
+			set {_id} to {_all::%{_i}%}
+			set {_pk} to stNum({istat::pick::%{_id}%})
+			set {_pw} to stNum({istat::win::%{_id}%})
+			set {_share} to "-"
+			if {_total} > 0:
+				set {_share} to stPct({_pk} / {_total})
+			set {_wr} to "-"
+			if {_pk} > 0:
+				set {_wr} to stPct({_pw} / {_pk})
+			set {_ic} to itemIcon({_id})
+			set {_nm} to gfT(stItemName({_id}), "white", true)
+			set {_st} to "   선택률 %{_share}%   승률 %{_wr}%"
+			set {_js} to gfT({_st}, "gray", false)
+			set {_l1} to "%{_ic}%,%{_sp}%,%{_nm}%,%{_js}%"
+			set {_ptn::*} to stPartners({_id})
+			set {_jt} to gfT("같이 선택: ", "dark_gray", false)
+			set {_l2} to "%{_nl}%,%{_jt}%"
+			if size of {_ptn::*} is 0:
+				set {_jn} to gfT("아직 기록 없음", "dark_gray", false)
+				set {_l2} to "%{_l2}%,%{_jn}%"
+			else:
+				loop {_ptn::*}:
+					set {_pi} to itemIcon(loop-value)
+					set {_pn} to gfT(stItemName(loop-value), "gray", false)
+					set {_l2} to "%{_l2}%,%{_pi}%,%{_sp}%,%{_pn}%,%{_sp}%,%{_sp}%"
+			set {_row} to stMsg("%{_l1}%,%{_l2}%", 520)
+			set {_body} to "%{_body}%,%{_row}%"
+	set {_acts} to stBtn("랭킹 보기", "랭킹")
+	if {_pg} > 1:
+		set {_pv} to {_pg} - 1
+		set {_cm} to "아이템통계 %{_pv}%"
+		set {_bt} to stBtn("이전 쪽", {_cm})
+		set {_acts} to "%{_acts}%,%{_bt}%"
+	if {_pg} < {_pages}:
+		set {_nx} to {_pg} + 1
+		set {_cm} to "아이템통계 %{_nx}%"
+		set {_bt} to stBtn("다음 쪽", {_cm})
+		set {_acts} to "%{_acts}%,%{_bt}%"
+	stDialog({_p}, "아이템 통계 (%{_pg}%/%{_pages}%)", {_body}, {_acts})
+
+command /아이템통계 [<number>]:
+	description: 아이템 통계를 열어요 (독서대 메뉴와 같은 창)
+	executable by: players
+	trigger:
+		set {_pg} to 1
+		if arg-1 is set:
+			set {_pg} to arg-1
+		stItemDialog(player, {_pg})
+
+# ===== 독서대 메뉴 =====
+function stMenu(p: player):
+	set {_uid} to "%{_p}'s uuid%"
+	set {_inv} to chest inventory with 3 rows named "기록실"
+	open {_inv} to {_p}
+	set {-stgui::%{_uid}%} to true
+	loop 27 times:
+		set slot (loop-value - 1) of {_inv} to gray stained glass pane named " "
+	set {_a} to writable book named "&e아이템 통계"
+	set lore of {_a} to "&7아이템별 선택률, 승률, 같이 고르는 아이템", "", "&e▶ 클릭해서 보기"
+	set slot 11 of {_inv} to {_a}
+	set {_b} to nether star named "&b랭킹"
+	set lore of {_b} to "&71~10위와 내 순위", "&7승, 패, 승률, KDA, 자주 쓰는 아이템", "", "&e▶ 클릭해서 보기"
+	set slot 13 of {_inv} to {_b}
+	set {_c} to written book named "&f매치 기록"
+	set lore of {_c} to "&7지난 매치 결과와 리뷰", "", "&e▶ 클릭해서 보기"
+	set slot 15 of {_inv} to {_c}
+	set slot 22 of {_inv} to barrier named "&c나가기"
+
+on inventory click:
+	set {_uid} to "%player's uuid%"
+	if {-stgui::%{_uid}%} is not set:
+		stop
+	cancel the event
+	set {_ev} to event
+	set {_raw} to {_ev}.getRawSlot()
+	set {_raw} to "%{_raw}%" parsed as number
+	if {_raw} is not set:
+		stop
+	set {_p} to player
+	if {_raw} is 22:
+		play sound "ui.button.click" to {_p}
+		close {_p}'s inventory
+		stop
+	if {_raw} is not 11:
+		if {_raw} is not 13:
+			if {_raw} is not 15:
+				stop
+	play sound "ui.button.click" to {_p}
+	close {_p}'s inventory
+	wait 2 ticks
+	if {_p} is not online:
+		stop
+	if {_raw} is 11:
+		stItemDialog({_p}, 1)
+	else if {_raw} is 13:
+		stRankDialog({_p})
+	else:
+		mhOpen({_p}, 0)
+
+on inventory drag:
+	if {-stgui::%player's uuid%} is set:
+		cancel the event
+
+on inventory close:
+	delete {-stgui::%player's uuid%}
+
+on quit:
+	delete {-stgui::%player's uuid%}

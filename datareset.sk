@@ -3,7 +3,8 @@
 # 명령(op/콘솔): /resetdata <match|rating|all> confirm
 #   match  = 지난 매치 기록: {matchcount}, {matchlog::*}(결과 JSON, 목록 설명, 한 줄 리뷰 포함). 등록된 독서대({matchshelf})는 남긴다.
 #   rating = 레이팅: {rating::*}(승점과 경기 수 {rating::games::*}), {ratingsince::*}(승점 도달 시각). 티어는 승점으로 계산하므로 같이 초기화된다(전원 승점 기본 100, game.sk ratingOf).
-#   all    = 둘 다.
+#   stats  = 아이템 통계/유저 통계: {ustat::*}, {istat::*}(stats.sk)
+#   all    = 전부.
 # 게임/투표/종료 연출 중에는 거부한다(종료 연출이 매치 기록을 쓰기 때문). 실행 뒤 접속자 탭리스트를 갱신해 티어 아이콘을 다시 그린다.
 # 미검증: 명령 인자 파싱, 저장 변수 list 통째 삭제.
 
@@ -18,9 +19,10 @@ command /resetdata [<text>] [<text>]:
 				stop
 		if arg-1 is not "match":
 			if arg-1 is not "rating":
-				if arg-1 is not "all":
-					send "&e사용법: /resetdata <match|rating|all> confirm &7(match = 지난 매치 기록, rating = 레이팅, all = 둘 다)"
-					stop
+				if arg-1 is not "stats":
+					if arg-1 is not "all":
+						send "&e사용법: /resetdata <match|rating|stats|all> confirm &7(match = 지난 매치 기록, rating = 레이팅, stats = 아이템 통계/유저 통계, all = 전부)"
+						stop
 		if arg-2 is not "confirm":
 			set {_mc} to mhCount()
 			set {_rc} to size of {ratingsince::*}
@@ -47,11 +49,17 @@ command /resetdata [<text>] [<text>]:
 			delete {rating::*}
 			delete {ratingsince::*}
 			send "&a레이팅을 모두 초기화했습니다."
+		else if arg-1 is "stats":
+			delete {ustat::*}
+			delete {istat::*}
+			send "&a아이템 통계와 유저 통계를 모두 초기화했습니다."
 		else:
 			delete {matchlog::*}
 			delete {matchcount}
 			delete {rating::*}
 			delete {ratingsince::*}
-			send "&a지난 매치 기록과 레이팅을 모두 초기화했습니다."
+			delete {ustat::*}
+			delete {istat::*}
+			send "&a지난 매치 기록, 레이팅, 통계를 모두 초기화했습니다."
 		loop all players:
 			tabUpdate(loop-player)

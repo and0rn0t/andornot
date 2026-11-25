@@ -997,6 +997,8 @@ function gameFinale():
 	set {-gmatchlbl} to matchLabel(mhCount() + 1)
 	# 내부 승점 갱신
 	ratingApply()
+	# 아이템 통계/랭킹용 참가자 기록(stats.sk)
+	statRecord()
 	# 강제 종료(gfAbort)가 {-gfgen} 을 올리면 대기 뒤에 이 연출은 멈춘다
 	add 1 to {-gfgen}
 	set {_gen} to {-gfgen}

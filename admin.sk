@@ -137,7 +137,7 @@ function adminButtonItem(id: text) :: itemtype:
 		return {_i}
 	if {_id} is "shelfadd":
 		set {_i} to lectern named "&f매치 독서대 등록"
-		set lore of {_i} to "&7바라보는 독서대를 지난 매치 독서대로 등록해요", "&7(우클릭하면 지난 매치 목록이 열려요)", "", "&e▶ 독서대를 보고 클릭"
+		set lore of {_i} to "&7바라보는 독서대를 지난 매치 독서대로 등록해요", "&7(우클릭하면 아이템 통계/랭킹/매치 기록 메뉴가 열려요)", "", "&e▶ 독서대를 보고 클릭"
 		return {_i}
 	if {_id} is "shelfdel":
 		set {_i} to red wool named "&c매치 독서대 해제"

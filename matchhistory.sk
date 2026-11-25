@@ -8,7 +8,7 @@
 # GUI: 독서대 우클릭 -> 4줄. 1~3줄 27칸 = 매치(최신이 먼저, 작성된 책), 4줄 1/9번 칸 = 이전/다음 쪽 종이(매치 28개 이상일 때만), 4줄 5번 칸 = 나가기(방벽).
 # 책을 누르면 vanilla dialog(/dialog show)로 결과창을 띄우고, 한 줄 리뷰(40자)를 남길 수 있다(입력은 채팅: dialog 입력칸은 한글이 안 들어가서). 리뷰는 결과 아래에 표시된다.
 # 관리자 메뉴 버튼: 독서대 등록/해제(바라보는 독서대 블록).
-# [계획] 독서대를 열면 아이템 통계/랭킹/매치 기록 3칸 메뉴가 먼저 나오게 확장 예정(설계와 확정 사항은 skill_core.sk 10번 "아이템 통계/랭킹").
+# 독서대 우클릭은 stats.sk 의 3칸 메뉴(stMenu: 아이템 통계/랭킹/매치 기록)를 먼저 연다. 매치 기록 칸이 mhOpen 을 부른다.
 # 미검증: dialog JSON 필드(confirmation/plain_message/text 입력/dynamic/run_command), 작성된 책 아이템, targeted block, 독서대 우클릭 이벤트, 결과 JSON 을 dialog 본문에 그대로 넣기.
 
 import:
@@ -160,7 +160,7 @@ function mhLabelSpawn(b: block):
 		set {_d} to event-entity
 		add "mhlabel" to scoreboard tags of event-entity
 		set billboard of event-entity to center
-	set {_js} to "{""text"":""매치 기록 열람"",""color"":""yellow"",""bold"":true}"
+	set {_js} to "{""text"":""기록 열람"",""color"":""yellow"",""bold"":true}"
 	{_d}.text(GsonComponentSerializer.gson().deserialize({_js}))
 
 function mhShelfAdd(p: player):
@@ -174,7 +174,7 @@ function mhShelfAdd(p: player):
 		stop
 	set {matchshelf::%mhShelfKey({_b})%} to true
 	mhLabelSpawn({_b})
-	send "&a이 독서대를 지난 매치 독서대로 등록했습니다. 우클릭하면 지난 매치 목록이 열립니다." to {_p}
+	send "&a이 독서대를 지난 매치 독서대로 등록했습니다. 우클릭하면 기록 메뉴(아이템 통계/랭킹/매치 기록)가 열립니다." to {_p}
 
 function mhShelfDel(p: player):
 	close {_p}'s inventory
@@ -240,8 +240,10 @@ on right click on lectern:
 	cancel the event
 	if {-mhgui::%player's uuid%} is set:
 		stop
+	if {-stgui::%player's uuid%} is set:
+		stop
 	play sound "block.chest.open" to player
-	mhOpen(player, 0)
+	stMenu(player)
 
 on inventory click:
 	set {_uid} to "%player's uuid%"
