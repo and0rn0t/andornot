@@ -340,7 +340,7 @@ function tutBegin(p: player, first: boolean):
 			wait 2 ticks
 		gSpecForce({_p}, {_he})
 		{_p}.clearActivePotionEffects()
-		send title "&e튜토리얼" with subtitle "&7기초 조작을 익혀요" to {_p} for 3 seconds with fadein 10 ticks and fade out 10 ticks
+		send title "&e튜토리얼" with subtitle "&7기초 조작을 익힙니다" to {_p} for 3 seconds with fadein 10 ticks and fade out 10 ticks
 		set {_t} to 0
 		while {_t} < tutCamTicks():
 			if tutAlive({_p}, {_g}) is not true:
