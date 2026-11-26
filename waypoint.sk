@@ -242,6 +242,9 @@ function wpGlowSend(v: player, t: entity, on: boolean):
 	set {_f} to wpFlags({_t})
 	if {_on} is true:
 		add 64 to {_f}
+	# [오류 수정] 바이트는 -128~127 이라 겉날개(128)가 섞여 128 이상이 되면 parseByte 가 NumberFormatException 을 내고 값이 비어 패킷 인코딩이 실패해 시청자가 접속이 끊겼다. 256 을 빼서 같은 비트로 만든다.
+	if {_f} > 127:
+		subtract 256 from {_f}
 	set {_bv} to Byte.parseByte("%{_f}%")
 	set {_dv} to new WpData(0, EntityDataSerializers.BYTE, {_bv})
 	set {_pk} to new ClientboundSetEntityDataPacket({_t}.getEntityId(), Collections.singletonList({_dv}))
