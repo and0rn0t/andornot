@@ -820,7 +820,7 @@ function itemGuiFill(p: player, inv: inventory, mode: text):
 		set {_x} to ""
 		if {_mode} is "order":
 			if {-itemguipick::%{_uid}%} is {_s}:
-				set {_x} to "&e▶ 자리를 바꿀 아이템이에요"
+				set {_x} to "&e▶ 자리를 바꿀 아이템"
 		set slot {_s} of {_inv} to itemBuild({_id}, {_x})
 		set {-itemguimap::%{_uid}%::%{_s}%} to {_id}
 	# 아이템 변경(select) 화면: 4번째 줄 가운데(칸 31)에 "돌아가기" 방벽. 누르면 무기고 기본 화면으로 돌아간다(클릭 처리의 "__back").
