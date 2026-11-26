@@ -171,7 +171,7 @@ command /nick [<text>] [<text>]:
 			send "&7/nick reset  진짜 신분으로 되돌리기 (데이터는 지워지지 않습니다)"
 			stop
 		if arg-1 is "setreal":
-			# 예전 방식으로 확정해 진짜 이름이 저장돼 있지 않은 가짜 신분용: 진짜 이름을 직접 저장한다(reset/audit 이 씀). 이름을 코드에 적지 않으려고 명령으로 받는다.
+			# 예전 방식으로 확정해 진짜 이름이 저장돼 있지 않은 가짜 신분용: 진짜 이름을 직접 저장한다(reset 이 씀). 이름을 코드에 적지 않으려고 명령으로 받는다.
 			if {_fk} is not set:
 				send "&c가짜 신분일 때만 쓸 수 있습니다."
 				stop
@@ -182,7 +182,7 @@ command /nick [<text>] [<text>]:
 				send "&c이름은 영문/숫자/_ 3~16자여야 합니다."
 				stop
 			set {nick::real::%{_id}%} to arg-2
-			send "&a진짜 이름을 저장했습니다. 이제 /nick reset 과 /uuidmask audit 이 이 이름을 씁니다."
+			send "&a진짜 이름을 저장했습니다. 이제 /nick reset 이 이 이름을 씁니다."
 			stop
 		if arg-1 is "reset":
 			if {_fk} is not set:
