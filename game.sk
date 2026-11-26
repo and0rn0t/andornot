@@ -532,6 +532,27 @@ function scRemove(team: object, p: player):
 	loop {_en::*}:
 		{_team}.removeEntry(loop-value)
 
+# 플레이어를 메인 스코어보드의 모든 팀에서 뺀다(이름표/발광 색 초기화). 팀 항목은 scoreboard.dat 로 서버 재시작/재접속 후에도 남아서,
+# 게임 중에 나가면 다음 입장 때 닉네임에 팀 색이 그대로 입혀져 있으므로 접속 종료/입장 때 비운다.
+function scClearAll(p: player):
+	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
+	set {_en::*} to scEntries({_p})
+	loop {_en::*}:
+		set {_t} to {_sb}.getEntryTeam(loop-value)
+		if {_t} is set:
+			{_t}.removeEntry(loop-value)
+
+# 접속 종료: 즉시 비우고, 다른 on quit(낙하 종료 등)가 팀에 되돌려 넣을 수 있어서 1틱 뒤에 한 번 더 비운다
+on quit:
+	scClearAll(player)
+	set {_p} to player
+	wait 1 tick
+	scClearAll({_p})
+
+# 입장: 지난 접속/서버 종료로 남은 팀 항목 제거(서버가 꺼질 때는 quit 이 못 돌 수 있다)
+on join:
+	scClearAll(player)
+
 function gDropGlowOn(p: player):
 	set {_id} to "%uuid of {_p}%"
 	if {-gdropteam::%{_id}%} is set:
