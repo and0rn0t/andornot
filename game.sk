@@ -6,7 +6,7 @@
 #   {-gover}           승패가 난 뒤(종연출 중)면 true. 새 킬/점수를 더 받지 않는다.
 #   {-gmode}           이번 게임모드 id(bounty/annihilation/crown, 시작 때 gcMode() 를 복사. 맵/모드 투표(vote.sk)가 뽑은 {-gvmode} 가 있으면 그걸 쓴다)
 #   {-gtarget}         이번 게임의 목표 스코어(바운티)/목표 승점(녹아웃, 시작 때 복사)
-#   {-gteams}          이번 게임의 팀 수(0 = 개인전)
+#   {-gteams}          이번 게임의 팀 수(0 = 개인전). 테스트용 /sameteam({-gsameteam}) 이 켜져 있으면 항상 1
 #   {-gplist::*}       이번 게임 참가자(시작 때 접속해 있던 플레이어, 순서 유지)
 #   {-gteamlist::*}    팀 키 목록(정렬됨). 팀전은 {-team} 의 팀 이름("1팀"), 개인전은 "p_플레이어uuid"
 #   {-gname::팀키}      팀 이름(팀전은 {-team} 의 팀 이름, 개인전은 플레이어 이름). 화면에는 gTeamName() 이 만든 색 약자 3글자(RED, BLU ...)로 표시한다.
@@ -721,6 +721,20 @@ function gRollLoadout(p: player):
 	loop integers from 1 to 4:
 		set {-grand::%{_p}'s uuid%::%loop-value%} to {_ids::%loop-value%}
 
+# 테스트용: /sameteam 으로 켜 두면 게임을 시작할 때 모든 참가자가 1팀이 된다(팀 색/이름표/팀 표시를 자기 화면에서 직접 확인하는 용도). 다시 입력하면 꺼진다.
+# 팀이 1개라 승점/통계/매치 기록에는 안 잡히고 결과창 매치 이름은 MATCH TEST 다. 서버를 다시 켜면 꺼진다({-gsameteam}).
+command /sameteam:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
+	description: 테스트용: 다음 게임부터 모든 참가자를 같은 팀으로 시작(토글)
+	trigger:
+		if {-gsameteam} is true:
+			delete {-gsameteam}
+			send "&b모든 플레이어 같은 팀 시작을 껐습니다. 다음 게임부터 원래 팀 구성으로 시작합니다."
+			stop
+		set {-gsameteam} to true
+		send "&b모든 플레이어 같은 팀 시작을 켰습니다. 다음 게임부터 전원이 1팀으로 시작합니다. (팀 수가 개인전 설정이어도 1팀으로 묶습니다) 다시 입력하면 꺼집니다."
+
 function gameStart(by: text):
 	if {-ingame} is true:
 		stop
@@ -735,6 +749,9 @@ function gameStart(by: text):
 		delete {-gvmode}
 	set {-gtarget} to gcTarget({-gmode})
 	set {_n} to gcTeams()
+	# 테스트: /sameteam 이 켜져 있으면 전원 1팀
+	if {-gsameteam} is true:
+		set {_n} to 1
 	set {-gteams} to {_n}
 	delete {-gplist::*}
 	delete {-gwatch::*}
