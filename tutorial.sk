@@ -62,22 +62,22 @@ function tutLines(n: number) :: texts:
 	if {_n} is 1:
 		add "스페이스를 빠르게 두 번 누르면 바라보는 쪽으로 도약합니다." to {_r::*}
 		add "도약할 때마다 스태미너(배고픔)이 줄어듭니다." to {_r::*}
-		add "지금: 스페이스를 두 번 눌러 보세요." to {_r::*}
+		add "지금 더블 점프를 시도하세요." to {_r::*}
 		return {_r::*}
 	if {_n} is 2:
-		add "F키를 누르면 바라보는 곳에 핑이 찍힙니다." to {_r::*}
-		add "적을 향해 핑을 찍으면 대상의 위치가 보입니다." to {_r::*}
-		add "허공을 보고 있을 때는 핑이 찍히지 않습니다." to {_r::*}
-		add "지금: 블록을 바라보고 F키를 눌러 보세요." to {_r::*}
+		add "F키를 누르면 바라보는 곳에 신호를 보냅니다." to {_r::*}
+		add "적을 향해 신호를 보내면 위치를 드러냅니다." to {_r::*}
+		add "허공을 보고 있을 때는 신호가 보내지지 않습니다." to {_r::*}
+		add "지금 신호를 보내보세요." to {_r::*}
 		return {_r::*}
 	if {_n} is 3:
 		add "핫바 9번 칸의 무기고(상자)를 우클릭하면 아이템 구성을 바꿀 수 있습니다." to {_r::*}
 		add "구성 칸을 클릭해 아이템을 고르고, 로드아웃은 4세트까지 저장됩니다." to {_r::*}
-		add "지금: 무기고에서 아이템을 하나 바꿔 보세요." to {_r::*}
+		add "지금 무기고에서 로드아웃을 교체하세요." to {_r::*}
 		return {_r::*}
 	add "핫바에서 아이템을 사용하면 스킬이 사용됩니다." to {_r::*}
 	add "쓰고 나면 아이템 위에 쿨타임 게이지가 돌아갑니다." to {_r::*}
-	add "지금: 포션을 들고 우클릭해 보세요." to {_r::*}
+	add "지금 포션을 사용해보세요." to {_r::*}
 	return {_r::*}
 
 # 도움말 GUI 아이템 설명(회색 글씨). 반복문 안의 반복문은 loop-value 가 헷갈려서 별도 함수로 뺐다.
@@ -149,7 +149,7 @@ function tutShow(p: player):
 			set {_s} to loadoutEmpty({_p}, 3)
 			if {_s} >= 0:
 				set slot {_s} of {_p}'s inventory to itemBuild("potion_heal")
-				send colored "&7체력 포션을 하나 드렸어요. 핫바에서 골라 우클릭해 보세요." to {_p}
+				send colored "&7체력 포션을 하나 드렸어요. 사용해 보세요." to {_p}
 
 # 다른 시스템이 부르는 훅: 지금 단계의 키와 같으면 다음 단계로
 function tutHook(p: player, key: text):
@@ -196,9 +196,9 @@ function tutEnd(p: player, done: boolean):
 	loadoutGive({_p})
 	tabUpdate({_p})
 	if {_done} is true:
-		send colored "&a튜토리얼을 마쳤어요. 내용은 언제든 &f/도움말 &a에서 다시 볼 수 있고, &f/튜토리얼 &a로 다시 할 수 있어요." to {_p}
+		send colored "&a튜토리얼을 마쳤어습니다. 내용은 언제든 &f/도움말 &a에서 다시 볼 수 있고, &f/튜토리얼 &a로 다시 할 수 있습니다." to {_p}
 	else:
-		send colored "&7튜토리얼을 중단했어요. 다음 접속이나 &f/튜토리얼 &7로 다시 할 수 있어요." to {_p}
+		send colored "&7튜토리얼을 중단했습니다. 다음 접속이나 &f/튜토리얼 &7로 다시 할 수 있습니다." to {_p}
 
 # 튜토리얼 시작. first = 첫 접속(리소스 팩 로딩을 기다림). 접속 직후 game.sk 의 로비 이동(1틱 뒤)이 끝난 다음에 시작한다.
 function tutBegin(p: player, first: boolean):
@@ -214,7 +214,7 @@ function tutBegin(p: player, first: boolean):
 		stop
 	if tutBusy() is true:
 		if {_first} is not true:
-			send colored "&c게임 중에는 튜토리얼을 할 수 없어요." to {_p}
+			send colored "&c게임 중에는 튜토리얼을 할 수 없습니다." to {_p}
 		stop
 	add 1 to {-tutgen::%{_id}%}
 	set {_g} to {-tutgen::%{_id}%}
