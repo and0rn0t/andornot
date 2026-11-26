@@ -97,6 +97,10 @@ function nickCleanTex(v: text, nm: text, fid: text) :: text:
 	set {_a2} to """profileId""\s*:\s*""[0-9a-fA-F]+"""
 	set {_r2} to """profileId"" : ""%{_fid}%"""
 	set {_j} to {_j}.replaceAll({_a2}, {_r2})
+	# [스킨 수정] 이 JSON 에는 "signatureRequired": true 가 들어 있다. 우리는 내용을 고쳤으니 서명을 뺄 수밖에 없는데, 서명이 필수라고 적혀 있으면 클라이언트가 서명 없는 스킨을 거부하고 기본 스킨으로 그린다(다른 사람 눈에 기본 스킨으로 보이던 원인). false 로 바꾼다.
+	set {_a3} to """signatureRequired""\s*:\s*true"
+	set {_r3} to """signatureRequired"" : false"
+	set {_j} to {_j}.replaceAll({_a3}, {_r3})
 	set {_o} to Base64.getEncoder().encodeToString({_j}.getBytes("UTF-8"))
 	return "%{_o}%"
 
