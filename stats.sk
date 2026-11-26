@@ -440,16 +440,13 @@ function stMenu(p: player):
 	set lore of {_a} to "&7아이템별 선택률, 승률, 같이 고르는 아이템", "", "&e▶ 클릭해서 보기"
 	set {_c} to written book named "&f매치 기록"
 	set lore of {_c} to "&7지난 매치 결과와 리뷰", "", "&e▶ 클릭해서 보기"
+	# 슬롯 위치는 티어 on/off 와 상관없이 고정. 티어가 꺼져 있으면 랭킹 아이콘(13)만 빼고 회색 유리판으로 남긴다.
+	set slot 11 of {_inv} to {_a}
 	if tierOn() is true:
-		set slot 11 of {_inv} to {_a}
 		set {_b} to nether star named "&b랭킹"
 		set lore of {_b} to "&71~10위와 내 순위", "&7승, 패, 승률, KDA, 자주 쓰는 아이템", "", "&e▶ 클릭해서 보기"
 		set slot 13 of {_inv} to {_b}
-		set slot 15 of {_inv} to {_c}
-	else:
-		# 티어 꺼짐: 랭킹 칸을 빼고 한 칸씩 가운데로 당긴다(12, 14)
-		set slot 12 of {_inv} to {_a}
-		set slot 14 of {_inv} to {_c}
+	set slot 15 of {_inv} to {_c}
 	set slot 22 of {_inv} to barrier named "&c나가기"
 
 on inventory click:
@@ -468,18 +465,13 @@ on inventory click:
 		close {_p}'s inventory
 		stop
 	set {_act} to ""
-	if tierOn() is true:
-		if {_raw} is 11:
-			set {_act} to "item"
-		else if {_raw} is 13:
+	if {_raw} is 11:
+		set {_act} to "item"
+	else if {_raw} is 13:
+		if tierOn() is true:
 			set {_act} to "rank"
-		else if {_raw} is 15:
-			set {_act} to "match"
-	else:
-		if {_raw} is 12:
-			set {_act} to "item"
-		else if {_raw} is 14:
-			set {_act} to "match"
+	else if {_raw} is 15:
+		set {_act} to "match"
 	if {_act} is "":
 		stop
 	play sound "ui.button.click" to {_p}
