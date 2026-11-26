@@ -204,6 +204,7 @@ on PrePlayerAttackEntityEvent:
 
 # /lobby: 로비로 돌아온다(게임 중인 참가자는 못 씀. 로비 NPC 와 같은 규칙)
 command /lobby:
+	aliases: 로비
 	description: 로비로 이동
 	executable by: players
 	trigger:

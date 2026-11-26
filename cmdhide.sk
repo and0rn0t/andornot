@@ -21,7 +21,7 @@ function cmdAllowed(c: text) :: boolean:
 	set {_ns} to {_x}.contains(":")
 	if {_ns} is true:
 		return false
-	if {_x} is "참가" or "joingame" or "lobby" or "아이템통계":
+	if {_x} is "참가" or "joingame" or "lobby" or "로비" or "아이템통계":
 		return true
 	# 랭킹은 티어 시스템이 켜져 있을 때만(/티어 off 면 실행도, 자동완성 목록 노출도 안 됨)
 	if {_x} is "랭킹":
