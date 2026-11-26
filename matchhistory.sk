@@ -218,6 +218,8 @@ function mhOpen(p: player, page: number):
 		set {_n} to {_total} - ({_pg} * 27 + {_s})
 		if {_n} >= 1:
 			set {_bk} to written book named "&f%matchLabel({_n})%"
+			# 책 아래 "원본" 글자(세대 표시) 숨김: 아이템(itemBuild)과 같은 아이템 플래그 처리
+			set {_bk} to {_bk} with item flags hide attributes and hide additional tooltip
 			set {_m1} to "&7모드: &f%{matchlog::%{_n}%::mode}%"
 			set {_m2} to "&7승리: %{matchlog::%{_n}%::winner}%"
 			set {_m3} to "&7맵: &f%{matchlog::%{_n}%::map}%"
