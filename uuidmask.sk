@@ -126,7 +126,9 @@ function umAudit(e: object):
 	set {_tn} to {_t}.name()
 	set {_viewer} to {_e}.getPlayer()
 	set {_vn} to {_viewer}.getName()
-	set {_vu} to "%{_viewer}.getUniqueId()%"
+	# (문자열 안에서는 메서드를 호출할 수 없어서 예전 코드는 받는 사람 UUID 가 엉뚱한 값이 되어 본인 UUID 도 유출로 찍혔다)
+	set {_vuo} to {_viewer}.getUniqueId()
+	set {_vu} to {_vuo}.toString()
 	loop {-umaudit::name::*}:
 		set {_nm} to loop-value
 		if {_ls}.contains({_nm}) is true:
@@ -144,7 +146,16 @@ function umAudit(e: object):
 		set {_ru} to loop-value
 		if {_ls}.contains({_ru}) is true:
 			if {_vu} is not {_ru}:
-				log "[uuidmask-audit] 진짜 UUID 발견: 패킷=%{_tn}% 받는 사람=%{_vn}%"
+				set {_ix} to {_ls}.indexOf({_ru})
+				set {_a} to {_ix} - 60
+				if {_a} < 0:
+					set {_a} to 0
+				set {_len} to {_ls}.length()
+				set {_b} to {_ix} + 100
+				if {_b} > {_len}:
+					set {_b} to {_len}
+				set {_sn} to {_s}.substring({_a}, {_b})
+				log "[uuidmask-audit] 진짜 UUID '%{_ru}%' 발견: 패킷=%{_tn}% 받는 사람=%{_vn}% 내용=...%{_sn}%..."
 
 # 받는 패킷: 관전 메뉴 텔레포트. 클라이언트가 가짜 UUID 로 보내면 진짜 UUID 로 되돌려요.
 function umOnRecv(px: object, e: object):
@@ -281,6 +292,8 @@ on load:
 	nickTables()
 	if {-umlistener} is set:
 		ProtocolLibrary.getProtocolManager().removePacketListener({-umlistener})
+	# 리로드 때 남은 옛 리스너가 있으면 "getSendingWhitelist() is null" NullPointerException 이 난다 -> Skript 플러그인이 등록한 리스너를 전부 지우고 새로 등록한다.
+	ProtocolLibrary.getProtocolManager().removePacketListeners(umPlugin())
 	set {_h::onpacketsending} to function reference "umOnSend"
 	set {_h::onpacketreceiving} to function reference "umOnRecv"
 	set {_h::getsendingwhitelist} to function reference "umSendWl"
@@ -294,6 +307,7 @@ on unload:
 	if {-umlistener} is set:
 		ProtocolLibrary.getProtocolManager().removePacketListener({-umlistener})
 		delete {-umlistener}
+	ProtocolLibrary.getProtocolManager().removePacketListeners(umPlugin())
 
 # ---------- 명령어 ----------
 
