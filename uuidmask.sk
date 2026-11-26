@@ -293,7 +293,8 @@ on load:
 	if {-umlistener} is set:
 		ProtocolLibrary.getProtocolManager().removePacketListener({-umlistener})
 	# 리로드 때 남은 옛 리스너가 있으면 "getSendingWhitelist() is null" NullPointerException 이 난다 -> Skript 플러그인이 등록한 리스너를 전부 지우고 새로 등록한다.
-	ProtocolLibrary.getProtocolManager().removePacketListeners(umPlugin())
+	set {_pl} to SkriptMain.getInstance()
+	ProtocolLibrary.getProtocolManager().removePacketListeners({_pl})
 	set {_h::onpacketsending} to function reference "umOnSend"
 	set {_h::onpacketreceiving} to function reference "umOnRecv"
 	set {_h::getsendingwhitelist} to function reference "umSendWl"
@@ -307,7 +308,8 @@ on unload:
 	if {-umlistener} is set:
 		ProtocolLibrary.getProtocolManager().removePacketListener({-umlistener})
 		delete {-umlistener}
-	ProtocolLibrary.getProtocolManager().removePacketListeners(umPlugin())
+	set {_pl} to SkriptMain.getInstance()
+	ProtocolLibrary.getProtocolManager().removePacketListeners({_pl})
 
 # ---------- 명령어 ----------
 
