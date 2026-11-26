@@ -476,6 +476,13 @@ function helpItem() :: itemtype:
 function helpTopicCount() :: number:
 	return 7
 
+# 티어가 꺼져 있으면 6번(티어 시스템) 항목은 숨긴다. 번호는 바꾸지 않는다.
+function helpTopicHidden(i: number) :: boolean:
+	if {_i} is 6:
+		if tierOn() is false:
+			return true
+	return false
+
 # 창 제목 앞부분(뒤에 " - 항목 제목"이 붙는다)
 function helpWindowTitle() :: text:
 	return "MCK 도움말"
@@ -577,7 +584,9 @@ function helpDialog(p: player, topic: number):
 		set {_lb} to helpPlain(helpTopicTitle({_k}))
 		if {_k} is {_topic}:
 			set {_lb} to "▶ %{_lb}%"
-		set {_acts} to "%{_acts}%{label:'%{_lb}%',width:150,action:{type:'minecraft:run_command',command:'도움말항목 %{_k}%'}},"
+		# 티어 시스템 항목(6번)은 티어가 꺼져 있으면 버튼을 만들지 않는다(번호는 그대로)
+		if helpTopicHidden({_k}) is false:
+			set {_acts} to "%{_acts}%{label:'%{_lb}%',width:150,action:{type:'minecraft:run_command',command:'도움말항목 %{_k}%'}},"
 	set {_acts} to "%{_acts}%{label:'튜토리얼 다시 하기',width:150,action:{type:'minecraft:run_command',command:'튜토리얼'}}"
 	set {_hd} to "환영합니다"
 	if {_topic} > 0:
@@ -604,6 +613,8 @@ command /도움말항목 <number>:
 		if arg-1 < 1:
 			stop
 		if arg-1 > helpTopicCount():
+			stop
+		if helpTopicHidden(arg-1) is true:
 			stop
 		helpDialog(player, arg-1)
 

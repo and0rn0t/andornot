@@ -274,6 +274,8 @@ function stRowParts(label: text, lc: text, id: text) :: text:
 	return {_out}
 
 function stRankDialog(p: player):
+	if tierOn() is false:
+		stop
 	set {_top::*} to stTop(10)
 	set {_body} to ""
 	set {_i} to 0
@@ -306,6 +308,9 @@ command /랭킹:
 	description: 랭킹을 엽니다. (독서대 메뉴와 같은 창)
 	executable by: players
 	trigger:
+		if tierOn() is false:
+			send "&c지금은 사용할 수 없습니다."
+			stop
 		stRankDialog(player)
 
 # ===== 아이템 통계 =====
@@ -391,17 +396,27 @@ function stItemDialog(p: player, page: number):
 					set {_l2} to "%{_l2}%,%{_pi}%,%{_sp}%,%{_pn}%,%{_sp}%,%{_sp}%"
 			set {_row} to stMsg("%{_l1}%,%{_l2}%", 520)
 			set {_body} to "%{_body}%,%{_row}%"
-	set {_acts} to stBtn("랭킹 보기", "랭킹")
+	set {_acts} to ""
+	if tierOn() is true:
+		set {_acts} to stBtn("랭킹 보기", "랭킹")
 	if {_pg} > 1:
 		set {_pv} to {_pg} - 1
 		set {_cm} to "아이템통계 %{_pv}%"
 		set {_bt} to stBtn("이전 쪽", {_cm})
 		set {_acts} to "%{_acts}%,%{_bt}%"
+		if {_acts} starts with ",":
+			set {_acts} to subtext of {_acts} from characters 2 to length of {_acts}
 	if {_pg} < {_pages}:
 		set {_nx} to {_pg} + 1
 		set {_cm} to "아이템통계 %{_nx}%"
 		set {_bt} to stBtn("다음 쪽", {_cm})
 		set {_acts} to "%{_acts}%,%{_bt}%"
+		if {_acts} starts with ",":
+			set {_acts} to subtext of {_acts} from characters 2 to length of {_acts}
+	if {_acts} is "":
+		# 티어가 꺼져 있고 쪽이 하나뿐이면 버튼이 없다 -> multi_action 은 actions 가 비면 안 되므로 새로고침 버튼 하나
+		set {_cm} to "아이템통계 %{_pg}%"
+		set {_acts} to stBtn("새로고침", {_cm})
 	stDialog({_p}, "아이템 통계 (%{_pg}%/%{_pages}%)", {_body}, {_acts})
 
 command /아이템통계 [<number>]:
@@ -423,13 +438,18 @@ function stMenu(p: player):
 		set slot (loop-value - 1) of {_inv} to gray stained glass pane named " "
 	set {_a} to writable book named "&e아이템 통계"
 	set lore of {_a} to "&7아이템별 선택률, 승률, 같이 고르는 아이템", "", "&e▶ 클릭해서 보기"
-	set slot 11 of {_inv} to {_a}
-	set {_b} to nether star named "&b랭킹"
-	set lore of {_b} to "&71~10위와 내 순위", "&7승, 패, 승률, KDA, 자주 쓰는 아이템", "", "&e▶ 클릭해서 보기"
-	set slot 13 of {_inv} to {_b}
 	set {_c} to written book named "&f매치 기록"
 	set lore of {_c} to "&7지난 매치 결과와 리뷰", "", "&e▶ 클릭해서 보기"
-	set slot 15 of {_inv} to {_c}
+	if tierOn() is true:
+		set slot 11 of {_inv} to {_a}
+		set {_b} to nether star named "&b랭킹"
+		set lore of {_b} to "&71~10위와 내 순위", "&7승, 패, 승률, KDA, 자주 쓰는 아이템", "", "&e▶ 클릭해서 보기"
+		set slot 13 of {_inv} to {_b}
+		set slot 15 of {_inv} to {_c}
+	else:
+		# 티어 꺼짐: 랭킹 칸을 빼고 한 칸씩 가운데로 당긴다(12, 14)
+		set slot 12 of {_inv} to {_a}
+		set slot 14 of {_inv} to {_c}
 	set slot 22 of {_inv} to barrier named "&c나가기"
 
 on inventory click:
@@ -447,18 +467,29 @@ on inventory click:
 		play sound "ui.button.click" to {_p}
 		close {_p}'s inventory
 		stop
-	if {_raw} is not 11:
-		if {_raw} is not 13:
-			if {_raw} is not 15:
-				stop
+	set {_act} to ""
+	if tierOn() is true:
+		if {_raw} is 11:
+			set {_act} to "item"
+		else if {_raw} is 13:
+			set {_act} to "rank"
+		else if {_raw} is 15:
+			set {_act} to "match"
+	else:
+		if {_raw} is 12:
+			set {_act} to "item"
+		else if {_raw} is 14:
+			set {_act} to "match"
+	if {_act} is "":
+		stop
 	play sound "ui.button.click" to {_p}
 	close {_p}'s inventory
 	wait 2 ticks
 	if {_p} is not online:
 		stop
-	if {_raw} is 11:
+	if {_act} is "item":
 		stItemDialog({_p}, 1)
-	else if {_raw} is 13:
+	else if {_act} is "rank":
 		stRankDialog({_p})
 	else:
 		mhOpen({_p}, 0)

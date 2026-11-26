@@ -77,6 +77,7 @@
 #   {matchcount}, {matchlog::번호::json|mode|winner|map|rand|time|potm|rv::uuid|rvn::uuid}, {matchshelf::월드_x_y_z} 매치 기록/리뷰/등록 독서대(저장 변수)  matchhistory
 #   {ustat::uuid::win|loss|k|a|d|name}, {ustat::uuid::item::아이템id}, {istat::pick::아이템id}, {istat::win::아이템id}, {istat::pair::아이템id::아이템id}   유저 누적 통계/아이템 통계(저장 변수, stats.sk, 이름은 모두 stats.sk 에서만 씀)
 #   {-stgui::uuid}   독서대 3칸 메뉴 열림(RAM, stats.sk)
+#   {tieroff}   true 면 티어 표시 꺼짐(저장, tier.sk /티어 on|off)
 #   {gamecfg::unlock}  관리자 설정 잠금 해제 표시(저장 변수, true 면 잠금 꺼짐, 없으면 잠금 켜짐)  admin
 #   {gamecfg::worldlist::이름} 서버/스크립트를 불러올 때 자동으로 불러올 월드(저장 변수)  world
 #   {gamecfg::target::모드}   목표 스코어/승점(저장 변수, 대시 없음)                  gamesetup(gcTarget)
@@ -178,6 +179,7 @@
 #   - spectate.sk   : 게임 관전 토글. 게임 중이 아닐 때 모두의 7번째 칸(인덱스 6)에 흰색 "게임 참여"(기본)/회색 "게임 관전" 콘크리트(우클릭 토글). 관전을 고르면 탭리스트 닉네임이 회색, 시작 조건(전원 준비)에서 제외, 게임 시작 때 {-gplist} 에 안 들어가고 {-gwatch::uuid} 에 올라 관전 모드로 게임 월드 중앙에서 구경, 그 게임에는 /참가 불가. 변수: {-wspec::uuid}(관전 선택, RAM), {-gwatch::uuid}(이번 게임 관전자, game.sk gameStart 가 채우고 gameCleanup 이 지움)
 #   - mapgen/       : 맵 생성기(cube_map.py -> cube_map.schem, WorldEdit //schem 으로 붙여넣기). 3x3x3 큐브 퍼즐형 플랫폼 맵 v2(조각 13개: 아래 4/가운데 5/위 4, 세로줄마다 색, 가운데 검정, 위층<->가운데 계단길, 가운데층 모서리 4개 순환 다리, 아래층은 장식 지지대만, 밝기 블록 조명). sponge_map.py = 멩거 스펀지형(20조각, 흰 석영 길). 스크립트가 아니라 서버에 안 올라간다
 #   - tier.sk       : 티어 시스템(승점 -> 브론즈~챌린저, 닉네임 앞 티어 아이콘. 탭리스트/게임 결과/매치 기록에만 표시, 채팅/킬로그 제외)
+#                     관리자 /티어 on|off ({tieroff}=true 면 꺼짐, 저장): 내부 레이팅은 그대로 변동, 아이콘/랭킹(/랭킹, 기록실 메뉴 칸 당김)/도움말 6번 항목 숨김, 탭·결과 열 폭 재정렬(tierPreMax/tierPreW=0). 미검증
 #   - flintsteel.sk : 부싯돌과 부시 스킬(취약 + 불태움)
 #   - totem.sk      : 불사의 토템 스킬
 #   - sword.sk      : 검 패시브(피해 1회 막기, 쿨 30초, 준비 중 체력바 양끝 흰색 괄호). 판정은 main.sk 첫 on damage, 색은 healthbar.sk

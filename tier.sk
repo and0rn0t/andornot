@@ -88,17 +88,61 @@ function tierIconJ(idx: number) :: text:
 		replace "}" in {_j} with ",""color"":""%{_tc}%""}"
 	return {_j}
 
+# 티어 표시 스위치(관리자 /티어 on|off). {tieroff} 가 true 면 꺼짐(저장 변수, 기본 켜짐).
+# 꺼져도 내부 레이팅 변동/저장은 그대로이고, 화면 표기(아이콘, 랭킹, 티어 설명)만 가린다.
+function tierOn() :: boolean:
+	if {tieroff} is true:
+		return false
+	return true
+
 # 닉네임 앞에 붙일 JSON 조각(쉼표로 이어 붙일 수 있게 컴포넌트 두 개): 티어 아이콘, 공백 한 칸. 세부 티어(로마 숫자)는 표기하지 않는다.
+# 티어가 꺼져 있으면 빈 컴포넌트 두 개(폭 0).
 function tierPreJ(id: text) :: text:
+	if tierOn() is false:
+		set {_e1} to gtT("", "white")
+		set {_e2} to gtT("", "white")
+		return "%{_e1}%,%{_e2}%"
 	set {_i} to tierIdx({_id})
 	set {_ic} to tierIconJ({_i})
 	set {_sp} to gtT(" ", "white")
 	return "%{_ic}%,%{_sp}%"
 
-# 위 조각의 폭(픽셀): 아이콘 gtIconPx() + 공백 4
+# 위 조각의 폭(픽셀): 아이콘 gtIconPx() + 공백 4 (티어 꺼짐이면 0)
 function tierPreW(id: text) :: number:
+	if tierOn() is false:
+		return 0
 	return gtIconPx() + 4
 
 # 표기 폭(누구나 같음). 이름 칸 폭에 더한다.
 function tierPreMax() :: number:
+	if tierOn() is false:
+		return 0
 	return gtIconPx() + 4
+
+command /티어 [<text>]:
+	permission: minecraft.command.op
+	permission message: &c권한이 없습니다.
+	description: 티어 시스템 표시 on/off (관리자 전용)
+	trigger:
+		if sender is a player:
+			if player is not op:
+				send "&c관리자만 사용할 수 있습니다."
+				stop
+		if arg-1 is "on":
+			delete {tieroff}
+		else if arg-1 is "off":
+			set {tieroff} to true
+		else:
+			if tierOn() is true:
+				send "&e티어 시스템: &a켜짐 &7(/티어 on|off)"
+			else:
+				send "&e티어 시스템: &c꺼짐 &7(/티어 on|off)"
+			stop
+		if tierOn() is true:
+			send "&a티어 시스템을 켰습니다. 티어 아이콘, 랭킹, 티어 설명이 다시 보입니다."
+		else:
+			send "&c티어 시스템을 껐습니다. 내부 레이팅은 계속 변동하지만 티어 아이콘, 랭킹, 티어 설명이 가려집니다."
+		loop all players:
+			tabUpdate(loop-player)
+		gtRefresh()
+
