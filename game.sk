@@ -268,7 +268,7 @@ function gJoinMid(p: player):
 	gameRespawn({_p})
 
 command /참가:
-	description: 진행 중인 게임에 중간 참가해요
+	description: 진행 중인 게임에 중간 참가합니다.
 	aliases: joingame
 	executable by: players
 	trigger:
@@ -319,12 +319,12 @@ on join:
 	set gamemode of player to spectator
 	tpSafe(player, {_gw}.getSpawnLocation())
 	if {-gwatch::%uuid of player%} is set:
-		send "&7이번 게임은 관전으로 정해서 구경만 할 수 있어요."
+		send "&7이번 게임에는 참가할 수 없습니다."
 		stop
 	if tierOn() is true:
-		send "&b게임이 진행 중입니다. &7중간 참가는 &b/참가 &7를 입력하세요. (인원이 적은 팀, 승점 균형 순으로 배치됩니다)" to player
+		send "&b게임이 진행 중입니다. &7중간 참가는 &b/참가 &7를 입력. (인원이 적은 팀, 승점 균형 순으로 배치됩니다)" to player
 	else:
-		send "&b게임이 진행 중입니다. &7중간 참가는 &b/참가 &7를 입력하세요. (인원이 적은 팀 순으로 배치됩니다)" to player
+		send "&b게임이 진행 중입니다. &7중간 참가는 &b/참가 &7를 입력. (인원이 적은 팀 순으로 배치됩니다)" to player
 
 # 게임 시작 때 팀 구성을 모두에게 알린다(내부 승점은 알리지 않는다).
 function gAnnounceTeams():
