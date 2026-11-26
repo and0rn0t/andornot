@@ -17,7 +17,9 @@ PC에는 저장소를 `git clone` 해 둔 폴더가 있고, 그 폴더 안의 `s
   `schtasks /create /sc minute /mo 1 /tn SkriptSync /tr "powershell -NoProfile -WindowStyle Hidden -Command \"& 'C:\skript_repo\sync_local.bat' /quiet\"" /f`
 - `sync_to_server.bat`은 예전 버전이라 쓰지 않아요(저장소 파일은 PC에서 수정된 상태라 그대로 둠).
 
-## 리소스 팩 (mck_pack)
+## 리소스 팩 (mck)
 배고픔 바 아이콘(`assets/minecraft/textures/gui/sprites/hud/food_*.png`)은 스태미너용 ⚡ 로 교체돼 있어요.
-`resourcepack/mck_pack/`가 서버 리소스 팩 원본이에요(시작/라운드 시작 음악). `python3 resourcepack/build_pack.py`로 `resourcepack/mck_pack.zip`을 만들고 SHA-1을 출력해요.
-`server.properties`에는 커밋 해시를 고정한 URL을 써요: `resource-pack=https://raw.githubusercontent.com/and0rn0t/andornot/<커밋 해시>/resourcepack/mck_pack.zip`, `resource-pack-sha1=<SHA-1>`.
+`resourcepack/mck/`가 서버 리소스 팩 원본이에요(시작/라운드 시작 음악). `python3 resourcepack/build_pack.py`로 `resourcepack/mck.zip`을 만들고 SHA-1을 출력해요.
+`server.properties`에는 커밋 해시를 고정한 URL을 써요: `resource-pack=https://raw.githubusercontent.com/and0rn0t/andornot/<커밋 해시>/resourcepack/mck.zip`, `resource-pack-sha1=<SHA-1>`.
+
+리소스 팩의 글꼴(`assets/minecraft/font`, `textures/font`)은 Mc둥근모(Neo둥근모 기반, OFL, `LICENSE_font.txt`/`README_font.txt`)예요. 원본은 1.20.x용 비트맵 팩이라서 그대로 합쳤고, 1.21.11/26.x에서의 동작은 접속해서 확인이 필요해요.

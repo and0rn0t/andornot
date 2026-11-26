@@ -2,7 +2,7 @@
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
 # waypoint.sk 와 완전히 따로 돈다: 2틱마다 waypoint.sk 의 핑 변수({-wping_c/x/y/z/until::찍은 사람 uuid})를 읽어서 표식을 만들고/옮기고/지운다(핑이 사라지면 표식도 지움).
 #   파란 핑 = 조준한 지점 그대로(pmUpBlue 칸 위, 지금 0), 빨간 핑 = 대상(적/더미) 머리 위. 핑을 볼 수 있는 사람(찍은 사람 + 같은 팀)에게만 보인다.
-# 표식 = 텍스트 디스플레이(빌보드, 벽 너머로도 보임, 배경 투명, 최대 밝기) + 글꼴 글자. 파란 U+E010, 빨간 U+E011(resourcepack/mck_pack/assets/mck/font/ping.json, textures/font/ping_blue|red.png 32x32).
+# 표식 = 텍스트 디스플레이(빌보드, 벽 너머로도 보임, 배경 투명, 최대 밝기) + 글꼴 글자. 파란 U+E010, 빨간 U+E011(resourcepack/mck/assets/mck/font/ping.json, textures/font/ping_blue|red.png 32x32).
 # 크기: 거리에 비례해서 멀어도 비슷한 크기로 보이게 한다(찍은 사람과의 거리 기준). pmScale 의 숫자로 조절(미검증: 실제 크기는 확인 후 조정).
 # 변수(RAM): {-wpm_e::pid}(표식 엔티티) {-wpm_v::pid}(만든 핑 버전) {-wpm_pos::pid}(마지막 위치) {-wpm_sc::pid}(마지막 크기)
 # 미검증: 글꼴 글자/바이탈 텍스트 디스플레이 text(Component), setSeeThrough/setBackgroundColor(투명)/setBrightness, setVisibleByDefault(false)+showEntity, 크기 변환 문법(set transformation scale of ...), 크기 보정값.

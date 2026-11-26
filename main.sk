@@ -46,7 +46,7 @@ on load:
 	delete {-ccshown::%player's uuid%}
 	delete {-atkcd::%player's uuid%}
 
-# 배고픔 바 = 스태미너 표시: 리소스팩(resourcepack/mck_pack)이 배고픔 아이콘을 ⚡ 로 바꿔 놓았다. 음식 수치(0~20) = 스태미너(0~100) / 5.
+# 배고픔 바 = 스태미너 표시: 리소스팩(resourcepack/mck)이 배고픔 아이콘을 ⚡ 로 바꿔 놓았다. 음식 수치(0~20) = 스태미너(0~100) / 5.
 # 꿀벌 조종 중에는 꿀벌 스태미너({-beest})를 보인다. 진짜 배고픔 효과(굶주림 피해)는 아래 이벤트로 막는다.
 function stFoodSync(p: player):
 	set {_id} to "%uuid of {_p}%"

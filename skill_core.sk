@@ -168,7 +168,7 @@
 #   - projectile.sk : 모든 발사체 최대 사거리 150칸(넘으면 제거)
 #   - windburst.sk  : 연막탄 스킬(반구 모양, 블럭에 막히면 번지지 않음)
 #   - startcine.sk  : 게임 시작 연출(먼저 리스폰 지점 시점으로 맵 로딩 구간 + 액션바 loading..., 이어서 시작 카메라 + 음악 gamestart + 맵 이름, 팀 더미 라인업 3구도 + 팀 이름, "강하를 준비하세요", 19초)과 음악 함수 bgmPlay/bgmStopAll
-#                     리소스팩 mck_pack: resourcepack/mck_pack(원본) + build_pack.py(zip/SHA-1 생성). 소리는 mck:gamestart(ogg -6dB, 재생 음량 bgmVolume()), mck:end(게임 종료 연출 효과음, 약 15초, gameend.sk 가 타이틀과 동시에 재생), mck:knockout(킬 연출 시작, 피격자와 공격자, -6dB)과 mck:killsound(더미 부서질 때 공격자에게만, -9.5dB)(killcine.sk, 피격자는 예전 바닐라 소리 3개). 녹아웃 라운드 시작(game.sk gRoundNext)은 5초 카운트다운(소리 없음, roundstart 음악은 제거됨)
+#                     리소스팩 mck: resourcepack/mck(원본) + build_pack.py(zip/SHA-1 생성). 소리는 mck:gamestart(ogg -6dB, 재생 음량 bgmVolume()), mck:end(게임 종료 연출 효과음, 약 15초, gameend.sk 가 타이틀과 동시에 재생), mck:knockout(킬 연출 시작, 피격자와 공격자, -6dB)과 mck:killsound(더미 부서질 때 공격자에게만, -9.5dB)(killcine.sk, 피격자는 예전 바닐라 소리 3개). 녹아웃 라운드 시작(game.sk gRoundNext)은 5초 카운트다운(소리 없음, roundstart 음악은 제거됨)
 #   - quickuse.sk  : 즉시 사용 옵션({quickuse::uuid}, 무기고 메인 화면 칸 17 토글). 무기류 외 버프/디버프/포션류로 칸을 바꾸면 가짜 우클릭 이벤트로 바로 사용. 도약 토글은 칸 8.
 #   - nick.sk       : op 전용 가짜 신분(/nick <이름> [스킨 계정]으로 적용/몇 번이든 변경, /nick skin, /nick reset 으로 진짜 신분 복귀, 데이터 삭제 없음). 접속 때(AsyncPlayerPreLoginEvent) 프로필을 같은 UUID+가짜 이름+스킨으로 교체(서버 안 UUID 는 못 바꿈: 1.19+ 채팅 서명 키 검증)하고 패킷용 가짜 UUID 표({-umr2f}/{-umf2r})를 채움. nickProfile(p) 는 마네킹용 가짜 UUID 프로필(gameend/startcine 사용). 헤더 주석 참고, 전부 미검증
 #   - uuidmask.sk   : ProtocolLib 로 다른 사람에게 가는 패킷(PLAYER_INFO/SPAWN_ENTITY/CHAT 등) 속 진짜 UUID 를 nick.sk 의 가짜 UUID 로 교체(핵 클라이언트 대비). ProtocolLib 1.21.11 호환 빌드 필요, /uuidmask status|kill|revive, 전부 미검증
@@ -195,7 +195,7 @@
 #       5) 네더의 별/불길한 병/불사의 토템 오브젝트 발광(충돌 안 나게, 적은 표시 안 함): 크라운 발광은 스코어보드 팀 gcrown(GOLD) 이므로 같은 방식은 팀 충돌이 난다 -> 발광 색 우선순위 정할 것.
 #       핑 가시화(pingmark.sk, waypoint.sk 와 따로 돎): 핑 변수를 2틱마다 읽어 핑 자리 위(파란 1칸/빨간 대상 머리 위 2.7칸)에 마름모 표식 텍스트 디스플레이를 띄움(리소스팩 글꼴 mck:ping: U+E010 파랑/U+E011 빨강, 벽 너머로도 보임, 거리 비례 크기 pmScale, 핑을 볼 수 있는 사람에게만 showEntity). 미검증.
 #       핑 효과음(리소스팩에 추가됨): 파란 핑 mck:pingblue, 빨간 핑 mck:pingred (소리 크기는 둘 다 약 -24 LUFS 로 맞춤). 재생: play sound "mck:pingblue" to 플레이어 (Skript 의 play sound 는 리소스팩 사운드 이름도 받음, 미검증).
-#       리소스팩: 서버 적용은 server.properties 의 resource-pack URL(커밋 해시 고정) + sha1. 팩이 바뀐 마지막 커밋: `git log -1 --format=%H -- resourcepack/mck_pack.zip`, sha1: `sha1sum resourcepack/mck_pack.zip`.
+#       리소스팩: 서버 적용은 server.properties 의 resource-pack URL(커밋 해시 고정) + sha1. 팩이 바뀐 마지막 커밋: `git log -1 --format=%H -- resourcepack/mck.zip`, sha1: `sha1sum resourcepack/mck.zip`.
 #   - [최근 변경] 체력바는 본인 포함 아군 초록/적 빨강(hpbar_vis). 크라운: 소지자 발광 주황(스코어보드 팀 gcrown=GOLD), 점수 1.5초당 1점({-gcprog} 진행도). 투표 더미: 스킨 계정 geia, 로비 소환 자리에서 7칸 앞(저장 위치가 4칸 안이면 밀어냄). POTM 은 ratingApply 에서 얻는 승점 2배(알림 없음).
 #   - [연출 카메라 규칙] 시작/킬/종료 연출의 카메라는 시선(yaw, pitch)을 샷 내내 고정하고 위치(앞뒤/좌우)로만 움직인다(WASD 이동처럼). 고정 pitch: 시작 0, 킬 0, 종료 -5. 시선을 대상에 맞춰 돌리면 화면이 끊겨 보여서 setDirection 에 고정 벡터를 쓴다.
 #   - healthbar.sk  : 머리 위 체력바(모든 모드 공통: 적은 빨강, 아군(isAlly)은 초록, 시청자별로 TEXT_DISPLAY 2개 {-hpbar_d}/{-hpbar_g} 를 showEntity/hideEntity 로 골라 보임) + 데미지 숫자(사용자가 직접 작성한 파일, statustag.sk 가 이 위에 상태이상을 띄움)

@@ -1,6 +1,6 @@
 # [hats.sk] 치장 모자 5종 + 기본 모자/선택 GUI. 머리 칸 클릭으로 선택 GUI 를 연다(/치장 명령은 폐기됨).
 # 환경, 작업 규칙, 변수 목록, 스킬 추가 절차는 skill_core.sk 맨 위 주석을 먼저 읽을 것.
-# 모델은 리소스팩(resourcepack/mck_pack/assets/mck/items|models|textures/item/hat/)의 mck:hat/<id>. 종이에 item_model 과 머리 칸 equippable 을 붙여 만든다(방어력 없음, 스택 1).
+# 모델은 리소스팩(resourcepack/mck/assets/mck/items|models|textures/item/hat/)의 mck:hat/<id>. 종이에 item_model 과 머리 칸 equippable 을 붙여 만든다(방어력 없음, 스택 1).
 #   id: laurel(월계관), bounty(바운티 모자), mini_crown(미니 왕관), knockout_headgear(녹아웃 헤드기어), alien_glasses(외계인 선글라스). 영어 id 로도 받는다.
 # [폐기됨] 남성 정장(suit_male), 멜빵바지(outfit), cosplay 네임스페이스 리소스는 사용자 지시로 삭제했다. 모자 모델은 사용자가 보낸 수정본(hat_models_fixed, alien_glasses_fixed)이다.
 #   다시 몸 칸(가슴/다리/발) 치장을 올리면 hatSlot 과 hatItem 에 칸별 equippable(assetId 포함)을 추가하고 hatIs 에 새 네임스페이스 경로를 넣을 것.
