@@ -145,10 +145,10 @@ function voteChoose():
 		if chance of 10%:
 			set {-gv::rand} to random integer between 1 and {-gv::n}
 
-# 더미 한 마리(마네킹, 스킨은 계정 geia). 움직이지 않고 무적이며 태그 votedummy.
+# 더미 한 마리(마네킹, 스킨은 계정 welcominion). 움직이지 않고 무적이며 태그 votedummy.
 function voteDummySpawn(loc: location, yaw: number) :: object:
 	set {_m} to {_loc}.getWorld().spawnEntity({_loc}, EntityType.MANNEQUIN)
-	{_m}.setProfile(ResolvableProfile.resolvableProfile().name("geia").build())
+	{_m}.setProfile(ResolvableProfile.resolvableProfile().name("welcominion").build())
 	{_m}.setImmovable(true)
 	{_m}.setInvulnerable(true)
 	{_m}.setSilent(true)
