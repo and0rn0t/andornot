@@ -145,4 +145,7 @@ command /티어 [<text>]:
 		loop all players:
 			tabUpdate(loop-player)
 		gtRefresh()
+		# 일반 유저의 명령어 목록(자동완성)을 다시 보낸다(cmdhide.sk 가 랭킹을 걸러냄)
+		loop all players:
+			loop-player.updateCommands()
 
