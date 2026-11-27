@@ -21,7 +21,9 @@ function clockNight() :: boolean:
 	set {_nd} to now
 	set {_ms} to {_nd}.getTimestamp() - {-clockstart}.getTimestamp()
 	set {_n} to floor({_ms} / 60000)
-	if {_n} mod 2 is 1:
+	# mod 문법은 검증하지 못해서 뺄셈으로 홀짝을 구한다
+	set {_r} to {_n} - 2 * floor({_n} / 2)
+	if {_r} is 1:
 		return true
 	return false
 
