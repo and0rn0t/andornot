@@ -60,7 +60,8 @@ on flight toggle:
 		wait 1 tick
 		jumpFlightOn({_pl})
 		stop
-	if {-st::%player's uuid%} >= 30:
+	set {_cost} to jumpCost({_pl})
+	if {-st::%player's uuid%} >= {_cost}:
 		if {-jump::%player's uuid%} is not set:
 			push player upwards at speed 0.25
 			push player forwards at speed 0.9
@@ -69,14 +70,14 @@ on flight toggle:
 			set {-jump::%player's uuid%} to true
 			tutHook({_pl}, "leap")
 			loop 5 times:
-				remove 3 from {-st::%player's uuid%}
+				remove {_cost} / 10 from {-st::%player's uuid%}
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			delete {-jump::%player's uuid%}
 			# 도약이 시작된 뒤(5틱 후) 비행 허용을 다시 켜서 다음 도약 입력을 받는다
 			jumpFlightOn({_pl})
 			loop 5 times:
-				remove 3 from {-st::%player's uuid%}
+				remove {_cost} / 10 from {-st::%player's uuid%}
 				play 15 spit with offset of 0.1, 0.1, 0.1 and speed 0 at player in radius of 100
 				wait 1 ticks
 			wait 39 ticks

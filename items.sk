@@ -44,7 +44,7 @@ import:
 
 # 카탈로그 id 목록(기본 순서. 실제 GUI 순서는 {itemorder::*} 를 따름)
 function itemIds() :: texts:
-	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "iron_shovel", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident", "bee", "splash", "milk" and "radar"
+	return "crossbow", "fishing_rod", "iron_axe", "iron_pickaxe", "iron_hoe", "iron_shovel", "mace", "iron_spear", "iron_sword", "tnt", "nether_star", "ominous_bottle", "potion_heal", "potion_stamina", "potion_invis", "totem", "anvil", "bow", "blaze_rod", "wind_charge", "flint_steel", "trident", "bee", "splash", "milk", "radar" and "clock"
 
 # 아이템 이름
 function itemName(id: text) :: text:
@@ -106,6 +106,8 @@ function itemName(id: text) :: text:
 		return "&c자폭"
 	if {_id} is "bee_stop":
 		return "&f조종 중지"
+	if {_id} is "clock":
+		return "&f시계"
 	return "&f%{_id}%"
 
 # 아이템 재료(포션은 바닐라 포션 종류가 스킬 판정에 쓰이므로 종류를 바꾸지 말 것: skill_core.sk 의 potionKind)
@@ -168,6 +170,8 @@ function itemBase(id: text) :: itemtype:
 		return skeleton skull
 	if {_id} is "bee_stop":
 		return barrier
+	if {_id} is "clock":
+		return clock
 	return stone
 
 # 아이템 설명(lore) 양식: 1번째 줄은 [붉은 칼 아이콘 + 데미지] [시계 아이콘 + 쿨타임](해당하는 것만, 아래 itemDamageText / itemCooldownText), 2번째 줄부터가 아래 설명이다("<dmg>" 를 쓰면 그 자리에 [붉은 칼 아이콘 + 데미지] 가 들어간다).
@@ -230,6 +234,8 @@ function itemLoreLines(id: text) :: texts:
 		return "꿀벌 드론을 그 자리에 멈추고 본체로 돌아옵니다."
 	if {_id} is "trident":
 		return "바라보는 방향으로 빠르게 이동합니다.", "이동한 지점 근처에 <dmg4>의 피해를 입힙니다."
+	if {_id} is "clock":
+		return "게임 시작 후 60초마다 낮과 밤이 번갈아 바뀝니다.", "낮: 근접 공격으로 받는 피해가 25%% 감소하고, 원거리 공격으로 가하는 피해가 50%% 감소합니다.", "밤: 원거리 공격으로 가하는 피해가 25%% 증가하고, 근접 공격으로 가하는 피해가 25%% 감소하며, 도약 스태미나 소모량이 20 증가합니다.", "원거리는 활, 쇠뇌, 블레이즈 지팡이입니다."
 	return "설명 없음"
 
 # 1번째 줄에 붉은 칼 아이콘과 같이 보여줄 데미지 수치(무기만). 없으면 "". 수치만 적는다(범위는 3~12 처럼).
@@ -312,6 +318,8 @@ function itemCooldownText(id: text) :: text:
 		return "75"
 	if {_id} is "bee_sting":
 		return "4"
+	if {_id} is "clock":
+		return "60"
 	return ""
 
 # 낚싯대처럼 데미지를 설명 줄 중간(<dmg>)에 쓰는 아이템은 1번째 줄에 데미지를 따로 안 보여준다.
@@ -388,6 +396,9 @@ function itemBuild(id: text, extra: text = "") :: itemtype:
 	if {_id} is "ominous_bottle":
 		set {_td} to TooltipDisplay.tooltipDisplay().addHiddenComponents(DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER).build()
 		{_st}.setData(DataComponentTypes.TOOLTIP_DISPLAY, {_td})
+	# 시계(clock.sk): 낮/밤에 따라 겉모습(아이템 모델)이 바뀐다. 지금 시간대의 모델로 만든다(미검증).
+	if {_id} is "clock":
+		{_st}.setData(DataComponentTypes.ITEM_MODEL, Key.key("mck", clockModel()))
 	# 불사의 토템: 진짜 토템이라 들고 죽으면 부활하고 소모되므로 death_protection 컴포넌트를 지운다(미검증).
 	if {_id} is "totem":
 		{_st}.unsetData(DataComponentTypes.DEATH_PROTECTION)
@@ -475,6 +486,8 @@ function itemCategory(id: text) :: number:
 		return 4
 	if {_id} is "anvil":
 		return 4
+	if {_id} is "clock":
+		return 6
 	return 0
 
 # blaze_rod(블레이즈 지팡이)는 사용자 지정으로 활/쇠뇌류와 같은 분류(2)다.
@@ -495,12 +508,13 @@ function itemOrder() :: texts:
 	loop {_ids::*}:
 		if {_o::*} does not contain loop-value:
 			add loop-value to {_o::*}
-	# 분류 순서(1 금속, 2 나무(활/쇠뇌류 포함), 3 cc기, 4 포션류, 5 양동이류, 0 미분류)로 안정 정렬한다. 같은 분류 안에서는 저장된 순서를 유지.
+	# 분류 순서(1 금속, 2 나무(활/쇠뇌류 포함), 3 cc기, 4 포션류, 5 양동이류, 6 유틸(시계), 0 미분류)로 안정 정렬한다. 같은 분류 안에서는 저장된 순서를 유지.
 	set {_r::*} to itemCatPick({_o::*}, 1)
 	add itemCatPick({_o::*}, 2) to {_r::*}
 	add itemCatPick({_o::*}, 3) to {_r::*}
 	add itemCatPick({_o::*}, 4) to {_r::*}
 	add itemCatPick({_o::*}, 5) to {_r::*}
+	add itemCatPick({_o::*}, 6) to {_r::*}
 	add itemCatPick({_o::*}, 0) to {_r::*}
 	delete {itemorder::*}
 	set {itemorder::*} to {_r::*}
@@ -569,6 +583,8 @@ function itemSprite(id: text) :: text:
 		return "trident"
 	if {_id} is "bee":
 		return "bee_spawn_egg"
+	if {_id} is "clock":
+		return "mck:clock_day"
 	return "barrier"
 
 # 처음 접속한 플레이어에게 줄 기본 구성(1~4번). 서로 달라야 한다.

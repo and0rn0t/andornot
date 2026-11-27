@@ -957,6 +957,8 @@ function gStartFinish(sg: number):
 		loop {-gplist::*}:
 			gRollLoadout(loop-value)
 			loadoutClearAll(loop-value)
+	# 시계(clock.sk)의 낮/밤 주기는 게임 시작 때부터 센다(첫 시간대는 낮)
+	set {-clockstart} to now
 	set {-ingame} to true
 	loop {-gplist::*}:
 		gameRespawn(loop-value)
