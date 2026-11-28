@@ -175,8 +175,14 @@ function umMakeInfo(d: object, f: object) :: object:
 		set {_x} to {_op}.getName()
 		if {_x} is set:
 			set {_nm} to {_x}
-	set {_np} to new WrappedGameProfile({_f}, {_nm})
 	set {_real} to {_d}.getProfileId()
+	# [수정] 가짜 신분이면 패킷 속 프로필에서 읽은 이름 대신 저장된 가짜 이름({nick::map})을 쓴다. 읽은 이름이 비면(WrappedGameProfile#getName 이 새 authlib 에서 비는 경우) 클라이언트가 이 플레이어의 이름을 ""로 알게 되어
+	#   이름으로 맞추는 스코어보드 팀(발광 색, 이름표 색)이 가짜 신분 사람에게만 안 먹는다.
+	set {_fnm} to {nick::map::%{_real}%}
+	if {_fnm} is set:
+		set {_nm} to {_fnm}
+	set {-umcnt::lastname} to {_nm}
+	set {_np} to new WrappedGameProfile({_f}, {_nm})
 	if umStripProps({_real}) is false:
 		if {_op} is set:
 			{_np}.getProperties().putAll({_op}.getProperties())
@@ -302,6 +308,8 @@ command /uuidmask [<text>] [<text>]:
 			set {_c2} to {-umcnt::selfseen} ? 0
 			send "&7처리한 패킷: &f%{_a}% &7/ 실제로 UUID 를 바꾼 패킷: &f%{_b}%"
 			send "&7[솔로 테스트] 본인 탭 항목 변환 코드 성공: &f%{_c1}% &7/ 본인 UUID 가 든 패킷을 알아본 횟수: &f%{_c2}%"
+			set {_ln} to {-umcnt::lastname} ? "(없음)"
+			send "&7마지막으로 다른 사람에게 보낸 가짜 항목의 이름: &f%{_ln}%"
 			send "&7(본인 화면의 본인 UUID 는 원래 안 바뀌어요. 다른 계정에게 가는 패킷에서만 바뀌어요)"
 			stop
 		if arg-1 is "kill":

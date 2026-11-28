@@ -25,9 +25,19 @@ import:
 	net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket as WpTP
 	net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Action as WpTAct
 
+# 점의 id(uuid 문자열)를 패킷에 실을 UUID 로 바꾼다. 가짜 신분(nick.sk)인 사람의 점은 다른 시청자에게 가짜 UUID 로 보낸다(진짜 UUID 가 패킷으로 새지 않게, 탭 목록/엔티티의 가짜 UUID 와도 맞춘다). 본인에게는 그대로.
+function wpMaskId(v: player, id: text) :: object:
+	set {_u} to UUID.fromString({_id})
+	if {-umr2f} is set:
+		set {_m} to {-umr2f}.get({_u})
+		if {_m} is set:
+			if {_u}.equals({_v}.getUniqueId()) is false:
+				return {_m}
+	return {_u}
+
 # 점 하나를 시청자에게 보낸다(처음엔 추가, 이미 있으면 위치 갱신). color 는 0xRRGGBB 를 10진수로(파랑 3447003 등).
 function wpSend(v: player, id: text, x: number, y: number, z: number, color: number):
-	set {_u} to UUID.fromString({_id})
+	set {_u} to wpMaskId({_v}, {_id})
 	set {_ic} to new WpIcon()
 	# 숫자 -> int: Skript 숫자에 intValue() 를 부르면 null 이 나와서(Vec3i 가 null 로 만들어지고 패킷 인코딩이 실패해 접속이 끊김) Math.round 와 Math.toIntExact 로 바꾼다.
 	set {_ci} to Math.toIntExact(Math.round({_color}))
@@ -51,7 +61,7 @@ function wpSend(v: player, id: text, x: number, y: number, z: number, color: num
 	{_v}.getHandle().connection.send({_pk})
 
 function wpRemove(v: player, id: text):
-	set {_u} to UUID.fromString({_id})
+	set {_u} to wpMaskId({_v}, {_id})
 	set {_pk} to ClientboundTrackedWaypointPacket.removeWaypoint({_u})
 	{_v}.getHandle().connection.send({_pk})
 
@@ -289,8 +299,29 @@ function wpTeamPut(v: player, n: text, entry: text, act: text):
 	if {_act} is "add":
 		set {_pk} to WpTP.createPlayerPacket({_tm}, {_entry}, WpTAct.ADD)
 	else:
+		# [오류 수정] 클라이언트는 "그 팀에 없는 항목을 빼라"는 패킷을 받으면 IllegalStateException(Player is either on another team or not on any team)으로 접속을 끊는다.
+		#   서버의 진짜 팀 패킷(발광 색 팀 등)이 이 항목을 다른 팀으로 옮겨 놨을 수 있으니, 먼저 가짜 팀에 다시 넣고(ADD 는 어느 팀에 있든 안전하게 옮겨 준다) 뺀다.
+		set {_pa} to WpTP.createPlayerPacket({_tm}, {_entry}, WpTAct.ADD)
+		{_v}.getHandle().connection.send({_pa})
 		set {_pk} to WpTP.createPlayerPacket({_tm}, {_entry}, WpTAct.REMOVE)
 	{_v}.getHandle().connection.send({_pk})
+
+# [오류 수정] 서버가 진짜 팀에서 항목을 뺄 때(game.sk 의 scRemove/scClearAll, bee/trident 더미) 보내는 REMOVE 패킷도 같은 이유로 시청자를 끊을 수 있다:
+#   그 시청자의 클라이언트에서 항목이 가짜 팀(wpgrn 등)으로 옮겨져 있으면 "진짜 팀에서 빼라"가 예외가 된다. 그래서 진짜 팀에서 빼기 직전에, 그 항목을 가짜 팀으로 갖고 있는 시청자에게만
+#   진짜 팀에 다시 넣는 패킷(ADD)을 먼저 보내고 가짜 팀 기록을 지운다(다음 동기화에서 필요하면 가짜 팀에 다시 넣는다). 진짜 팀 이름 tn, 항목 entry, 대상 id(tid: 플레이어/더미 uuid 문자열).
+function wpRealRestore(tn: text, entry: text, tid: text):
+	set {_nt} to Bukkit.getServer().getServer().getScoreboard().getPlayerTeam({_tn})
+	if {_nt} is not set:
+		stop
+	loop all players:
+		set {_v} to loop-player
+		set {_vid} to "%uuid of {_v}%"
+		if {-wpvme::%{_vid}%::%{_tid}%} is {_entry}:
+			set {_pk} to WpTP.createPlayerPacket({_nt}, {_entry}, WpTAct.ADD)
+			{_v}.getHandle().connection.send({_pk})
+			delete {-wpvm::%{_vid}%::%{_tid}%}
+			delete {-wpvme::%{_vid}%::%{_tid}%}
+			delete {-wpgf::%{_vid}%::%{_tid}%}
 
 # v 에게 t(대상, 아이디 tid)의 발광 색을 col("green"/"red"/"orange")로 맞춘다. 초록/빨강은 발광 플래그도 보낸다(주황은 크라운의 실제 발광을 그대로 쓰고 색만 바꿈).
 function wpColorApply(v: player, t: entity, tid: text, col: text, gforce: boolean):

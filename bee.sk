@@ -195,6 +195,7 @@ function beeGlowEnd(p: player, k: text, back: boolean):
 			set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
 			set {_team} to {_sb}.getTeam({-beeglowteam::%{_k}%})
 			if {_team} is set:
+				wpRealRestore({_team}.getName(), "%uuid of {_m}%", "%uuid of {_m}%")
 				{_team}.removeEntry("%uuid of {_m}%")
 	if {_back} is true:
 		set {_nw} to now

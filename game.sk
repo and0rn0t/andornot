@@ -529,6 +529,10 @@ function scAdd(team: object, p: player):
 
 function scRemove(team: object, p: player):
 	set {_en::*} to scEntries({_p})
+	# 시청자 클라이언트에서 이 항목이 waypoint.sk 의 가짜 팀으로 옮겨져 있으면 진짜 팀 REMOVE 패킷이 클라이언트 예외(접속 끊김)가 되므로, 빼기 전에 되돌려 놓는다(wpRealRestore)
+	set {_tn} to {_team}.getName()
+	loop {_en::*}:
+		wpRealRestore({_tn}, loop-value, "%uuid of {_p}%")
 	loop {_en::*}:
 		{_team}.removeEntry(loop-value)
 
@@ -540,6 +544,7 @@ function scClearAll(p: player):
 	loop {_en::*}:
 		set {_t} to {_sb}.getEntryTeam(loop-value)
 		if {_t} is set:
+			wpRealRestore({_t}.getName(), loop-value, "%uuid of {_p}%")
 			{_t}.removeEntry(loop-value)
 
 # 접속 종료: 즉시 비우고, 다른 on quit(낙하 종료 등)가 팀에 되돌려 넣을 수 있어서 1틱 뒤에 한 번 더 비운다

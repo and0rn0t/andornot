@@ -198,6 +198,7 @@ function tridentPrevRemove(m: object):
 	set {_sb} to Bukkit.getScoreboardManager().getMainScoreboard()
 	set {_tm} to {_sb}.getTeam("tdprev")
 	if {_tm} is set:
+		wpRealRestore("tdprev", "%{_m}.getUniqueId()%", "%{_m}.getUniqueId()%")
 		{_tm}.removeEntry("%{_m}.getUniqueId()%")
 	{_m}.remove()
 
